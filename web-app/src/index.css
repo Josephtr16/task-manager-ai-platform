@@ -1,0 +1,96 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Aggressive list reset */
+ul,
+ol,
+li,
+menu,
+summary {
+  list-style: none !important;
+  list-style-type: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Hide all markers specifically */
+::marker {
+  display: none !important;
+  content: "" !important;
+  font-size: 0 !important;
+  opacity: 0 !important;
+}
+
+/* Nuclear option for dots */
+ul::before,
+ul::after,
+li::before,
+li::after,
+ol::before,
+ol::after,
+div::before,
+div::after,
+span::before,
+span::after,
+*::marker,
+.dot,
+.circle,
+[class*="dot"],
+[class*="circle"] {
+  content: none !important;
+  display: none !important;
+  opacity: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+:root {
+  /* Light Mode Tokens (Default) */
+  --bg-main: #F3F4F6;
+  --bg-card: #F3F4F6;
+  --text-primary: #1F2937;
+  --text-secondary: #4B5563;
+  --text-muted: #9CA3AF;
+  --border-color: rgba(0, 0, 0, 0.05);
+  --primary: #6366F1;
+
+  /* Neumorphic Shadows - Light */
+  --shadow-neu: 6px 6px 12px #d1d5db, -6px -6px 12px #ffffff;
+  --shadow-neu-inset: inset 6px 6px 12px #d1d5db, inset -6px -6px 12px #ffffff;
+  --shadow-card: 8px 8px 16px #d1d5db, -8px -8px 16px #ffffff;
+}
+
+body.dark-mode {
+  /* Dark Mode Tokens */
+  --bg-main: #212529;
+  /* Dashboard Dark */
+  --bg-card: #212529;
+  --text-primary: #F3F4F6;
+  --text-secondary: #9CA3AF;
+  --text-muted: #6B7280;
+  --border-color: rgba(255, 255, 255, 0.05);
+
+  /* Neumorphic Shadows - Dark */
+  --shadow-neu: 6px 6px 12px #181a1d, -6px -6px 12px #2a3035;
+  --shadow-neu-inset: inset 6px 6px 12px #181a1d, inset -6px -6px 12px #2a3035;
+  --shadow-card: 8px 8px 16px #16191c, -8px -8px 16px #2c3136;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--bg-main);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}

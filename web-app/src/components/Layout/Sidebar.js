@@ -202,6 +202,26 @@ const Sidebar = () => {
       backgroundColor: 'transparent',
       color: theme.error,
     },
+    userActions: {
+      display: 'flex',
+      gap: '4px',
+      alignItems: 'center',
+    },
+    iconButton: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      width: '32px',
+      height: '32px',
+      borderRadius: '8px',
+      border: 'none',
+      backgroundColor: 'transparent',
+      color: theme.textSecondary,
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+      outline: 'none',
+      fontSize: '16px',
+    },
   };
 
   return (
@@ -226,6 +246,13 @@ const Sidebar = () => {
         }
         .logout-btn:hover {
           background-color: ${theme.error}15 !important;
+          color: ${theme.error} !important;
+        }
+        .icon-btn:hover {
+          background-color: ${theme.type === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)'} !important;
+          color: ${theme.primary} !important;
+        }
+        .icon-btn.logout:hover {
           color: ${theme.error} !important;
         }
       `}</style>
@@ -275,30 +302,24 @@ const Sidebar = () => {
             <p style={styles.userName}>{user?.name}</p>
             <p style={styles.userEmail}>{user?.email}</p>
           </div>
-        </div>
-
-        {/* Bottom Actions */}
-        <div style={styles.bottomActions}>
-          <button
-            onClick={() => navigate('/settings')}
-            className={`sidebar-menu-item ${isActive('/settings') ? 'active' : ''}`}
-            style={{
-              ...styles.bottomButton,
-              ...(isActive('/settings') ? styles.menuItemActive : styles.menuItemInactive)
-            }}
-          >
-            <span className="menu-icon" style={styles.menuIcon}><FaCog /></span>
-            <span style={styles.menuLabel}>Settings</span>
-          </button>
-
-          <button
-            onClick={handleLogout}
-            className="logout-btn"
-            style={styles.logoutButton}
-          >
-            <span style={styles.menuIcon}><FaSignOutAlt /></span>
-            <span style={styles.menuLabel}>Logout</span>
-          </button>
+          <div style={styles.userActions}>
+            <button
+              onClick={() => navigate('/settings')}
+              style={styles.iconButton}
+              className="icon-btn"
+              title="Settings"
+            >
+              <FaCog />
+            </button>
+            <button
+              onClick={handleLogout}
+              style={styles.iconButton}
+              className="icon-btn logout"
+              title="Logout"
+            >
+              <FaSignOutAlt />
+            </button>
+          </div>
         </div>
       </div>
     </div>

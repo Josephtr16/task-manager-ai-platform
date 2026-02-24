@@ -214,17 +214,15 @@ const getStyles = (theme, isDarkMode) => ({
     marginBottom: '2px',
   },
   input: {
-    backgroundColor: isDarkMode ? '#2B3035' : '#F5F7FB', // Neutral Charcoal vs Light Gray
-    border: isDarkMode ? '1px solid rgba(255,255,255,0.08)' : '1px solid transparent',
-    borderRadius: '10px',
-    padding: '14px 16px',
+    backgroundColor: theme.bgCard,
+    border: 'none',
+    borderRadius: '12px',
+    padding: '14px 18px',
     fontSize: '15px',
-    color: isDarkMode ? '#F3F4F6' : '#1F2937',
+    color: theme.textPrimary,
     outline: 'none',
-    transition: 'all 0.2s ease',
-    boxShadow: isDarkMode
-      ? 'inset 0 2px 4px rgba(0,0,0,0.4)'
-      : 'inset 0 2px 4px rgba(0,0,0,0.05)',
+    transition: 'all 0.3s ease',
+    boxShadow: theme.shadows.neumorphicInset,
   },
   button: {
     backgroundColor: theme.primary,

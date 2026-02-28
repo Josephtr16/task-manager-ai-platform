@@ -34,9 +34,8 @@ api.interceptors.response.use(
       // We keep the original response object but replace data
       response.data = response.data.data;
     } else if (response.data && response.data.success) {
-      // If success is true but no data (e.g. DELETE), return empty object or message
-      // useful for things like { success: true, message: "Deleted" }
-      response.data = response.data;
+      // If success is true but no data (e.g. DELETE), return the data object as is
+      // which contains { success: true, message: "..." }
     }
     return response;
   },
@@ -51,6 +50,7 @@ api.interceptors.response.use(
 // Auth API
 export const authAPI = {
   register: (data) => api.post('/auth/register', data),
+  verifyEmail: (data) => api.post('/auth/verify-email', data),
   login: (data) => api.post('/auth/login', data),
   getMe: () => api.get('/auth/me'),
 };

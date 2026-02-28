@@ -1,6 +1,6 @@
 // src/components/Auth/Login.js
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import AuthLayout from './AuthLayout';
@@ -14,9 +14,13 @@ const Login = () => {
   const { theme, isDarkMode } = useTheme();
   const navigate = useNavigate();
 
+  const location = useLocation();
+  const [successMessage, setSuccessMessage] = useState(location.state?.message || '');
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccessMessage('');
     setLoading(true);
 
     const result = await login(email, password);
@@ -45,6 +49,13 @@ const Login = () => {
         <div style={styles.error}>
           <span>⚠️</span>
           <span>{error}</span>
+        </div>
+      )}
+
+      {successMessage && (
+        <div style={styles.success}>
+          <span>✅</span>
+          <span>{successMessage}</span>
         </div>
       )}
 
@@ -158,6 +169,18 @@ const getStyles = (theme, isDarkMode) => ({
     alignItems: 'center',
     gap: '8px',
     color: '#B91C1C', // Dark red text
+    fontSize: '14px',
+  },
+  success: {
+    backgroundColor: '#F0FDF4',
+    border: '1px solid #22C55E',
+    borderRadius: '8px',
+    padding: '12px 16px',
+    marginBottom: '24px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    color: '#15803D',
     fontSize: '14px',
   },
   form: {

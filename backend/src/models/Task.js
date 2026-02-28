@@ -86,22 +86,6 @@ const taskSchema = new mongoose.Schema({
       default: Date.now,
     },
   }],
-  // AI-related fields
-  aiPriorityScore: {
-    type: Number,
-    min: 0,
-    max: 100,
-    default: 50,
-  },
-  aiPredictedDuration: {
-    type: Number, // in minutes
-  },
-  bestTime: {
-    type: String, // e.g., "2:00 PM"
-  },
-  aiInsight: {
-    type: String, // AI-generated message
-  },
   // Time tracking - FYP premium feature
   timeTracking: {
     totalTime: {
@@ -136,6 +120,16 @@ const taskSchema = new mongoose.Schema({
   },
   completedAt: {
     type: Date,
+    default: null,
+  },
+  actualDuration: {
+    type: Number, // in minutes
+    default: null,
+  },
+  kanbanColumn: {
+    type: String,
+    enum: ['todo', 'inProgress', 'review', 'done'],
+    default: 'todo',
   },
   updatedAt: {
     type: Date,

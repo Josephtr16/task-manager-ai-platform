@@ -8,7 +8,17 @@ const sendResponse = require('../utils/ApiResponse');
 exports.register = asyncHandler(async (req, res) => {
   const result = await authService.register(req.body);
 
-  sendResponse(res, 201, true, result, 'User registered successfully');
+  sendResponse(res, 201, true, result, result.message || 'Registration successful');
+});
+
+// @desc    Verify email
+// @route   POST /api/auth/verify-email
+// @access  Public
+exports.verifyEmail = asyncHandler(async (req, res) => {
+  const { email, token } = req.body;
+  const result = await authService.verifyEmail(email, token);
+
+  sendResponse(res, 200, true, result, result.message);
 });
 
 // @desc    Login user

@@ -5,8 +5,8 @@ const registerSchema = Joi.object({
         'string.empty': 'Name is required',
         'any.required': 'Name is required'
     }),
-    email: Joi.string().email().required().lowercase().messages({
-        'string.email': 'Please provide a valid email',
+    email: Joi.string().email().required().lowercase().trim().messages({
+        'string.email': 'Please provide a valid email format',
         'any.required': 'Email is required'
     }),
     password: Joi.string().min(6).required().messages({
@@ -16,8 +16,8 @@ const registerSchema = Joi.object({
 });
 
 const loginSchema = Joi.object({
-    email: Joi.string().email().required().lowercase().messages({
-        'string.email': 'Please provide a valid email',
+    email: Joi.string().email().required().lowercase().trim().messages({
+        'string.email': 'Please provide a valid email format',
         'any.required': 'Email is required'
     }),
     password: Joi.string().required().messages({

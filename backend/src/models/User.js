@@ -13,7 +13,7 @@ const userSchema = new mongoose.Schema({
     unique: true,
     lowercase: true,
     match: [
-      /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
       'Please add a valid email',
     ],
   },
@@ -23,6 +23,12 @@ const userSchema = new mongoose.Schema({
     minlength: 6,
     select: false,
   },
+  isVerified: {
+    type: Boolean,
+    default: false,
+  },
+  verificationTokenHash: String,
+  verificationTokenExpires: Date,
   createdAt: {
     type: Date,
     default: Date.now,

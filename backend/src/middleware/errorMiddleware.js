@@ -6,7 +6,10 @@ const handleCastErrorDB = err => {
 };
 
 const handleDuplicateFieldsDB = err => {
-    const value = err.errmsg.match(/(["'])(\\?.)*?\1/)[0];
+    // Check if err.errmsg or err.message has the duplicated value.
+    const messageStr = err.errmsg || err.message || '';
+    const match = messageStr.match(/(["'])(\\?.)*?\1/);
+    const value = match ? match[0] : 'Unknown';
     const message = `Duplicate field value: ${value}. Please use another value!`;
     return new AppError(message, 400);
 };

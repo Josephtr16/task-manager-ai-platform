@@ -1,7 +1,7 @@
 const Task = require('../models/Task');
 const AppError = require('../utils/AppError');
 const BaseService = require('./BaseService');
-const aiService = require('./aiService');
+
 
 class TaskService extends BaseService {
     constructor() {
@@ -27,15 +27,7 @@ class TaskService extends BaseService {
     }
 
     async createTask(taskData) {
-        // Get AI prediction
-        const aiPrediction = await aiService.predictTask(taskData);
-
-        const taskWithAI = {
-            ...taskData,
-            ...aiPrediction
-        };
-
-        return await this.model.create(taskWithAI);
+        return await this.model.create(taskData);
     }
 
     async updateTask(id, userId, updateData) {
@@ -51,14 +43,17 @@ class TaskService extends BaseService {
 
         // specific logic for status change
         if (updateData.status === 'done' && task.status !== 'done') {
-            updateData.completedAt = Date.now();
+            if (!task.completedAt) {
+                updateData.completedAt = Date.now();
+            }
+
+            if (task.actualDuration === null) {
+                updateData.actualDuration = task.estimatedDuration || 60; // Assuming default 60 or fallback
+            }
 
             // Send feedback to AI if we have simple duration tracking or estimate
             // Use totalTime from timeTracking if available, otherwise just skip or use a simple heuristic?
-            // For now, let's only send if timeTracking.totalTime > 0 and estimation existed
-            if (task.timeTracking && task.timeTracking.totalTime > 0 && task.aiPredictedDuration) {
-                aiService.submitFeedback(task.timeTracking.totalTime, task.aiPredictedDuration);
-            }
+
         }
 
         task = await this.model.findByIdAndUpdate(id, updateData, {

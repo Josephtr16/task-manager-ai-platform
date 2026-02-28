@@ -16,9 +16,22 @@ const Register = () => {
   const { theme, isDarkMode } = useTheme();
   const navigate = useNavigate();
 
+  const validateEmail = (email) => {
+    return String(email)
+      .toLowerCase()
+      .match(
+        /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
+      );
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    if (!validateEmail(email)) {
+      setError('Please provide a valid email format');
+      return;
+    }
 
     if (password !== confirmPassword) {
       setError('Passwords do not match');
@@ -35,7 +48,8 @@ const Register = () => {
     const result = await register(name, email, password);
 
     if (result.success) {
-      navigate('/dashboard');
+      // Navigate to login with a success message
+      navigate('/login', { state: { message: result.message } });
     } else {
       setError(result.message);
     }

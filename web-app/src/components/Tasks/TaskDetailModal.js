@@ -6,7 +6,7 @@ import {
   FaEdit, FaTrash, FaTimes, FaSave,
   FaStopwatch, FaPaperclip, FaComment, FaShare,
   FaTag, FaCheck, FaFileUpload, FaPaperPlane, FaUserPlus,
-  FaRobot, FaPlay, FaPause
+  FaRobot, FaPlay, FaPause, FaClock
 } from 'react-icons/fa';
 
 const TaskDetailModal = ({ task, isOpen, onClose, onTaskUpdated, onTaskDeleted }) => {
@@ -737,6 +737,25 @@ const TaskDetailModal = ({ task, isOpen, onClose, onTaskUpdated, onTaskDeleted }
           ) : (
             <p style={styles.description}>
               {formData.description || 'No description provided'}
+            </p>
+          )}
+        </div>
+
+        {/* Estimated Duration */}
+        <div style={styles.section}>
+          <h3 style={styles.sectionTitle}><FaClock style={{ fontSize: '16px' }} /> Estimated Duration (minutes)</h3>
+          {isEditing ? (
+            <input
+              type="number"
+              name="estimatedDuration"
+              value={formData.estimatedDuration || 60}
+              onChange={handleChange}
+              style={styles.input}
+              min="1"
+            />
+          ) : (
+            <p style={styles.description}>
+              {formData.estimatedDuration || 60} minutes
             </p>
           )}
         </div>

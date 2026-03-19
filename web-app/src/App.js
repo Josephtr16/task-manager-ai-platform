@@ -12,6 +12,8 @@ import KanbanPage from './pages/KanbanPage';
 import CalendarPage from './pages/CalendarPage';
 import InsightsPage from './pages/InsightsPage';
 import SettingsPage from './pages/SettingsPage';
+import ProjectsPage from './pages/ProjectsPage';
+import ProjectDetailPage from './pages/ProjectDetailPage';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -62,6 +64,12 @@ function App() {
             } />
             <Route path="/insights" element={
               <ProtectedRoute><InsightsPage /></ProtectedRoute>
+            } />
+            <Route path="/projects" element={
+              <ProtectedRoute><ProjectsPage /></ProtectedRoute>
+            } />
+            <Route path="/projects/:id" element={
+              <ProtectedRoute><ProjectDetailPage /></ProtectedRoute>
             } />
             <Route path="/settings" element={
               <ProtectedRoute><SettingsPage /></ProtectedRoute>

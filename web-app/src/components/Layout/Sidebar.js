@@ -12,7 +12,8 @@ import {
   FaRobot,
   FaCog,
   FaSignOutAlt,
-  FaLayerGroup
+  FaLayerGroup,
+  FaFolder
 } from 'react-icons/fa';
 
 const Sidebar = () => {
@@ -24,6 +25,7 @@ const Sidebar = () => {
   const menuItems = [
     { icon: <FaHome />, label: 'Dashboard', path: '/dashboard' },
     { icon: <FaTasks />, label: 'Tasks', path: '/tasks' },
+    { icon: <FaFolder />, label: 'Projects', path: '/projects' },
     { icon: <FaClipboardList />, label: 'Kanban', path: '/kanban' },
     { icon: <FaRegCalendarAlt />, label: 'Calendar', path: '/calendar' },
     { icon: <FaRobot />, label: 'AI Insights', path: '/insights' },

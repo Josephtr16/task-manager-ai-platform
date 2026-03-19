@@ -7,7 +7,7 @@ import { borderRadius } from '../theme';
 import CreateTaskModal from '../components/Tasks/CreateTaskModal';
 import TaskDetailModal from '../components/Tasks/TaskDetailModal';
 import {
-  FaSearch, FaPlus, FaCalendarAlt, FaClock, FaCheck, FaFlag, FaTag, FaTimes
+  FaSearch, FaPlus, FaCalendarAlt, FaClock, FaCheck, FaFlag, FaTag, FaTimes, FaClipboardList
 } from 'react-icons/fa';
 import CustomSelect from '../components/common/CustomSelect';
 
@@ -24,7 +24,6 @@ const TasksPage = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
-  const [showCompleted, setShowCompleted] = useState(false);
 
   useEffect(() => {
     loadTasks();
@@ -47,7 +46,8 @@ const TasksPage = () => {
   };
 
   const applyFilters = () => {
-    let filtered = [...tasks];
+    // Only show standalone tasks
+    let filtered = tasks.filter(task => !task.projectId);
 
     // Search filter
     if (searchQuery) {
@@ -568,10 +568,15 @@ const TaskCard = ({ task, onClick, getPriorityColor, getStatusColor, formatDate,
     checkboxInner: {
       transition: 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
     },
+    taskTitleContainer: { // New style for title and project badge
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '4px', // Space between title and project badge
+    },
     taskTitle: {
       fontSize: '16px',
       fontWeight: '700',
-      margin: '0 0 4px 0',
+      margin: '0',
       lineHeight: '1.4',
     },
     taskDescription: {
@@ -602,19 +607,20 @@ const TaskCard = ({ task, onClick, getPriorityColor, getStatusColor, formatDate,
       borderRadius: '8px',
       display: 'flex',
       alignItems: 'center',
+      gap: '4px',
     },
-    taskCardBottom: {
-      display: 'flex',
-      justifyContent: 'space-between',
+    projectBadge: {
+      fontSize: '10px',
+      fontWeight: '600',
+      padding: '2px 8px',
+      borderRadius: '6px',
+      backgroundColor: theme.primary + '15',
+      color: theme.primary,
+      border: `1px solid ${theme.primary}30`,
+      display: 'inline-flex',
       alignItems: 'center',
-      marginTop: 'auto',
-      paddingTop: '16px',
-      borderTop: `1px solid ${theme.border}`,
-    },
-    tagsContainer: {
-      display: 'flex',
-      flexWrap: 'wrap',
-      gap: '8px',
+      gap: '4px',
+      marginTop: '4px',
     },
     categoryBadge: {
       fontSize: '12px',
@@ -673,8 +679,8 @@ const TaskCard = ({ task, onClick, getPriorityColor, getStatusColor, formatDate,
       onClick={onClick}
       className="task-card"
     >
-      {/* Top Row */}
-      <div style={styles.taskCardTop}>
+      {/* Title Row */}
+      <div style={{ ...styles.taskCardTop, marginBottom: '8px' }}>
         <div style={styles.taskCardLeft}>
           <div
             onClick={(e) => {
@@ -684,18 +690,13 @@ const TaskCard = ({ task, onClick, getPriorityColor, getStatusColor, formatDate,
           >
             <Checkbox checked={task.status === 'done'} />
           </div>
-          <div>
-            <h3 style={{
-              ...styles.taskTitle,
-              textDecoration: completed ? 'line-through' : 'none',
-              color: completed ? theme.textMuted : theme.textPrimary,
-            }}>
-              {task.title}
-            </h3>
-            {task.description && (
-              <p style={styles.taskDescription}>{task.description}</p>
-            )}
-          </div>
+          <h3 style={{
+            ...styles.taskTitle,
+            textDecoration: completed ? 'line-through' : 'none',
+            color: completed ? theme.textMuted : theme.textPrimary,
+          }}>
+            {task.title}
+          </h3>
         </div>
 
         <div style={styles.taskCardRight}>
@@ -704,35 +705,49 @@ const TaskCard = ({ task, onClick, getPriorityColor, getStatusColor, formatDate,
               <FaCalendarAlt size={12} style={{ marginRight: '4px' }} /> {deadline.text}
             </span>
           )}
-          <span style={{
-            ...styles.priorityBadge,
-            backgroundColor: getPriorityColor(task.priority) + '20',
-            color: getPriorityColor(task.priority),
-          }}>
-            <FaFlag size={12} style={{ marginRight: '4px' }} />
-            {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
-          </span>
         </div>
       </div>
 
-      {/* Bottom Row */}
-      <div style={styles.taskCardBottom}>
-        <div style={styles.tagsContainer}>
+      {/* Context Row (Badges) */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', padding: '0 12px', marginLeft: '32px', marginBottom: '10px' }}>
+          <span style={{
+            ...styles.priorityBadge,
+            backgroundColor: getPriorityColor(task.priority) + '15',
+            color: getPriorityColor(task.priority),
+            border: `1px solid ${getPriorityColor(task.priority)}30`,
+          }}>
+            <FaFlag size={10} style={{ marginRight: '4px' }} />
+            {task.priority.toUpperCase()}
+          </span>
           <span style={{
             ...styles.categoryBadge,
-            backgroundColor: theme.primary + '20',
-            color: theme.primary,
+            backgroundColor: theme.primary + '05',
+            color: theme.textSecondary,
+            border: `1px solid ${theme.border}50`,
           }}>
             {task.category}
           </span>
+          {task.projectId && (
+            <div style={styles.projectBadge}>
+              <FaClipboardList size={10} />
+              {typeof task.projectId === 'object' ? task.projectId.title : 'Project'}
+            </div>
+          )}
           {task.tags && task.tags.map((tag, index) => (
             <span key={index} style={styles.tagBadge}>
               <FaTag size={10} style={{ marginRight: '4px' }} />
               {tag}
             </span>
           ))}
-        </div>
+      </div>
 
+      {/* Description */}
+      {task.description && (
+        <p style={{ ...styles.taskDescription, padding: '0 12px', marginLeft: '32px', marginBottom: '8px' }}>{task.description}</p>
+      )}
+
+      {/* Metadata Row (Footer) */}
+      <div style={{ ...styles.taskCardBottom, borderTop: `1px solid ${theme.border}30`, paddingTop: '8px' }}>
         <div style={styles.metaContainer}>
           {task.estimatedDuration && (
             <span style={styles.metaItem}>

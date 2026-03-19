@@ -1,7 +1,7 @@
 const Task = require('../models/Task');
 const AppError = require('../utils/AppError');
 const BaseService = require('./BaseService');
-
+const projectService = require('./projectService');
 
 class TaskService extends BaseService {
     constructor() {
@@ -9,7 +9,9 @@ class TaskService extends BaseService {
     }
 
     async getTasks(userId) {
-        return await this.model.find({ userId }).sort({ createdAt: -1 });
+        return await this.model.find({ userId })
+            .populate('projectId', 'title category status')
+            .sort({ createdAt: -1 });
     }
 
     async getTask(id, userId) {
@@ -26,8 +28,18 @@ class TaskService extends BaseService {
         return task;
     }
 
+    async getTasksByProject(projectId, userId) {
+        return await this.model.find({ projectId, userId })
+            .populate('projectId', 'title category status')
+            .sort({ order: 1, createdAt: -1 });
+    }
+
     async createTask(taskData) {
-        return await this.model.create(taskData);
+        const task = await this.model.create(taskData);
+        if (task.projectId) {
+            await projectService.calculateProjectProgress(task.projectId);
+        }
+        return task;
     }
 
     async updateTask(id, userId, updateData) {
@@ -40,6 +52,8 @@ class TaskService extends BaseService {
         if (task.userId.toString() !== userId) {
             throw new AppError('Not authorized', 401);
         }
+
+        const oldProjectId = task.projectId;
 
         // specific logic for status change
         if (updateData.status === 'done' && task.status !== 'done') {
@@ -61,6 +75,13 @@ class TaskService extends BaseService {
             runValidators: true,
         });
 
+        if (task.projectId) {
+            await projectService.calculateProjectProgress(task.projectId);
+        }
+        if (oldProjectId && oldProjectId.toString() !== (task.projectId ? task.projectId.toString() : '')) {
+            await projectService.calculateProjectProgress(oldProjectId);
+        }
+
         return task;
     }
 
@@ -75,7 +96,14 @@ class TaskService extends BaseService {
             throw new AppError('Not authorized', 401);
         }
 
+        const projectId = task.projectId;
+
         await task.deleteOne();
+
+        if (projectId) {
+            await projectService.calculateProjectProgress(projectId);
+        }
+
         return true;
     }
 
@@ -154,6 +182,7 @@ class TaskService extends BaseService {
             status: { $ne: 'done' },
             deadline: { $gte: now },
         })
+            .populate('projectId', 'title category')
             .sort({ deadline: 1 })
             .limit(5);
     }

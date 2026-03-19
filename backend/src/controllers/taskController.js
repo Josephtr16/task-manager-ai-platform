@@ -14,6 +14,18 @@ exports.getTasks = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Get all tasks for a specific project
+// @route   GET /api/tasks/project/:projectId
+// @access  Private
+exports.getProjectTasks = asyncHandler(async (req, res) => {
+  const tasks = await taskService.getTasksByProject(req.params.projectId, req.user.id);
+
+  sendResponse(res, 200, true, {
+    count: tasks.length,
+    tasks,
+  });
+});
+
 // @desc    Get single task
 // @route   GET /api/tasks/:id
 // @access  Private

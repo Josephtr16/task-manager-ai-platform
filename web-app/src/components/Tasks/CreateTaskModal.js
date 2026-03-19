@@ -1,6 +1,6 @@
 // src/components/Tasks/CreateTaskModal.js
 import React, { useState } from 'react';
-import { FaTimes, FaCalendarAlt, FaTag, FaFlag, FaPlus, FaPaperclip, FaCheckCircle, FaTrash } from 'react-icons/fa';
+import { FaTimes, FaCalendarAlt, FaTag, FaFlag, FaPlus, FaPaperclip, FaCheckCircle, FaTrash, FaClock } from 'react-icons/fa';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 import { useTheme } from '../../context/ThemeContext';
@@ -13,10 +13,10 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
     title: '',
     description: '',
     dueDate: '',
-    category: 'Personal',
+    category: 'Work',
     priority: 'medium',
+    estimatedDuration: 60,
     tags: [],
-    attachments: [],
     subtasks: []
   });
   const [tagInput, setTagInput] = useState('');
@@ -410,7 +410,12 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
         .react-datepicker__triangle {
           display: none;
         }
-      `}</style>
+        .react-datepicker__navigation-icon::before {
+          border-color: ${theme.textSecondary} !important;
+        }
+        .react-datepicker__navigation:hover *::before {
+          border-color: ${theme.textPrimary} !important;
+        } `}</style>
       <div style={styles.modal} onClick={e => e.stopPropagation()}>
         <div style={styles.header}>
           <h2 style={styles.title}>Create New Task</h2>
@@ -464,6 +469,19 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
                 onChange={value => setFormData(prev => ({ ...prev, category: value }))}
               />
             </div>
+          </div>
+
+          <div style={styles.formGroup}>
+            <label style={styles.label}><FaClock /> Estimated Duration (minutes)</label>
+            <input
+              type="number"
+              name="estimatedDuration"
+              value={formData.estimatedDuration}
+              onChange={handleInputChange}
+              placeholder="e.g., 60"
+              style={styles.input}
+              min="1"
+            />
           </div>
 
           <div style={styles.formGroup}>

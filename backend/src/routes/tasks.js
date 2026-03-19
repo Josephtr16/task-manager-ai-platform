@@ -10,7 +10,8 @@ const {
   getUpcoming,
   addAttachment,
   addComment,
-  shareTask
+  shareTask,
+  getProjectTasks
 } = require('../controllers/taskController');
 const { protect } = require('../middleware/auth');
 const validate = require('../middleware/validate');
@@ -21,6 +22,7 @@ router.use(protect);
 
 router.get('/statistics', getStatistics);
 router.get('/upcoming', getUpcoming);
+router.get('/project/:projectId', getProjectTasks);
 
 router.post('/:id/attachments', upload.single('file'), addAttachment);
 router.post('/:id/comments', addComment);

@@ -398,6 +398,18 @@ const KanbanPage = () => {
       display: 'flex',
       alignItems: 'center',
     },
+    projectBadge: {
+      fontSize: '10px',
+      padding: '2px 6px',
+      borderRadius: '4px',
+      backgroundColor: theme.primary + '15',
+      color: theme.primary,
+      border: `1px solid ${theme.primary}30`,
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '4px',
+      marginTop: '4px',
+    },
     dragHint: {
       position: 'absolute',
       top: '8px',
@@ -599,8 +611,15 @@ const KanbanCard = ({
     >
       {/* Card Header */}
       <div style={styles.cardHeader}>
-
-        <p style={styles.cardTitle}>{task.title}</p>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <p style={styles.cardTitle}>{task.title}</p>
+          {task.projectId && (
+            <div style={styles.projectBadge}>
+              <FaClipboardList size={10} />
+              {typeof task.projectId === 'object' ? task.projectId.title : 'Project'}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Description */}

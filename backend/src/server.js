@@ -25,6 +25,7 @@ app.use('/api/tasks/:id', require('./routes/timeTracking'));
 app.use('/api/tasks/:id/subtasks', require('./routes/subtasks'));
 app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/time', require('./routes/timeRoutes'));
+app.use('/api/projects', require('./routes/projects'));
 
 // Basic route
 app.get('/', (req, res) => {

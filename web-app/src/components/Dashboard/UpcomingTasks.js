@@ -2,7 +2,7 @@
 import React from 'react';
 import { useTheme } from '../../context/ThemeContext';
 import { borderRadius } from '../../theme';
-import { FaClock, FaCalendarAlt, FaCheckCircle, FaAngleRight } from 'react-icons/fa';
+import { FaClock, FaCalendarAlt, FaCheckCircle, FaAngleRight, FaClipboardList } from 'react-icons/fa';
 
 const UpcomingTasks = ({ tasks, onTaskClick }) => {
   const { theme } = useTheme();
@@ -89,14 +89,17 @@ const UpcomingTasks = ({ tasks, onTaskClick }) => {
       border: `1px solid transparent`,
     },
     itemContent: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '8px',
       flex: 1,
-      overflow: 'hidden',
+      minWidth: 0,
     },
     itemTitle: {
       fontSize: '15px',
       fontWeight: '600',
       color: theme.textPrimary,
-      margin: '0 0 6px 0',
+      margin: 0,
       whiteSpace: 'nowrap',
       overflow: 'hidden',
       textOverflow: 'ellipsis',
@@ -105,7 +108,6 @@ const UpcomingTasks = ({ tasks, onTaskClick }) => {
       display: 'flex',
       gap: '12px',
       alignItems: 'center',
-      marginBottom: '8px',
     },
     itemDate: {
       fontSize: '12px',
@@ -125,21 +127,42 @@ const UpcomingTasks = ({ tasks, onTaskClick }) => {
       gap: '8px',
     },
     priorityBadge: {
-      fontSize: '11px',
-      fontWeight: '600',
-      padding: '2px 8px',
-      borderRadius: '6px',
-      backgroundColor: theme.bgMain,
-      textTransform: 'capitalize',
+      fontSize: '10px',
+      fontWeight: '700',
+      padding: '2px 6px',
+      borderRadius: '4px',
+      textTransform: 'uppercase',
+      display: 'inline-flex',
+      alignItems: 'center',
     },
     categoryBadge: {
-      fontSize: '11px',
+      fontSize: '10px',
       fontWeight: '600',
-      padding: '2px 8px',
-      borderRadius: '6px',
+      padding: '2px 6px',
+      borderRadius: '4px',
       backgroundColor: theme.bgMain,
       color: theme.textMuted,
-      boxShadow: theme.shadows.neumorphicInset, // Inset badge
+      border: `1px solid ${theme.border}50`,
+      display: 'inline-flex',
+      alignItems: 'center',
+    },
+    projectBadge: {
+      fontSize: '10px',
+      fontWeight: '600',
+      padding: '2px 6px',
+      borderRadius: '4px',
+      backgroundColor: theme.primary + '15',
+      color: theme.primary,
+      border: `1px solid ${theme.primary}30`,
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '4px',
+      alignSelf: 'flex-start',
+    },
+    badgesRow: {
+      display: 'flex',
+      flexWrap: 'wrap',
+      gap: '6px',
     },
     arrow: {
       fontSize: '16px',
@@ -183,7 +206,28 @@ const UpcomingTasks = ({ tasks, onTaskClick }) => {
               className="upcoming-item"
             >
               <div style={styles.itemContent}>
-                <h4 style={styles.itemTitle}>{task.title}</h4>
+                <h4 style={{ ...styles.itemTitle, margin: 0 }}>{task.title}</h4>
+                
+                <div style={styles.badgesRow}>
+                  <span style={{
+                    ...styles.priorityBadge,
+                    color: getPriorityColor(task.priority),
+                    backgroundColor: `${getPriorityColor(task.priority)}15`,
+                    border: `1px solid ${getPriorityColor(task.priority)}30`,
+                  }}>
+                    {task.priority.toUpperCase()}
+                  </span>
+                  <span style={styles.categoryBadge}>
+                    {task.category}
+                  </span>
+                </div>
+
+                {task.projectId && (
+                  <div style={styles.projectBadge}>
+                    <FaClipboardList style={{ fontSize: '10px' }} /> {task.projectId.title}
+                  </div>
+                )}
+
                 <div style={styles.itemMeta}>
                   <span style={styles.itemDate}>
                     <FaCalendarAlt style={{ marginRight: '6px' }} /> {formatDate(task.deadline)}
@@ -193,19 +237,6 @@ const UpcomingTasks = ({ tasks, onTaskClick }) => {
                       <FaCheckCircle style={{ marginRight: '6px' }} /> {task.subtasks.filter(s => s.completed).length}/{task.subtasks.length}
                     </span>
                   )}
-                </div>
-                <div style={styles.badges}>
-                  <span style={{
-                    ...styles.priorityBadge,
-                    color: getPriorityColor(task.priority),
-                    boxShadow: theme.shadows.neumorphicInset, // Inset badge
-                    border: `1px solid ${getPriorityColor(task.priority)}10`,
-                  }}>
-                    {task.priority}
-                  </span>
-                  <span style={styles.categoryBadge}>
-                    {task.category}
-                  </span>
                 </div>
               </div>
 

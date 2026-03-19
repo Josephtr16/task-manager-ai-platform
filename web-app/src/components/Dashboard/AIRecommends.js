@@ -2,7 +2,7 @@
 import React from 'react';
 import { useTheme } from '../../context/ThemeContext';
 import { borderRadius } from '../../theme';
-import { FaRobot, FaCalendarAlt, FaClock, FaCommentAlt, FaArrowRight, FaCheck, FaFlag, FaRegLightbulb } from 'react-icons/fa';
+import { FaRobot, FaCalendarAlt, FaClock, FaCommentAlt, FaArrowRight, FaCheck, FaFlag, FaRegLightbulb, FaClipboardList } from 'react-icons/fa';
 
 const AIRecommends = ({ tasks, onTaskClick }) => {
   const { theme } = useTheme();
@@ -104,17 +104,19 @@ const AIRecommends = ({ tasks, onTaskClick }) => {
       backgroundColor: theme.bgMain,
       borderRadius: borderRadius.lg,
       padding: '20px',
-      boxShadow: theme.shadows.neumorphic, // Neomorphic card
+      boxShadow: theme.shadows.neumorphic,
       cursor: 'pointer',
       transition: 'all 0.3s ease',
       border: `1px solid transparent`,
       position: 'relative',
       overflow: 'hidden',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '8px',
     },
     taskHeader: {
       display: 'flex',
       gap: '16px',
-      marginBottom: '16px',
       alignItems: 'flex-start',
     },
     checkboxWrapper: {
@@ -138,12 +140,15 @@ const AIRecommends = ({ tasks, onTaskClick }) => {
     // Custom Checkbox Styles are injected via style tag below
     taskInfo: {
       flex: 1,
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '8px',
     },
     taskTitle: {
       fontSize: '17px',
       fontWeight: '700',
       color: theme.textPrimary,
-      margin: '0 0 6px 0',
+      margin: 0,
     },
     taskDescription: {
       fontSize: '14px',
@@ -177,13 +182,29 @@ const AIRecommends = ({ tasks, onTaskClick }) => {
       color: theme.textSecondary,
       boxShadow: theme.shadows.neumorphicInset,
     },
+    projectBadge: {
+      fontSize: '10px',
+      fontWeight: '600',
+      padding: '2px 8px',
+      borderRadius: '6px',
+      backgroundColor: theme.primary + '15',
+      color: theme.primary,
+      border: `1px solid ${theme.primary}30`,
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '4px',
+    },
+    contextRow: {
+      display: 'flex',
+      flexWrap: 'wrap',
+      gap: '8px',
+    },
     taskMeta: {
       display: 'flex',
-      gap: '20px',
+      flexWrap: 'wrap',
+      gap: '12px',
       fontSize: '13px',
       color: theme.textMuted,
-      marginBottom: '12px',
-      flexWrap: 'wrap',
       marginLeft: '40px',
     },
     metaItem: {
@@ -200,7 +221,6 @@ const AIRecommends = ({ tasks, onTaskClick }) => {
       padding: '12px 16px',
       display: 'flex',
       gap: '10px',
-      marginTop: '12px',
       alignItems: 'start',
     },
     aiInsightText: {
@@ -305,32 +325,38 @@ const AIRecommends = ({ tasks, onTaskClick }) => {
 
                 <div style={styles.taskInfo}>
                   <h3 style={styles.taskTitle}>{task.title}</h3>
+                  <div style={styles.contextRow}>
+                    <span style={{
+                      ...styles.badge,
+                      color: getPriorityColor(task.priority),
+                      backgroundColor: `${getPriorityColor(task.priority)}15`,
+                      border: `1px solid ${getPriorityColor(task.priority)}30`
+                    }}>
+                      <FaFlag style={{ fontSize: '10px' }} />
+                      {task.priority.toUpperCase()}
+                    </span>
+                    <span style={styles.badgeSecondary}>{task.category}</span>
+                    {task.projectId && (
+                      <span style={styles.projectBadge}>
+                        <FaClipboardList style={{ fontSize: '10px' }} /> {task.projectId.title}
+                      </span>
+                    )}
+                    {task.aiPriorityScore && (
+                      <span style={{
+                        ...styles.badge,
+                        color: theme.aiPurple,
+                        backgroundColor: `${theme.aiPurple}15`,
+                        border: `1px solid ${theme.aiPurple}30`
+                      }}>
+                        <FaRobot style={{ fontSize: '10px' }} /> AI {task.aiPriorityScore}%
+                      </span>
+                    )}
+                  </div>
                   <p style={styles.taskDescription}>{task.description}</p>
                 </div>
               </div>
 
-              <div style={styles.badges}>
-                <span style={{
-                  ...styles.badge,
-                  color: getPriorityColor(task.priority),
-                  boxShadow: theme.shadows.neumorphicInset, // Inset badges
-                  border: `1px solid ${getPriorityColor(task.priority)}10`
-                }}>
-                  <FaFlag style={{ fontSize: '10px' }} />
-                  {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
-                </span>
-                <span style={styles.badgeSecondary}>{task.category}</span>
-                {task.aiPriorityScore && (
-                  <span style={{
-                    ...styles.badge,
-                    color: theme.aiPurple,
-                    boxShadow: theme.shadows.neumorphicInset,
-                    border: `1px solid ${theme.aiPurple}10`
-                  }}>
-                    <FaRobot style={{ fontSize: '10px' }} /> AI {task.aiPriorityScore}%
-                  </span>
-                )}
-              </div>
+
 
               <div style={styles.taskMeta}>
                 {task.deadline && (

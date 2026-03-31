@@ -2,6 +2,7 @@ const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const connectDB = require('./config/db');
+const path = require('path');
 
 // Load env vars
 dotenv.config();
@@ -18,6 +19,9 @@ app.use(express.urlencoded({ extended: false }));
 // Enable CORS
 app.use(cors());
 
+// Serve uploaded files
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+
 // Mount routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/tasks', require('./routes/tasks'));
@@ -26,6 +30,7 @@ app.use('/api/tasks/:id/subtasks', require('./routes/subtasks'));
 app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/time', require('./routes/timeRoutes'));
 app.use('/api/projects', require('./routes/projects'));
+app.use('/api/ai', require('./routes/ai'));
 
 // Basic route
 app.get('/', (req, res) => {

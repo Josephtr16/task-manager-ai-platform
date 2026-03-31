@@ -9,6 +9,7 @@ const {
   getStatistics,
   getUpcoming,
   addAttachment,
+  removeAttachment,
   addComment,
   shareTask,
   getProjectTasks
@@ -25,6 +26,7 @@ router.get('/upcoming', getUpcoming);
 router.get('/project/:projectId', getProjectTasks);
 
 router.post('/:id/attachments', upload.single('file'), addAttachment);
+router.delete('/:id/attachments/:attachmentId', removeAttachment);
 router.post('/:id/comments', addComment);
 router.post('/:id/share', shareTask);
 

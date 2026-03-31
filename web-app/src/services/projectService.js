@@ -47,6 +47,7 @@ const projectService = {
     createProject,
     updateProject,
     deleteProject,
+    getAISuggestions,
 };
 
 export default projectService;

@@ -1,15 +1,17 @@
 // src/components/Tasks/CreateTaskModal.js
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { FaTimes, FaCalendarAlt, FaTag, FaFlag, FaPlus, FaPaperclip, FaCheckCircle, FaTrash, FaClock } from 'react-icons/fa';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 import { useTheme } from '../../context/ThemeContext';
 import { borderRadius } from '../../theme';
 import CustomSelect from '../common/CustomSelect';
+import aiService from '../../services/aiService';
+import { tasksAPI } from '../../services/api';
 
 const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
   const { theme } = useTheme();
-  const [formData, setFormData] = useState({
+  const initialFormData = {
     title: '',
     description: '',
     dueDate: '',
@@ -17,37 +19,88 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
     priority: 'medium',
     estimatedDuration: 60,
     tags: [],
-    subtasks: []
+    subtasks: [],
+  };
+  const [formData, setFormData] = useState({
+    ...initialFormData,
   });
   const [tagInput, setTagInput] = useState('');
   const [newSubtask, setNewSubtask] = useState('');
+  const [isAssistingWrite, setIsAssistingWrite] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [notification, setNotification] = useState(null);
+  const notificationTimerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (notificationTimerRef.current) {
+        clearTimeout(notificationTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      setFormData(initialFormData);
+      setTagInput('');
+      setNewSubtask('');
+      setNotification(null);
+      setIsAssistingWrite(false);
+      setIsSubmitting(false);
+    }
+  }, [isOpen]);
+
+  const showNotification = (message, type = 'info') => {
+    setNotification({ message, type });
+
+    if (notificationTimerRef.current) {
+      clearTimeout(notificationTimerRef.current);
+    }
+
+    notificationTimerRef.current = setTimeout(() => {
+      setNotification(null);
+    }, 3200);
+  };
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const newTask = {
-      id: Date.now(),
-      ...formData,
+
+    if (isSubmitting) {
+      return;
+    }
+
+    const payload = {
+      title: formData.title.trim(),
+      description: formData.description,
+      deadline: formData.dueDate || null,
+      category: formData.category,
+      priority: formData.priority,
+      estimatedDuration: Number(formData.estimatedDuration) || 60,
+      tags: formData.tags,
       status: 'todo',
-      createdAt: new Date().toISOString(),
-      comments: [],
+      subtasks: formData.subtasks.map((subtask) => ({
+        title: subtask.title,
+        completed: Boolean(subtask.completed),
+      })),
     };
-    onTaskCreated(newTask);
-    onClose();
-    // Reset form
-    setFormData({
-      title: '',
-      description: '',
-      dueDate: '',
-      category: 'Personal',
-      priority: 'medium',
-      tags: [],
-      attachments: [],
-      subtasks: []
-    });
-    setNewSubtask('');
-    setTagInput('');
+
+    try {
+      setIsSubmitting(true);
+      const response = await tasksAPI.createTask(payload);
+      onTaskCreated(response.data.task);
+      onClose();
+
+      // Reset form
+      setFormData(initialFormData);
+      setNewSubtask('');
+      setTagInput('');
+    } catch (error) {
+      showNotification(error.response?.data?.message || 'Failed to create task. Please check your inputs and try again.', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleInputChange = (e) => {
@@ -93,6 +146,66 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
     }));
   };
 
+  const toValidCategory = (value, fallback = 'Work') => {
+    const allowed = ['Work', 'Personal', 'Health', 'Shopping', 'Learning', 'Family'];
+    return allowed.includes(value) ? value : fallback;
+  };
+
+  const normalizeTags = (tags) => {
+    if (!Array.isArray(tags)) {
+      return [];
+    }
+
+    const cleaned = tags
+      .map((tag) => String(tag || '').trim())
+      .filter(Boolean)
+      .map((tag) => tag.replace(/^#/, ''));
+
+    return [...new Set(cleaned)];
+  };
+
+  const handleAssistWrite = async () => {
+    const hasEnoughContext = formData.title.trim().length >= 3 || formData.description.trim().length >= 10;
+
+    if (isAssistingWrite || !hasEnoughContext) {
+      if (!isAssistingWrite) {
+        showNotification('Add at least a short title or description so AI can generate quality suggestions.', 'error');
+      }
+      return;
+    }
+
+    try {
+      setIsAssistingWrite(true);
+      const result = await aiService.assistWrite({
+        title: formData.title.trim(),
+        category: formData.category,
+        description: formData.description.trim(),
+      });
+
+      setFormData(prev => ({
+        ...prev,
+        title: result?.suggested_title || prev.title,
+        category: toValidCategory(result?.suggested_category, prev.category),
+        description: result?.description || prev.description,
+        estimatedDuration: result?.estimated_duration?.minutes || prev.estimatedDuration,
+        tags: normalizeTags([...(prev.tags || []), ...(result?.suggested_tags || [])]),
+        subtasks: Array.isArray(result?.subtasks)
+          ? result.subtasks.map((subtask, index) => ({
+              id: Date.now() + index,
+              title: typeof subtask === 'string' ? subtask : subtask?.title || '',
+              completed: false,
+            })).filter(subtask => subtask.title)
+          : prev.subtasks,
+      }));
+
+      showNotification('AI suggestions added beautifully to your task.', 'success');
+    } catch (error) {
+      showNotification(error.response?.data?.message || 'Failed to generate AI task details. Please try again.', 'error');
+    } finally {
+      setIsAssistingWrite(false);
+    }
+  };
+
   const priorityOptions = [
     { value: 'low', label: 'Low', color: theme.low },
     { value: 'medium', label: 'Medium', color: theme.medium },
@@ -105,8 +218,8 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
     { value: 'Work', label: 'Work' },
     { value: 'Shopping', label: 'Shopping' },
     { value: 'Health', label: 'Health' },
-    { value: 'Finance', label: 'Finance' },
-    { value: 'Education', label: 'Education' }
+    { value: 'Learning', label: 'Learning' },
+    { value: 'Family', label: 'Family' }
   ];
 
   const styles = {
@@ -150,6 +263,34 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
       fontWeight: '800',
       color: theme.textPrimary,
       textShadow: theme.type === 'dark' ? '2px 2px 4px rgba(0,0,0,0.3)' : 'none',
+    },
+    notification: {
+      marginBottom: '16px',
+      borderRadius: borderRadius.md,
+      padding: '10px 12px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: '10px',
+      fontSize: '13px',
+      fontWeight: '600',
+      border: `1px solid ${theme.border}`,
+      boxShadow: theme.shadows.neumorphic,
+      animation: 'fadeSlideIn 0.28s ease-out',
+    },
+    notificationText: {
+      margin: 0,
+      lineHeight: '1.4',
+      color: theme.textPrimary,
+    },
+    notificationClose: {
+      border: 'none',
+      background: 'transparent',
+      cursor: 'pointer',
+      color: theme.textSecondary,
+      display: 'flex',
+      alignItems: 'center',
+      padding: 0,
     },
     closeButton: {
       background: 'transparent',
@@ -297,6 +438,31 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
       display: 'flex',
       alignItems: 'center',
     },
+    aiAssistButton: {
+      marginTop: '10px',
+      padding: '10px 14px',
+      borderRadius: borderRadius.md,
+      border: 'none',
+      backgroundColor: theme.bgMain,
+      color: theme.primary,
+      fontSize: '14px',
+      fontWeight: '700',
+      cursor: isAssistingWrite || formData.title.trim().length < 3 ? 'not-allowed' : 'pointer',
+      boxShadow: theme.shadows.neumorphic,
+      opacity: isAssistingWrite || formData.title.trim().length < 3 ? 0.6 : 1,
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '8px',
+      transition: 'all 0.2s',
+    },
+    spinner: {
+      width: '14px',
+      height: '14px',
+      border: `2px solid ${theme.primary}33`,
+      borderTop: `2px solid ${theme.primary}`,
+      borderRadius: '50%',
+      animation: 'spin 0.8s linear infinite',
+    },
     footer: {
       marginTop: '32px',
       display: 'flex',
@@ -346,6 +512,20 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
         .create-btn:hover {
           transform: translateY(-1px);
           box-shadow: 0 6px 16px ${theme.primary}66 !important;
+        }
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        @keyframes fadeSlideIn {
+          0% {
+            opacity: 0;
+            transform: translateY(-8px) scale(0.98);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
         }
         ::-webkit-scrollbar {
           width: 8px;
@@ -424,6 +604,36 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
           </button>
         </div>
 
+        {notification && (
+          <div
+            style={{
+              ...styles.notification,
+              background: notification.type === 'success'
+                ? `linear-gradient(120deg, ${theme.success}20, ${theme.primary}12)`
+                : notification.type === 'error'
+                  ? `linear-gradient(120deg, ${theme.error}20, ${theme.warning}10)`
+                  : `linear-gradient(120deg, ${theme.primary}16, ${theme.info || '#3b82f6'}10)`,
+              borderColor: notification.type === 'success'
+                ? `${theme.success}55`
+                : notification.type === 'error'
+                  ? `${theme.error}55`
+                  : `${theme.primary}40`,
+            }}
+            role="status"
+            aria-live="polite"
+          >
+            <p style={styles.notificationText}>{notification.message}</p>
+            <button
+              type="button"
+              style={styles.notificationClose}
+              onClick={() => setNotification(null)}
+              aria-label="Dismiss message"
+            >
+              <FaTimes size={12} />
+            </button>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit}>
           <div style={styles.formGroup}>
             <label style={styles.label}>Task Title</label>
@@ -437,6 +647,15 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
               required
               autoFocus
             />
+              <button
+                type="button"
+                onClick={handleAssistWrite}
+                style={styles.aiAssistButton}
+                disabled={isAssistingWrite || !(formData.title.trim().length >= 3 || formData.description.trim().length >= 10)}
+              >
+                {isAssistingWrite ? <span style={styles.spinner} /> : '✨'}
+                {isAssistingWrite ? 'Generating...' : 'AI Writing Assistant'}
+              </button>
           </div>
 
           <div style={styles.formGroup}>
@@ -573,8 +792,9 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
               type="submit"
               style={styles.createButton}
               className="create-btn"
+              disabled={isSubmitting}
             >
-              <FaPlus /> Create Task
+              <FaPlus /> {isSubmitting ? 'Creating...' : 'Create Task'}
             </button>
           </div>
         </form>

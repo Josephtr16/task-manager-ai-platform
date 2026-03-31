@@ -100,8 +100,26 @@ class ProjectService extends BaseService {
         const tasks = await Task.find({ projectId });
         const totalTasks = tasks.length;
         const completedTasks = tasks.filter(t => t.status === 'done').length;
-        
-        const progress = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
+        const totalEstimatedMinutes = tasks.reduce((sum, task) => {
+            const minutes = Number(task.estimatedDuration);
+            return sum + (Number.isFinite(minutes) ? minutes : 0);
+        }, 0);
+        const estimatedTotalHours = Number((totalEstimatedMinutes / 60).toFixed(1));
+
+        // A task contributes by its own completion when it has no subtasks,
+        // or by subtask completion ratio when subtasks exist.
+        const weightedCompletion = tasks.reduce((sum, task) => {
+            const subtaskCount = Array.isArray(task.subtasks) ? task.subtasks.length : 0;
+
+            if (subtaskCount === 0) {
+                return sum + (task.status === 'done' ? 1 : 0);
+            }
+
+            const completedSubtasks = task.subtasks.filter((subtask) => subtask.completed).length;
+            return sum + (completedSubtasks / subtaskCount);
+        }, 0);
+
+        const progress = totalTasks === 0 ? 0 : Math.round((weightedCompletion / totalTasks) * 100);
         
         let status = 'not-started';
         if (progress > 0 && progress < 100) status = 'in-progress';
@@ -112,6 +130,7 @@ class ProjectService extends BaseService {
             completedTasks,
             progress,
             status,
+            estimatedTotalHours,
         };
 
         if (status === 'completed') {

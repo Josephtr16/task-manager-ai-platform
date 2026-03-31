@@ -4,6 +4,7 @@ import Layout from '../components/Layout/Layout';
 import { tasksAPI } from '../services/api';
 import { useTheme } from '../context/ThemeContext';
 import { borderRadius } from '../theme';
+import { formatTaskDuration } from '../utils/formatTaskDuration';
 import CreateTaskModal from '../components/Tasks/CreateTaskModal';
 import TaskDetailModal from '../components/Tasks/TaskDetailModal';
 import { FaClipboardList, FaBolt, FaEye, FaCheckCircle, FaPlus, FaCalendarAlt, FaClock, FaTag, FaGripVertical } from 'react-icons/fa';
@@ -41,7 +42,24 @@ const KanbanPage = () => {
   };
 
   const getTasksByStatus = (status) =>
-    tasks.filter(task => task.status === status);
+    tasks
+      .filter(task => task.status === status)
+      .sort((a, b) => {
+        const aHasDeadline = Boolean(a.deadline);
+        const bHasDeadline = Boolean(b.deadline);
+
+        if (!aHasDeadline && !bHasDeadline) {
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        }
+        if (!aHasDeadline) {
+          return 1;
+        }
+        if (!bHasDeadline) {
+          return -1;
+        }
+
+        return new Date(a.deadline) - new Date(b.deadline);
+      });
 
   const getPriorityColor = (priority) => {
     switch (priority) {
@@ -317,9 +335,15 @@ const KanbanPage = () => {
       fontSize: '12px',
       color: theme.textSecondary,
       margin: '0 0 8px 0',
+      lineHeight: '1.45',
+      minHeight: '34px',
       overflow: 'hidden',
       textOverflow: 'ellipsis',
-      whiteSpace: 'nowrap',
+      whiteSpace: 'normal',
+      wordBreak: 'break-word',
+      display: '-webkit-box',
+      WebkitLineClamp: 2,
+      WebkitBoxOrient: 'vertical',
     },
     cardTags: {
       display: 'flex',
@@ -663,7 +687,7 @@ const KanbanCard = ({
         <div style={styles.cardFooterRight}>
           {task.estimatedDuration && (
             <span style={styles.durationText}>
-              <FaClock size={10} style={{ marginRight: '4px' }} /> {task.estimatedDuration}m
+              <FaClock size={10} style={{ marginRight: '4px' }} /> {formatTaskDuration(task.estimatedDuration)}
             </span>
           )}
           <span style={{

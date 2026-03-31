@@ -1,4 +1,40 @@
 const Task = require('../models/Task');
+const projectService = require('../services/projectService');
+
+const syncTaskStatusWithSubtasks = (task) => {
+  const subtasks = Array.isArray(task.subtasks) ? task.subtasks : [];
+
+  if (subtasks.length === 0) {
+    return;
+  }
+
+  const completedCount = subtasks.filter((subtask) => subtask.completed).length;
+  const allSubtasksCompleted = completedCount === subtasks.length;
+
+  if (allSubtasksCompleted) {
+    if (task.status !== 'done') {
+      task.status = 'done';
+      if (!task.completedAt) {
+        task.completedAt = Date.now();
+      }
+      if (task.actualDuration === null || task.actualDuration === undefined) {
+        task.actualDuration = task.estimatedDuration || 60;
+      }
+    }
+    return;
+  }
+
+  if (task.status === 'done') {
+    task.status = completedCount === 0 ? 'todo' : 'in-progress';
+    task.completedAt = null;
+  }
+};
+
+const recalculateProjectProgressIfNeeded = async (task) => {
+  if (task.projectId) {
+    await projectService.calculateProjectProgress(task.projectId);
+  }
+};
 
 // @desc    Add a subtask to a task
 // @route   POST /api/tasks/:id/subtasks
@@ -37,7 +73,9 @@ exports.addSubtask = async (req, res) => {
       completed: false,
     });
 
+    syncTaskStatusWithSubtasks(task);
     await task.save();
+    await recalculateProjectProgressIfNeeded(task);
 
     res.status(201).json({
       success: true,
@@ -91,7 +129,9 @@ exports.updateSubtask = async (req, res) => {
     if (title !== undefined) subtask.title = title;
     if (completed !== undefined) subtask.completed = completed;
 
+    syncTaskStatusWithSubtasks(task);
     await task.save();
+    await recalculateProjectProgressIfNeeded(task);
 
     res.json({
       success: true,
@@ -142,7 +182,9 @@ exports.toggleSubtask = async (req, res) => {
     // Toggle completed
     subtask.completed = !subtask.completed;
 
+    syncTaskStatusWithSubtasks(task);
     await task.save();
+    await recalculateProjectProgressIfNeeded(task);
 
     res.json({
       success: true,
@@ -193,7 +235,9 @@ exports.deleteSubtask = async (req, res) => {
     // Remove subtask
     subtask.deleteOne();
 
+    syncTaskStatusWithSubtasks(task);
     await task.save();
+    await recalculateProjectProgressIfNeeded(task);
 
     res.json({
       success: true,

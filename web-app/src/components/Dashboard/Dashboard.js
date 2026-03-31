@@ -10,6 +10,7 @@ import QuickStats from './QuickStats';
 import CreateTaskModal from '../Tasks/CreateTaskModal';
 import TaskDetailModal from '../Tasks/TaskDetailModal';
 import Layout from '../Layout/Layout';
+import { FaChartLine, FaCheckCircle, FaClock, FaFireAlt } from 'react-icons/fa';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -51,6 +52,24 @@ const Dashboard = () => {
   const handleTaskClick = (task) => {
     setSelectedTask(task);
     setShowDetailModal(true);
+  };
+
+  const handleToggleTaskFromRecommendations = async (task) => {
+    const newStatus = task.status === 'done' ? 'todo' : 'done';
+
+    try {
+      const response = await tasksAPI.updateTask(task._id, { status: newStatus });
+      const updatedTask = response.data.task;
+
+      setTasks((prev) => prev.map((t) => (t._id === updatedTask._id ? updatedTask : t)));
+      if (selectedTask?._id === updatedTask._id) {
+        setSelectedTask(updatedTask);
+      }
+
+      loadDashboardData();
+    } catch (error) {
+      console.error('Error toggling task status from AI recommendations:', error);
+    }
   };
 
   const handleTaskUpdated = (updatedTask) => {
@@ -194,7 +213,7 @@ const Dashboard = () => {
         {/* Greeting */}
         <div style={styles.greeting}>
           <h1 style={styles.greetingTitle}>
-            {getGreeting()}, <span style={{ color: theme.primary }}>{user?.name?.split(' ')[0]}</span>! 👋
+            {getGreeting()}, <span style={{ color: theme.primary }}>{user?.name?.split(' ')[0]}</span>!
           </h1>
           <p style={styles.greetingSubtitle}>
             You have <strong style={{ color: theme.textPrimary }}>{stats?.dueToday || 0}</strong> tasks due today and {stats?.dueTomorrow || 0} tomorrow.
@@ -204,29 +223,29 @@ const Dashboard = () => {
         {/* Stats Cards */}
         <div style={styles.statsGrid}>
           <StatsCard
-            icon="📈"
+            icon={<FaChartLine />}
             label="Productivity Score"
             value={stats?.productivityScore || 0}
             color={theme.primary}
           />
           <StatsCard
-            icon="✅"
+            icon={<FaCheckCircle />}
             label="Tasks Completed"
             value={`${stats?.completed || 0}/${stats?.total || 0}`}
             color={theme.success}
           />
           <StatsCard
-            icon="⏰"
+            icon={<FaClock />}
             label="Focus Time"
             value={`${stats?.focusTime || 0}m`}
             subtitle="Today's focused work"
             color={theme.warning}
           />
           <StatsCard
-            icon="🔥"
+            icon={<FaFireAlt />}
             label="Streak"
             value={`${stats?.streak || 0} days`}
-            subtitle="Keep it going! 🔥"
+            subtitle="Keep it going"
             color={theme.error}
           />
         </div>
@@ -237,6 +256,7 @@ const Dashboard = () => {
             <AIRecommends
               tasks={tasks}
               onTaskClick={handleTaskClick}
+              onToggleTask={handleToggleTaskFromRecommendations}
             />
           </div>
           <div style={styles.rightSidebar}>

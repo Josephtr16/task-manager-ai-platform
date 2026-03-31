@@ -1,9 +1,11 @@
 // src/pages/TasksPage.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Layout from '../components/Layout/Layout';
 import { tasksAPI } from '../services/api';
+import aiService from '../services/aiService';
 import { useTheme } from '../context/ThemeContext';
 import { borderRadius } from '../theme';
+import { formatTaskDuration } from '../utils/formatTaskDuration';
 import CreateTaskModal from '../components/Tasks/CreateTaskModal';
 import TaskDetailModal from '../components/Tasks/TaskDetailModal';
 import {
@@ -20,10 +22,19 @@ const TasksPage = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [projectFilter, setProjectFilter] = useState('all');
   const [sortBy, setSortBy] = useState('createdAt');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [isAIPrioritizing, setIsAIPrioritizing] = useState(false);
+  const [aiPriorityScores, setAiPriorityScores] = useState({});
+  const [isDetectingRisks, setIsDetectingRisks] = useState(false);
+  const [riskAlerts, setRiskAlerts] = useState([]);
+  const [riskOverallStatus, setRiskOverallStatus] = useState(null);
+  const [riskSummary, setRiskSummary] = useState('');
+  const [notification, setNotification] = useState(null);
+  const notificationTimerRef = useRef(null);
 
   useEffect(() => {
     loadTasks();
@@ -32,7 +43,27 @@ const TasksPage = () => {
   useEffect(() => {
     applyFilters();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tasks, searchQuery, statusFilter, priorityFilter, categoryFilter, sortBy]);
+  }, [tasks, searchQuery, statusFilter, priorityFilter, categoryFilter, projectFilter, sortBy]);
+
+  useEffect(() => {
+    return () => {
+      if (notificationTimerRef.current) {
+        clearTimeout(notificationTimerRef.current);
+      }
+    };
+  }, []);
+
+  const showNotification = (message, type = 'info') => {
+    setNotification({ message, type });
+
+    if (notificationTimerRef.current) {
+      clearTimeout(notificationTimerRef.current);
+    }
+
+    notificationTimerRef.current = setTimeout(() => {
+      setNotification(null);
+    }, 3500);
+  };
 
   const loadTasks = async () => {
     try {
@@ -46,8 +77,8 @@ const TasksPage = () => {
   };
 
   const applyFilters = () => {
-    // Only show standalone tasks
-    let filtered = tasks.filter(task => !task.projectId);
+    // Show all tasks, including project-linked tasks
+    let filtered = [...tasks];
 
     // Search filter
     if (searchQuery) {
@@ -75,6 +106,13 @@ const TasksPage = () => {
     // Category filter
     if (categoryFilter !== 'all') {
       filtered = filtered.filter(task => task.category === categoryFilter);
+    }
+
+    // Project scope filter
+    if (projectFilter === 'standalone') {
+      filtered = filtered.filter(task => !task.projectId);
+    } else if (projectFilter === 'project') {
+      filtered = filtered.filter(task => !!task.projectId);
     }
 
     // Sort
@@ -117,6 +155,101 @@ const TasksPage = () => {
     setSelectedTask(null);
   };
 
+  const handleAIPrioritize = async () => {
+    const tasksToPrioritize = filteredTasks.filter(task => ['pending', 'todo', 'in-progress'].includes(task.status));
+
+    if (tasksToPrioritize.length === 0) {
+      showNotification('No pending or in-progress tasks available for AI prioritization.', 'warning');
+      return;
+    }
+
+    try {
+      setIsAIPrioritizing(true);
+
+      const payloadTasks = tasksToPrioritize.map(task => ({
+        id: String(task._id || task.id),
+        title: task.title,
+        priority: task.priority,
+        status: task.status,
+        deadline: task.deadline,
+        estimated_minutes: task.estimatedDuration,
+        category: task.category,
+      }));
+
+      const result = await aiService.prioritize(payloadTasks);
+      const rankedTasks = Array.isArray(result?.tasks) ? result.tasks : [];
+
+      const scoreMap = rankedTasks.reduce((acc, item) => {
+        acc[item.id] = item.score;
+        return acc;
+      }, {});
+
+      setAiPriorityScores(scoreMap);
+
+      const sortedByScore = [...filteredTasks].sort((a, b) => {
+        const scoreA = scoreMap[String(a._id || a.id)] ?? -1;
+        const scoreB = scoreMap[String(b._id || b.id)] ?? -1;
+        return scoreB - scoreA;
+      });
+
+      setFilteredTasks(sortedByScore);
+    } catch (error) {
+      showNotification(error.response?.data?.message || 'Failed to prioritize tasks with AI. Please try again.', 'error');
+    } finally {
+      setIsAIPrioritizing(false);
+    }
+  };
+
+  const handleDetectRisks = async () => {
+    if (filteredTasks.length === 0) {
+      showNotification('No tasks available for risk detection.', 'warning');
+      return;
+    }
+
+    try {
+      setIsDetectingRisks(true);
+
+      const payloadTasks = filteredTasks.map(task => ({
+        id: String(task._id || task.id),
+        title: task.title,
+        priority: task.priority,
+        status: task.status,
+        deadline: task.deadline,
+        estimated_minutes: task.estimatedDuration,
+        category: task.category,
+      }));
+
+      const result = await aiService.detectRisks(payloadTasks);
+      
+      setRiskAlerts(Array.isArray(result?.alerts) ? result.alerts : []);
+      setRiskOverallStatus(result?.overall_status || 'ok');
+      setRiskSummary(result?.summary || 'Risk analysis complete.');
+      showNotification('Risk analysis complete. Review the alerts below.', 'success');
+    } catch (error) {
+      showNotification(error.response?.data?.message || 'Failed to detect risks. Please try again.', 'error');
+    } finally {
+      setIsDetectingRisks(false);
+    }
+  };
+
+  const getSeverityColor = (severity) => {
+    switch (severity) {
+      case 'high': return theme.urgent;
+      case 'medium': return theme.warning;
+      case 'low': return theme.info;
+      default: return theme.textSecondary;
+    }
+  };
+
+  const getRiskStatusColor = (status) => {
+    switch (status) {
+      case 'critical': return theme.urgent;
+      case 'warning': return theme.warning;
+      case 'ok': return theme.success;
+      default: return theme.info;
+    }
+  };
+
   const getPriorityColor = (priority) => {
     switch (priority) {
       case 'urgent': return theme.urgent;
@@ -154,6 +287,12 @@ const TasksPage = () => {
 
   const activeTasks = filteredTasks.filter(t => t.status !== 'done');
   const completedTasks = filteredTasks.filter(t => t.status === 'done');
+  const notificationColorMap = {
+    success: theme.success,
+    error: theme.error,
+    warning: theme.warning,
+    info: theme.info,
+  };
 
   const styles = {
     container: {
@@ -197,6 +336,24 @@ const TasksPage = () => {
       color: theme.textSecondary,
       margin: 0,
     },
+    notificationBanner: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: '12px',
+      backgroundColor: theme.bgMain,
+      borderRadius: borderRadius.md,
+      padding: '12px 14px',
+      boxShadow: theme.shadows.neumorphic,
+      marginBottom: '18px',
+      borderLeft: `4px solid ${theme.info}`,
+    },
+    notificationText: {
+      margin: 0,
+      color: theme.textPrimary,
+      fontSize: '13px',
+      fontWeight: '600',
+    },
     createButton: {
       backgroundColor: theme.primary,
       color: '#fff', // White text for primary button
@@ -210,6 +367,47 @@ const TasksPage = () => {
       display: 'flex',
       alignItems: 'center',
       transition: 'all 0.2s',
+    },
+    aiPrioritizeButton: {
+      backgroundColor: theme.bgMain,
+      color: theme.primary,
+      border: 'none',
+      borderRadius: borderRadius.lg,
+      padding: '12px 18px',
+      fontSize: '14px',
+      fontWeight: '700',
+      cursor: isAIPrioritizing ? 'not-allowed' : 'pointer',
+      boxShadow: theme.shadows.neumorphic,
+      display: 'flex',
+      alignItems: 'center',
+      transition: 'all 0.2s',
+      opacity: isAIPrioritizing ? 0.7 : 1,
+      marginRight: '12px',
+    },
+    riskDetectButton: {
+      backgroundColor: theme.bgMain,
+      color: theme.warning,
+      border: 'none',
+      borderRadius: borderRadius.lg,
+      padding: '12px 18px',
+      fontSize: '14px',
+      fontWeight: '700',
+      cursor: isDetectingRisks ? 'not-allowed' : 'pointer',
+      boxShadow: theme.shadows.neumorphic,
+      display: 'flex',
+      alignItems: 'center',
+      transition: 'all 0.2s',
+      opacity: isDetectingRisks ? 0.7 : 1,
+      marginRight: '12px',
+    },
+    buttonSpinner: {
+      width: '14px',
+      height: '14px',
+      border: `2px solid ${theme.primary}33`,
+      borderTop: `2px solid ${theme.primary}`,
+      borderRadius: '50%',
+      animation: 'spin 0.8s linear infinite',
+      marginRight: '8px',
     },
     filtersContainer: {
       backgroundColor: theme.bgMain,
@@ -269,6 +467,40 @@ const TasksPage = () => {
       fontSize: '13px',
       color: theme.error,
       cursor: 'pointer',
+    },
+    riskPanel: {
+      backgroundColor: theme.bgMain,
+      borderRadius: borderRadius.lg,
+      padding: '20px',
+      marginBottom: '24px',
+      boxShadow: theme.shadows.neumorphic,
+      borderLeft: `4px solid ${theme.warning}`,
+    },
+    riskStatusBanner: {
+      display: 'flex',
+      alignItems: 'center',
+      fontSize: '14px',
+      fontWeight: '600',
+    },
+    alertsList: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '12px',
+    },
+    alertItem: {
+      backgroundColor: theme.type === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+      borderRadius: borderRadius.md,
+      padding: '12px',
+      border: `1px solid ${theme.textMuted}20`,
+    },
+    dismissButton: {
+      background: 'none',
+      border: 'none',
+      color: theme.textMuted,
+      cursor: 'pointer',
+      fontSize: '16px',
+      padding: '4px',
+      transition: 'color 0.2s',
     },
     taskList: {
       display: 'flex',
@@ -346,6 +578,16 @@ const TasksPage = () => {
             box-shadow: 0 0 20px ${theme.primary}80 !important;
         }
 
+        .ai-prioritize-btn:hover {
+          transform: translateY(-1px);
+          box-shadow: ${theme.shadows.neumorphicInset} !important;
+        }
+
+        .risk-detect-btn:hover {
+          transform: translateY(-1px);
+          box-shadow: ${theme.shadows.neumorphicInset} !important;
+        }
+
         .task-card:hover {
             transform: translateY(-4px);
             box-shadow: ${theme.shadows.neumorphic} !important;
@@ -353,6 +595,27 @@ const TasksPage = () => {
         }
       `}</style>
       <div style={styles.container}>
+        {notification && (
+          <div
+            style={{
+              ...styles.notificationBanner,
+              borderLeftColor: notificationColorMap[notification.type] || theme.info,
+            }}
+            role="status"
+            aria-live="polite"
+          >
+            <p style={styles.notificationText}>{notification.message}</p>
+            <button
+              type="button"
+              onClick={() => setNotification(null)}
+              style={styles.dismissButton}
+              aria-label="Dismiss message"
+            >
+              <FaTimes />
+            </button>
+          </div>
+        )}
+
         {/* Header */}
         <div style={styles.header}>
           <div>
@@ -361,13 +624,95 @@ const TasksPage = () => {
               {activeTasks.length} active · {completedTasks.length} completed
             </p>
           </div>
-          <button
-            style={styles.createButton}
-            onClick={() => setShowCreateModal(true)}
-          >
-            <FaPlus style={{ marginRight: '8px' }} /> New Task
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <button
+              type="button"
+              style={styles.aiPrioritizeButton}
+              onClick={handleAIPrioritize}
+              disabled={isAIPrioritizing}
+              className="ai-prioritize-btn"
+            >
+              {isAIPrioritizing && <span style={styles.buttonSpinner} />}
+              {isAIPrioritizing ? 'Prioritizing...' : '🤖 AI Prioritize'}
+            </button>
+            <button
+              type="button"
+              style={styles.riskDetectButton}
+              onClick={handleDetectRisks}
+              disabled={isDetectingRisks}
+              className="risk-detect-btn"
+            >
+              {isDetectingRisks && <span style={styles.buttonSpinner} />}
+              {isDetectingRisks ? 'Detecting...' : '⚠️ Detect Risks'}
+            </button>
+            <button
+              style={styles.createButton}
+              onClick={() => setShowCreateModal(true)}
+            >
+              <FaPlus style={{ marginRight: '8px' }} /> New Task
+            </button>
+          </div>
         </div>
+
+        {/* Risk Alerts Panel */}
+        {riskAlerts.length > 0 && (
+          <div style={styles.riskPanel}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+              <div>
+                <div style={styles.riskStatusBanner}>
+                  <span style={{ color: getRiskStatusColor(riskOverallStatus), fontWeight: '700' }}>
+                    {riskOverallStatus?.toUpperCase()}
+                  </span>
+                  <span style={{ color: theme.textSecondary, marginLeft: '12px' }}>{riskSummary}</span>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setRiskAlerts([]);
+                  setRiskOverallStatus(null);
+                  setRiskSummary('');
+                }}
+                style={styles.dismissButton}
+              >
+                <FaTimes />
+              </button>
+            </div>
+            <div style={styles.alertsList}>
+              {riskAlerts.map((alert, idx) => (
+                <div key={idx} style={styles.alertItem}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                    <span style={{
+                      backgroundColor: getSeverityColor(alert.severity),
+                      color: '#fff',
+                      padding: '4px 8px',
+                      borderRadius: borderRadius.sm,
+                      fontSize: '11px',
+                      fontWeight: '700',
+                      minWidth: '60px',
+                      textAlign: 'center',
+                      marginTop: '2px',
+                    }}>
+                      {alert.severity?.toUpperCase()}
+                    </span>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ margin: '0 0 4px 0', fontWeight: '600', color: theme.textPrimary }}>
+                        {alert.type?.replace(/_/g, ' ').toUpperCase()}
+                      </p>
+                      <p style={{ margin: '0 0 8px 0', fontSize: '13px', color: theme.textSecondary }}>
+                        {alert.message}
+                      </p>
+                      {alert.affected_task_ids && alert.affected_task_ids.length > 0 && (
+                        <div style={{ fontSize: '12px', color: theme.textMuted }}>
+                          Affected: {alert.affected_task_ids.length} task(s)
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Search & Filters */}
         <div style={styles.filtersContainer}>
@@ -444,6 +789,20 @@ const TasksPage = () => {
               />
             </div>
 
+            {/* Scope Filter */}
+            <div style={{ width: '200px' }}>
+              <CustomSelect
+                options={[
+                  { value: 'all', label: 'All Tasks' },
+                  { value: 'standalone', label: 'Standalone Only' },
+                  { value: 'project', label: 'Project-Linked Only' }
+                ]}
+                value={projectFilter}
+                onChange={(val) => setProjectFilter(val)}
+                placeholder="Scope"
+              />
+            </div>
+
             {/* Sort Order */}
             <div style={{ width: '200px' }}>
               <CustomSelect
@@ -475,6 +834,7 @@ const TasksPage = () => {
                 <TaskCard
                   key={task._id}
                   task={task}
+                  aiPriorityScore={aiPriorityScores[String(task._id || task.id)]}
                   onClick={() => handleTaskClick(task)}
                   getPriorityColor={getPriorityColor}
                   getStatusColor={getStatusColor}
@@ -518,7 +878,7 @@ const TasksPage = () => {
 };
 
 // Task Card Component
-const TaskCard = ({ task, onClick, getPriorityColor, getStatusColor, formatDate, completed }) => {
+const TaskCard = ({ task, aiPriorityScore, onClick, getPriorityColor, getStatusColor, formatDate, completed }) => {
   const { theme } = useTheme();
   const deadline = formatDate(task.deadline);
 
@@ -578,6 +938,18 @@ const TaskCard = ({ task, onClick, getPriorityColor, getStatusColor, formatDate,
       fontWeight: '700',
       margin: '0',
       lineHeight: '1.4',
+    },
+    aiScoreBadge: {
+      fontSize: '11px',
+      fontWeight: '800',
+      padding: '2px 8px',
+      borderRadius: '999px',
+      backgroundColor: theme.success + '20',
+      color: theme.success,
+      border: `1px solid ${theme.success}40`,
+      display: 'inline-flex',
+      alignItems: 'center',
+      marginLeft: '8px',
     },
     taskDescription: {
       fontSize: '14px',
@@ -690,13 +1062,18 @@ const TaskCard = ({ task, onClick, getPriorityColor, getStatusColor, formatDate,
           >
             <Checkbox checked={task.status === 'done'} />
           </div>
-          <h3 style={{
-            ...styles.taskTitle,
-            textDecoration: completed ? 'line-through' : 'none',
-            color: completed ? theme.textMuted : theme.textPrimary,
-          }}>
-            {task.title}
-          </h3>
+          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+            <h3 style={{
+              ...styles.taskTitle,
+              textDecoration: completed ? 'line-through' : 'none',
+              color: completed ? theme.textMuted : theme.textPrimary,
+            }}>
+              {task.title}
+            </h3>
+            {typeof aiPriorityScore === 'number' && (
+              <span style={styles.aiScoreBadge}>{aiPriorityScore}</span>
+            )}
+          </div>
         </div>
 
         <div style={styles.taskCardRight}>
@@ -752,7 +1129,7 @@ const TaskCard = ({ task, onClick, getPriorityColor, getStatusColor, formatDate,
           {task.estimatedDuration && (
             <span style={styles.metaItem}>
               <FaClock size={12} style={{ marginRight: '4px' }} />
-              {task.estimatedDuration}m
+              {formatTaskDuration(task.estimatedDuration)}
             </span>
           )}
           {task.subtasks?.length > 0 && (

@@ -1,11 +1,14 @@
 // src/components/Dashboard/AIRecommends.js
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import { borderRadius } from '../../theme';
-import { FaRobot, FaCalendarAlt, FaClock, FaCommentAlt, FaArrowRight, FaCheck, FaFlag, FaRegLightbulb, FaClipboardList } from 'react-icons/fa';
+import { formatTaskDuration } from '../../utils/formatTaskDuration';
+import { FaRobot, FaCalendarAlt, FaClock, FaArrowRight, FaCheck, FaFlag, FaRegLightbulb, FaClipboardList } from 'react-icons/fa';
 
-const AIRecommends = ({ tasks, onTaskClick }) => {
+const AIRecommends = ({ tasks, onTaskClick, onToggleTask }) => {
   const { theme } = useTheme();
+  const navigate = useNavigate();
 
   const getPriorityColor = (priority) => {
     switch (priority) {
@@ -32,10 +35,45 @@ const AIRecommends = ({ tasks, onTaskClick }) => {
 
   const handleCheckboxClick = (e, task) => {
     e.stopPropagation();
-    // This would typically toggle the task status locally or trigger an API call via a prop
-    // Since we are inside a dashboard view, maybe just visually toggle or trigger onTaskClick with a 'toggle' action
-    // For now, we'll just let the parent handle the click if passed, but the requirement is visual
+    if (onToggleTask) {
+      onToggleTask(task);
+    }
   };
+
+  const getUrgencyScore = (deadline) => {
+    if (!deadline) return 5;
+
+    const now = new Date();
+    const due = new Date(deadline);
+    const diffDays = Math.ceil((due - now) / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) return 50;
+    if (diffDays === 0) return 40;
+    if (diffDays <= 2) return 30;
+    if (diffDays <= 7) return 18;
+    if (diffDays <= 14) return 10;
+    return 3;
+  };
+
+  const getPriorityScore = (priority) => {
+    switch (priority) {
+      case 'urgent': return 40;
+      case 'high': return 28;
+      case 'medium': return 16;
+      case 'low': return 8;
+      default: return 10;
+    }
+  };
+
+  const recommendationTasks = (tasks || [])
+    .filter((task) => task.status !== 'done')
+    .map((task) => {
+      const aiBoost = Number(task.aiPriorityScore) || 0;
+      const score = getPriorityScore(task.priority) + getUrgencyScore(task.deadline) + aiBoost;
+      return { ...task, _recommendationScore: score };
+    })
+    .sort((a, b) => b._recommendationScore - a._recommendationScore)
+    .slice(0, 3);
 
   const styles = {
     container: {
@@ -293,7 +331,7 @@ const AIRecommends = ({ tasks, onTaskClick }) => {
           <span style={styles.iconWrapper}><FaRobot /></span>
           <h2 style={styles.title}>AI Recommends</h2>
         </div>
-        <button style={styles.viewAllButton}>
+        <button style={styles.viewAllButton} onClick={() => navigate('/tasks')}>
           View All <FaArrowRight style={{ marginLeft: '4px', fontSize: '10px' }} />
         </button>
       </div>
@@ -303,8 +341,8 @@ const AIRecommends = ({ tasks, onTaskClick }) => {
       </p>
 
       <div style={styles.tasksList}>
-        {tasks && tasks.length > 0 ? (
-          tasks.slice(0, 3).map((task) => (
+        {recommendationTasks.length > 0 ? (
+          recommendationTasks.map((task) => (
             <div
               key={task._id}
               style={styles.taskCard}
@@ -366,12 +404,12 @@ const AIRecommends = ({ tasks, onTaskClick }) => {
                 )}
                 {task.estimatedDuration && (
                   <span style={styles.metaItem}>
-                    <FaClock /> {task.estimatedDuration}m
+                    <FaClock /> {formatTaskDuration(task.estimatedDuration)}
                   </span>
                 )}
                 {task.subtasks && task.subtasks.length > 0 && (
                   <span style={styles.metaItem}>
-                    <FaCommentAlt /> {task.subtasks.filter(s => s.completed).length}/{task.subtasks.length}
+                    <FaCheck /> {task.subtasks.filter(s => s.completed).length}/{task.subtasks.length}
                   </span>
                 )}
               </div>

@@ -2,6 +2,7 @@ const Task = require('../models/Task');
 const AppError = require('../utils/AppError');
 const BaseService = require('./BaseService');
 const projectService = require('./projectService');
+const fs = require('fs');
 
 class TaskService extends BaseService {
     constructor() {
@@ -65,6 +66,14 @@ class TaskService extends BaseService {
                 updateData.actualDuration = task.estimatedDuration || 60; // Assuming default 60 or fallback
             }
 
+            // Mark all subtasks as completed when task is marked done
+            if (task.subtasks && task.subtasks.length > 0) {
+                updateData.subtasks = task.subtasks.map(subtask => ({
+                    ...subtask.toObject ? subtask.toObject() : subtask,
+                    completed: true
+                }));
+            }
+
             // Send feedback to AI if we have simple duration tracking or estimate
             // Use totalTime from timeTracking if available, otherwise just skip or use a simple heuristic?
 
@@ -121,6 +130,29 @@ class TaskService extends BaseService {
         await task.save();
 
         return attachment;
+    }
+
+    async removeAttachment(id, userId, attachmentId) {
+        const task = await this.getTask(id, userId);
+
+        const attachment = task.attachments.id(attachmentId);
+        if (!attachment) {
+            throw new AppError('Attachment not found', 404);
+        }
+
+        const filepath = attachment.filepath;
+        attachment.deleteOne();
+        await task.save();
+
+        if (filepath && fs.existsSync(filepath)) {
+            fs.unlink(filepath, (err) => {
+                if (err) {
+                    console.error('Failed to remove attachment file:', err.message);
+                }
+            });
+        }
+
+        return task;
     }
 
     async addComment(id, userId, text) {

@@ -2,6 +2,7 @@
 import React from 'react';
 import { useTheme } from '../../context/ThemeContext';
 import { borderRadius } from '../../theme';
+import { FaChartPie } from 'react-icons/fa';
 
 const QuickStats = ({ stats }) => {
   const { theme } = useTheme();
@@ -18,6 +19,18 @@ const QuickStats = ({ stats }) => {
       alignItems: 'center',
       gap: '12px',
       marginBottom: '20px',
+    },
+    iconWrapper: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      width: '34px',
+      height: '34px',
+      borderRadius: '10px',
+      backgroundColor: theme.bgMain,
+      boxShadow: theme.shadows.neumorphic,
+      color: theme.primary,
+      fontSize: '15px',
     },
     title: {
       fontSize: '18px',
@@ -58,7 +71,7 @@ const QuickStats = ({ stats }) => {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <span style={{ fontSize: '20px' }}>📊</span>
+        <span style={styles.iconWrapper}><FaChartPie /></span>
         <h3 style={styles.title}>Quick Stats</h3>
       </div>
 

@@ -1,7 +1,7 @@
 // src/components/Tasks/TaskDetailModal.js
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../../context/ThemeContext';
-import { tasksAPI, timeTrackingAPI } from '../../services/api';
+import { tasksAPI, timeTrackingAPI, subtasksAPI } from '../../services/api';
 import {
   FaEdit, FaTrash, FaTimes, FaSave,
   FaStopwatch, FaPaperclip, FaComment, FaShare,
@@ -17,6 +17,13 @@ const TaskDetailModal = ({ task, isOpen, onClose, onTaskUpdated, onTaskDeleted }
   const [isTracking, setIsTracking] = useState(false);
   const [newComment, setNewComment] = useState('');
   const [shareEmail, setShareEmail] = useState('');
+  const [notification, setNotification] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const showNotification = (type, message) => {
+    setNotification({ type, message });
+    setTimeout(() => setNotification(null), 3000);
+  };
 
   const styles = {
     overlay: {
@@ -193,6 +200,71 @@ const TaskDetailModal = ({ task, isOpen, onClose, onTaskUpdated, onTaskDeleted }
       borderRadius: '50%',
       transition: 'color 0.2s',
     },
+    notification: {
+      marginBottom: '16px',
+      padding: '12px 14px',
+      borderRadius: '10px',
+      fontSize: '14px',
+      fontWeight: '600',
+    },
+    confirmOverlay: {
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.55)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1200,
+      padding: '16px',
+    },
+    confirmDialog: {
+      width: '100%',
+      maxWidth: '420px',
+      backgroundColor: theme.bgMain,
+      borderRadius: '14px',
+      border: `1px solid ${theme.border}`,
+      boxShadow: '0 18px 40px rgba(0,0,0,0.35)',
+      padding: '20px',
+    },
+    confirmTitle: {
+      margin: 0,
+      fontSize: '18px',
+      fontWeight: '700',
+      color: theme.textPrimary,
+    },
+    confirmText: {
+      margin: '10px 0 18px 0',
+      color: theme.textSecondary,
+      fontSize: '14px',
+      lineHeight: '1.5',
+    },
+    confirmActions: {
+      display: 'flex',
+      justifyContent: 'flex-end',
+      gap: '10px',
+    },
+    confirmCancelBtn: {
+      border: `1px solid ${theme.border}`,
+      backgroundColor: theme.bgMain,
+      color: theme.textPrimary,
+      borderRadius: '10px',
+      padding: '8px 14px',
+      cursor: 'pointer',
+      fontWeight: '600',
+    },
+    confirmDeleteBtn: {
+      border: 'none',
+      backgroundColor: theme.error,
+      color: '#fff',
+      borderRadius: '10px',
+      padding: '8px 14px',
+      cursor: 'pointer',
+      fontWeight: '700',
+      boxShadow: theme.shadows.neumorphic,
+    },
     badges: {
       display: 'flex',
       gap: '8px',
@@ -347,6 +419,7 @@ const TaskDetailModal = ({ task, isOpen, onClose, onTaskUpdated, onTaskDeleted }
     attachmentItem: {
       display: 'flex',
       alignItems: 'center',
+      justifyContent: 'space-between',
       gap: '8px',
       fontSize: '14px',
       color: theme.textPrimary,
@@ -354,6 +427,35 @@ const TaskDetailModal = ({ task, isOpen, onClose, onTaskUpdated, onTaskDeleted }
       backgroundColor: theme.bgMain,
       borderRadius: '8px',
       boxShadow: theme.shadows.neumorphic,
+    },
+    attachmentLink: {
+      color: theme.textPrimary,
+      textDecoration: 'none',
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '8px',
+      flex: 1,
+      minWidth: 0,
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap',
+    },
+    attachmentActions: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      marginLeft: '12px',
+      flexShrink: 0,
+    },
+    removeAttachmentButton: {
+      border: 'none',
+      backgroundColor: `${theme.error}20`,
+      color: theme.error,
+      borderRadius: '8px',
+      padding: '4px 8px',
+      fontSize: '12px',
+      fontWeight: '600',
+      cursor: 'pointer',
     },
     fileSize: {
       color: theme.textMuted,
@@ -492,27 +594,26 @@ const TaskDetailModal = ({ task, isOpen, onClose, onTaskUpdated, onTaskDeleted }
       }
     } catch (error) {
       console.error('Update error:', error);
-      alert('Failed to update task');
+      showNotification('error', 'Failed to update task');
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async () => {
-    if (window.confirm('Are you sure you want to delete this task?')) {
-      setLoading(true);
-      try {
-        const response = await tasksAPI.deleteTask(task._id);
-        if (response.data.success) {
-          onTaskDeleted(task._id);
-          onClose();
-        }
-      } catch (error) {
-        console.error('Delete error:', error);
-        alert('Failed to delete task');
-      } finally {
-        setLoading(false);
+    setLoading(true);
+    try {
+      const response = await tasksAPI.deleteTask(task._id);
+      if (response.data.success) {
+        onTaskDeleted(task._id);
+        onClose();
       }
+    } catch (error) {
+      console.error('Delete error:', error);
+      showNotification('error', 'Failed to delete task');
+    } finally {
+      setLoading(false);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -575,7 +676,7 @@ const TaskDetailModal = ({ task, isOpen, onClose, onTaskUpdated, onTaskDeleted }
       }
     } catch (error) {
       console.error('Upload error:', error);
-      alert('Failed to upload file');
+      showNotification('error', 'Failed to upload file');
     }
   };
 
@@ -593,7 +694,7 @@ const TaskDetailModal = ({ task, isOpen, onClose, onTaskUpdated, onTaskDeleted }
       }
     } catch (error) {
       console.error('Comment error:', error);
-      alert('Failed to add comment');
+      showNotification('error', 'Failed to add comment');
     }
   };
 
@@ -603,7 +704,7 @@ const TaskDetailModal = ({ task, isOpen, onClose, onTaskUpdated, onTaskDeleted }
     try {
       const response = await tasksAPI.shareTask(task._id, shareEmail);
       if (response.data.success) {
-        alert(`Task shared with ${response.data.user.email}`);
+        showNotification('success', `Task shared with ${response.data.user.email}`);
         onTaskUpdated({
           ...task,
           sharedWith: [...(task.sharedWith || []), response.data.user.id]
@@ -612,9 +713,82 @@ const TaskDetailModal = ({ task, isOpen, onClose, onTaskUpdated, onTaskDeleted }
       }
     } catch (error) {
       console.error('Share error:', error);
-      alert('Failed to share task: ' + (error.response?.data?.message || error.message));
+      showNotification('error', 'Failed to share task: ' + (error.response?.data?.message || error.message));
     }
   };
+
+  const getAttachmentUrl = (file) => {
+    if (!file?.filepath) {
+      return '#';
+    }
+
+    const apiBaseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+    const serverBaseUrl = apiBaseUrl.replace(/\/api\/?$/, '');
+    const normalizedPath = String(file.filepath).replace(/\\/g, '/').replace(/^\/+/, '');
+    return `${serverBaseUrl}/${normalizedPath}`;
+  };
+
+  const handleRemoveAttachment = async (attachmentId) => {
+    if (!attachmentId) {
+      return;
+    }
+
+    try {
+      const response = await tasksAPI.deleteAttachment(task._id, attachmentId);
+      if (response?.data?.task) {
+        setFormData(response.data.task);
+        onTaskUpdated(response.data.task);
+      }
+    } catch (error) {
+      console.error('Attachment delete error:', error);
+      showNotification('error', error.response?.data?.message || 'Failed to remove attachment.');
+    }
+  };
+
+  const displayedAttachments = Array.isArray(formData.attachments)
+    ? formData.attachments
+    : Array.isArray(task.attachments)
+      ? task.attachments
+      : [];
+
+  const handleToggleSubtask = async (subtask) => {
+    const subtaskId = subtask?._id || subtask?.id;
+    if (!subtaskId) {
+      return;
+    }
+
+    const previousSubtasks = Array.isArray(formData.subtasks) ? formData.subtasks : [];
+
+    // Optimistic UI update so the checkbox feels responsive.
+    setFormData((prev) => ({
+      ...prev,
+      subtasks: (Array.isArray(prev.subtasks) ? prev.subtasks : []).map((item) => {
+        const itemId = item?._id || item?.id;
+        return itemId === subtaskId ? { ...item, completed: !item.completed } : item;
+      }),
+    }));
+
+    try {
+      const response = await subtasksAPI.toggleSubtask(task._id, subtaskId);
+      const updatedTask = response?.data?.task;
+
+      if (updatedTask) {
+        setFormData(updatedTask);
+        onTaskUpdated(updatedTask);
+      }
+    } catch (error) {
+      // Roll back optimistic state on failure.
+      setFormData((prev) => ({ ...prev, subtasks: previousSubtasks }));
+      console.error('Toggle subtask error:', error);
+      showNotification('error', error.response?.data?.message || 'Failed to update subtask status.');
+    }
+  };
+
+  const displayedSubtasks = Array.isArray(formData.subtasks)
+    ? formData.subtasks
+    : Array.isArray(task.subtasks)
+      ? task.subtasks
+      : [];
 
   return (
     <div style={styles.overlay} onClick={onClose}>
@@ -634,6 +808,18 @@ const TaskDetailModal = ({ task, isOpen, onClose, onTaskUpdated, onTaskDeleted }
         }
       `}</style>
       <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+        {notification && (
+          <div
+            style={{
+              ...styles.notification,
+              backgroundColor: notification.type === 'error' ? `${theme.error}22` : `${theme.success}22`,
+              color: notification.type === 'error' ? theme.error : theme.success,
+            }}
+          >
+            {notification.message}
+          </div>
+        )}
+
         {/* Header */}
         <div style={styles.header}>
           <div style={styles.headerLeft}>
@@ -685,7 +871,7 @@ const TaskDetailModal = ({ task, isOpen, onClose, onTaskUpdated, onTaskDeleted }
                   <FaEdit /> Edit
                 </button>
                 <button
-                  onClick={handleDelete}
+                  onClick={() => setShowDeleteConfirm(true)}
                   style={styles.deleteButton}
                   disabled={loading}
                 >
@@ -698,6 +884,19 @@ const TaskDetailModal = ({ task, isOpen, onClose, onTaskUpdated, onTaskDeleted }
             )}
           </div>
         </div>
+
+        {showDeleteConfirm && (
+          <div style={styles.confirmOverlay} onClick={() => setShowDeleteConfirm(false)}>
+            <div style={styles.confirmDialog} onClick={(e) => e.stopPropagation()}>
+              <h3 style={styles.confirmTitle}>Delete Task</h3>
+              <p style={styles.confirmText}>Are you sure you want to delete this task? This action cannot be undone.</p>
+              <div style={styles.confirmActions}>
+                <button type="button" style={styles.confirmCancelBtn} onClick={() => setShowDeleteConfirm(false)}>Cancel</button>
+                <button type="button" style={styles.confirmDeleteBtn} onClick={handleDelete}>Delete</button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Status Badges */}
         <div style={styles.badges}>
@@ -784,10 +983,31 @@ const TaskDetailModal = ({ task, isOpen, onClose, onTaskUpdated, onTaskDeleted }
         <div style={styles.section}>
           <h3 style={styles.sectionTitle}><FaPaperclip style={{ fontSize: '16px' }} /> Attachments</h3>
           <div style={styles.attachmentsList}>
-            {task.attachments?.map((file, i) => (
-              <div key={i} style={styles.attachmentItem}>
-                <span><FaPaperclip /> {file.filename}</span>
-                <span style={styles.fileSize}>({Math.round(file.filesize / 1024)}KB)</span>
+            {displayedAttachments.map((file, i) => (
+              <div key={file._id || i} style={styles.attachmentItem}>
+                <a
+                  href={getAttachmentUrl(file)}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={styles.attachmentLink}
+                  title={file.filename}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <FaPaperclip /> {file.filename}
+                </a>
+                <div style={styles.attachmentActions}>
+                  <span style={styles.fileSize}>({Math.round((file.filesize || 0) / 1024)}KB)</span>
+                  <button
+                    type="button"
+                    style={styles.removeAttachmentButton}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemoveAttachment(file._id);
+                    }}
+                  >
+                    Remove
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -852,17 +1072,17 @@ const TaskDetailModal = ({ task, isOpen, onClose, onTaskUpdated, onTaskDeleted }
         )}
 
         {/* Subtasks */}
-        {task.subtasks && task.subtasks.length > 0 && (
+        {displayedSubtasks.length > 0 && (
           <div style={styles.section}>
             <h3 style={styles.sectionTitle}>
-              <FaCheck style={{ fontSize: '16px' }} /> Subtasks ({task.subtasks.filter(s => s.completed).length}/{task.subtasks.length})
+              <FaCheck style={{ fontSize: '16px' }} /> Subtasks ({displayedSubtasks.filter(s => s.completed).length}/{displayedSubtasks.length})
             </h3>
             <div style={styles.subtasksList}>
-              {task.subtasks.map((subtask, index) => (
+              {displayedSubtasks.map((subtask, index) => (
                 <div key={subtask._id || index} style={styles.subtaskItem}>
                   <Checkbox
                     checked={subtask.completed}
-                    onChange={() => console.log('Toggle subtask:', subtask._id)}
+                    onChange={() => handleToggleSubtask(subtask)}
                     style={{ marginRight: '12px' }}
                   />
                   <span style={{

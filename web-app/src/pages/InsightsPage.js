@@ -20,9 +20,11 @@ const InsightsPage = () => {
   const [bestDays, setBestDays] = useState([]);
   const [loading, setLoading] = useState(true);
   const [trendDays, setTrendDays] = useState(7);
+  const [loadError, setLoadError] = useState('');
 
   const loadAnalytics = React.useCallback(async () => {
     setLoading(true);
+    setLoadError('');
     try {
       const [
         trendRes,
@@ -48,6 +50,7 @@ const InsightsPage = () => {
       setBestDays(bestDaysRes.data.data);
     } catch (error) {
       console.error('Error loading analytics:', error);
+      setLoadError(error.response?.data?.message || 'Unable to load analytics right now. Please refresh and try again.');
     } finally {
       setLoading(false);
     }
@@ -123,6 +126,16 @@ const InsightsPage = () => {
       alignItems: 'center',
       fontWeight: '600',
       transition: 'all 0.2s',
+    },
+    errorBanner: {
+      backgroundColor: `${theme.error}1a`,
+      border: `1px solid ${theme.error}40`,
+      color: theme.error,
+      borderRadius: borderRadius.md,
+      padding: '12px 14px',
+      marginBottom: '16px',
+      fontSize: '13px',
+      fontWeight: '600',
     },
     insightCardsGrid: {
       display: 'grid',
@@ -404,6 +417,7 @@ const InsightsPage = () => {
             100% { transform: rotate(360deg); }
           }
         `}</style>
+        {loadError && <div style={styles.errorBanner}>{loadError}</div>}
         {/* Header */}
         <div style={styles.header}>
           <div>

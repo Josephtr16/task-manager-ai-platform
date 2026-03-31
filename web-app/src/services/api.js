@@ -68,6 +68,7 @@ export const tasksAPI = {
   addAttachment: (id, formData) => api.post(`/tasks/${id}/attachments`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
+  deleteAttachment: (id, attachmentId) => api.delete(`/tasks/${id}/attachments/${attachmentId}`),
   addComment: (id, text) => api.post(`/tasks/${id}/comments`, { text }),
   shareTask: (id, email) => api.post(`/tasks/${id}/share`, { email }),
 };

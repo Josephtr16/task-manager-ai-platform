@@ -5,10 +5,11 @@ import projectService from '../services/projectService';
 import { tasksAPI } from '../services/api';
 import { useTheme } from '../context/ThemeContext';
 import { borderRadius } from '../theme';
-import { FaArrowLeft, FaCalendarAlt, FaTrash, FaPlus, FaCheck, FaClock, FaFlag, FaTag, FaRobot } from 'react-icons/fa';
+import { formatTaskDuration } from '../utils/formatTaskDuration';
+import { FaArrowLeft, FaCalendarAlt, FaTrash, FaPlus, FaCheck, FaClock, FaFlag, FaTag } from 'react-icons/fa';
 import AddTaskToProjectModal from '../components/Projects/AddTaskToProjectModal';
 import TaskDetailModal from '../components/Tasks/TaskDetailModal';
-import AITaskSuggestionsModal from '../components/Projects/AITaskSuggestionsModal';
+import AIProjectBreakdownModal from '../components/Projects/AIProjectBreakdownModal';
 
 const ProjectDetailPage = () => {
     const { id } = useParams();
@@ -17,12 +18,17 @@ const ProjectDetailPage = () => {
     const [project, setProject] = useState(null);
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [notification, setNotification] = useState(null);
     const [showAddTaskModal, setShowAddTaskModal] = useState(false);
     const [selectedTask, setSelectedTask] = useState(null);
     const [showTaskDetailModal, setShowTaskDetailModal] = useState(false);
-    const [showAISuggestions, setShowAISuggestions] = useState(false);
-    const [aiSuggestions, setAiSuggestions] = useState(null);
-    const [loadingAI, setLoadingAI] = useState(false);
+    const [showAIProjectBreakdown, setShowAIProjectBreakdown] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+    const showNotification = (type, message) => {
+        setNotification({ type, message });
+        setTimeout(() => setNotification(null), 3000);
+    };
 
     useEffect(() => {
         loadProjectDetails();
@@ -53,8 +59,7 @@ const ProjectDetailPage = () => {
     };
 
     const confirmDelete = () => {
-        const result = window.confirm("Do you want to delete all tasks associated with this project as well? \n\nClick 'OK' to delete project AND tasks. \nClick 'Cancel' to delete project only, keeping tasks as standalone.");
-        handleDeleteProject(result);
+        setShowDeleteConfirm(true);
     };
 
     const handleTaskCreated = async (newTaskData) => {
@@ -67,7 +72,7 @@ const ProjectDetailPage = () => {
             setProject(data.project);
         } catch (error) {
             console.error('Error creating task:', error);
-            alert("Error creating task: " + (error.response?.data?.message || error.message));
+            showNotification('error', "Error creating task: " + (error.response?.data?.message || error.message));
         }
     };
 
@@ -99,44 +104,75 @@ const ProjectDetailPage = () => {
         }
     };
 
-    const handleGetAISuggestions = async () => {
-        setLoadingAI(true);
-        setShowAISuggestions(true);
-        try {
-            const response = await projectService.getAISuggestions({
-                title: project.title,
-                description: project.description,
-                category: project.category
-            });
-            setAiSuggestions(response.data);
-        } catch (error) {
-            console.error("Error getting AI suggestions:", error);
-            alert("Failed to get AI suggestions. Please try again.");
-            setShowAISuggestions(false);
-        } finally {
-            setLoadingAI(false);
-        }
+    const normalizeTaskCategory = (category) => {
+        const allowedCategories = ['Work', 'Personal', 'Health', 'Shopping', 'Learning', 'Family'];
+        return allowedCategories.includes(category) ? category : 'Work';
     };
 
-    const handleAcceptAI = async (suggestedTasks) => {
-        setShowAISuggestions(false);
+    const normalizeTaskPriority = (priority) => {
+        const normalized = String(priority || 'medium').toLowerCase();
+        if (['low', 'medium', 'high', 'urgent'].includes(normalized)) {
+            return normalized;
+        }
+        return 'medium';
+    };
+
+    const normalizeTaskDeadline = (deadline) => {
+        if (!deadline) {
+            return undefined;
+        }
+
+        const deadlineValue = String(deadline).trim();
+        const isIsoDate = /^\d{4}-\d{2}-\d{2}$/.test(deadlineValue);
+
+        if (isIsoDate) {
+            return deadlineValue;
+        }
+
+        const parsed = new Date(deadlineValue);
+        if (Number.isNaN(parsed.getTime())) {
+            return undefined;
+        }
+
+        return parsed.toISOString().split('T')[0];
+    };
+
+    const handleAddAcceptedAIProjectTasks = async (acceptedTasks) => {
+        if (!acceptedTasks || acceptedTasks.length === 0) {
+            showNotification('info', 'No tasks accepted. Please accept at least one task.');
+            return;
+        }
+
         setLoading(true);
         try {
-            // Create each task
-            for (const task of suggestedTasks) {
+            for (const task of acceptedTasks) {
                 await tasksAPI.createTask({
                     title: task.title,
-                    estimatedDuration: task.estimated_minutes,
+                    description: task.description || '',
+                    estimatedDuration: Number(task.estimated_minutes) || 240,
+                    priority: normalizeTaskPriority(task.priority),
+                    category: normalizeTaskCategory(task.category),
                     projectId: id,
-                    userId: project.userId,
-                    status: 'todo'
+                    status: 'todo',
+                    deadline: normalizeTaskDeadline(task.deadline),
+                    subtasks: Array.isArray(task.subtasks)
+                        ? task.subtasks
+                            .map((subtask) => ({
+                                title: subtask.title || subtask.description || '',
+                                completed: false,
+                            }))
+                            .filter((subtask) => subtask.title)
+                        : [],
                 });
             }
-            // Reload project details to show new tasks
+
             await loadProjectDetails();
+            setShowAIProjectBreakdown(false);
+            showNotification('success', 'Accepted AI tasks added to project successfully.');
         } catch (error) {
-            console.error("Error creating AI suggested tasks:", error);
-            alert("Error creating some tasks. Please check the list.");
+            console.error('Error creating accepted AI project tasks:', error);
+            console.error('Error details:', error.response?.data);
+            showNotification('error', `Error creating accepted tasks: ${error.response?.data?.message || error.message || 'Please try again.'}`);
         } finally {
             setLoading(false);
         }
@@ -157,6 +193,24 @@ const ProjectDetailPage = () => {
         const date = new Date(dateString);
         return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     };
+
+    const sortedTasks = [...tasks].sort((a, b) => {
+        const aHasDeadline = Boolean(a.deadline);
+        const bHasDeadline = Boolean(b.deadline);
+
+        // Put tasks without deadlines at the end.
+        if (!aHasDeadline && !bHasDeadline) {
+            return new Date(b.createdAt) - new Date(a.createdAt);
+        }
+        if (!aHasDeadline) {
+            return 1;
+        }
+        if (!bHasDeadline) {
+            return -1;
+        }
+
+        return new Date(a.deadline) - new Date(b.deadline);
+    });
 
     const styles = {
         container: {
@@ -307,6 +361,13 @@ const ProjectDetailPage = () => {
             alignItems: 'center',
             gap: '8px',
         },
+        notification: {
+            marginBottom: '16px',
+            padding: '12px 14px',
+            borderRadius: borderRadius.md,
+            fontSize: '14px',
+            fontWeight: '600',
+        },
         taskList: {
             display: 'flex',
             flexDirection: 'column',
@@ -343,12 +404,94 @@ const ProjectDetailPage = () => {
             textDecoration: checked ? 'line-through' : 'none',
             margin: '0 0 4px 0',
         }),
+        taskDescription: (checked) => ({
+            fontSize: '13px',
+            color: checked ? theme.textMuted : theme.textSecondary,
+            margin: '0 0 8px 0',
+            lineHeight: '1.5',
+            whiteSpace: 'pre-wrap',
+        }),
         taskMeta: {
             fontSize: '13px',
             color: theme.textSecondary,
             display: 'flex',
             alignItems: 'center',
             gap: '12px',
+        },
+        taskTags: {
+            display: 'flex',
+            gap: '8px',
+            flexWrap: 'wrap',
+            marginTop: '8px',
+        },
+        taskTag: {
+            fontSize: '11px',
+            fontWeight: '700',
+            padding: '4px 8px',
+            borderRadius: '999px',
+            backgroundColor: `${theme.primary}15`,
+            color: theme.primary,
+            border: `1px solid ${theme.primary}25`,
+        },
+        confirmOverlay: {
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1500,
+            padding: '16px',
+        },
+        confirmDialog: {
+            width: '100%',
+            maxWidth: '520px',
+            backgroundColor: theme.bgMain,
+            borderRadius: borderRadius.lg,
+            border: `1px solid ${theme.border}`,
+            boxShadow: '0 20px 50px rgba(0,0,0,0.35)',
+            padding: '22px',
+        },
+        confirmTitle: {
+            margin: 0,
+            fontSize: '20px',
+            fontWeight: '700',
+            color: theme.textPrimary,
+        },
+        confirmText: {
+            margin: '12px 0 18px 0',
+            color: theme.textSecondary,
+            lineHeight: '1.55',
+            fontSize: '14px',
+        },
+        confirmActions: {
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: '10px',
+            flexWrap: 'wrap',
+        },
+        confirmBtn: {
+            border: `1px solid ${theme.border}`,
+            backgroundColor: theme.bgMain,
+            color: theme.textPrimary,
+            borderRadius: borderRadius.md,
+            padding: '9px 14px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            boxShadow: theme.shadows.neumorphic,
+        },
+        dangerBtn: {
+            border: 'none',
+            backgroundColor: theme.error,
+            color: '#fff',
+            borderRadius: borderRadius.md,
+            padding: '9px 14px',
+            fontWeight: '700',
+            cursor: 'pointer',
+            boxShadow: theme.shadows.neumorphic,
         },
     };
 
@@ -377,6 +520,28 @@ const ProjectDetailPage = () => {
                 .add-btn:hover { transform: translateY(-2px); }
             `}</style>
             <div style={styles.container}>
+                {notification && (
+                    <div
+                        style={{
+                            ...styles.notification,
+                            backgroundColor:
+                                notification.type === 'error'
+                                    ? `${theme.error}22`
+                                    : notification.type === 'success'
+                                        ? `${theme.success}22`
+                                        : `${theme.primary}22`,
+                            color:
+                                notification.type === 'error'
+                                    ? theme.error
+                                    : notification.type === 'success'
+                                        ? theme.success
+                                        : theme.primary,
+                        }}
+                    >
+                        {notification.message}
+                    </div>
+                )}
+
                 <button 
                     style={styles.backButton} 
                     onClick={() => navigate('/projects')}
@@ -446,12 +611,12 @@ const ProjectDetailPage = () => {
                 <div style={styles.sectionHeader}>
                     <h2 style={styles.sectionTitle}>Project Tasks</h2>
                     <div style={{ display: 'flex', gap: '12px' }}>
-                        <button 
-                            style={{ ...styles.addTaskBtn, backgroundColor: 'transparent', color: theme.primary, border: `1px solid ${theme.primary}` }} 
-                            onClick={handleGetAISuggestions}
+                        <button
+                            style={{ ...styles.addTaskBtn, backgroundColor: theme.success, color: '#fff' }}
+                            onClick={() => setShowAIProjectBreakdown(true)}
                             className="add-btn"
                         >
-                            <FaRobot /> AI Suggest More
+                            🤖 Generate Tasks with AI
                         </button>
                         <button 
                             style={styles.addTaskBtn} 
@@ -464,12 +629,12 @@ const ProjectDetailPage = () => {
                 </div>
 
                 <div style={styles.taskList}>
-                    {tasks.length === 0 ? (
+                    {sortedTasks.length === 0 ? (
                         <div style={{ padding: '32px', textAlign: 'center', color: theme.textSecondary }}>
                             No tasks for this project yet. Add one to get started!
                         </div>
                     ) : (
-                        tasks.map(task => {
+                        sortedTasks.map(task => {
                             const isDone = task.status === 'done';
                             return (
                                 <div 
@@ -492,11 +657,23 @@ const ProjectDetailPage = () => {
                                     
                                     <div style={{ flex: 1 }}>
                                         <h4 style={styles.taskTitle(isDone)}>{task.title}</h4>
+                                        {task.description && (
+                                            <p style={styles.taskDescription(isDone)}>{task.description}</p>
+                                        )}
                                         <div style={styles.taskMeta}>
                                             <span style={{ color: getPriorityColor(task.priority) }}>{task.priority.toUpperCase()}</span>
                                             {task.deadline && <span>Due: {formatDate(task.deadline)}</span>}
-                                            {task.estimatedDuration && <span>{task.estimatedDuration}m</span>}
+                                            {task.estimatedDuration && <span>{formatTaskDuration(task.estimatedDuration)}</span>}
                                         </div>
+                                        {Array.isArray(task.tags) && task.tags.length > 0 && (
+                                            <div style={styles.taskTags}>
+                                                {task.tags.map((tag, idx) => (
+                                                    <span key={`${task._id}-tag-${idx}`} style={styles.taskTag}>
+                                                        #{tag}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             );
@@ -522,13 +699,48 @@ const ProjectDetailPage = () => {
                     onTaskDeleted={handleTaskDeleted}
                 />
 
-                <AITaskSuggestionsModal
-                    isOpen={showAISuggestions}
-                    onClose={() => setShowAISuggestions(false)}
-                    suggestions={aiSuggestions}
-                    onAccept={handleAcceptAI}
-                    loading={loadingAI}
+                <AIProjectBreakdownModal
+                    isOpen={showAIProjectBreakdown}
+                    onClose={() => setShowAIProjectBreakdown(false)}
+                    project={project}
+                    onAddAcceptedTasks={handleAddAcceptedAIProjectTasks}
                 />
+
+                {showDeleteConfirm && (
+                    <div style={styles.confirmOverlay} onClick={() => setShowDeleteConfirm(false)}>
+                        <div style={styles.confirmDialog} onClick={(e) => e.stopPropagation()}>
+                            <h3 style={styles.confirmTitle}>Delete Project</h3>
+                            <p style={styles.confirmText}>
+                                Choose how to delete this project.
+                                Delete with tasks removes both project and all associated tasks.
+                                Delete project only keeps tasks as standalone items.
+                            </p>
+                            <div style={styles.confirmActions}>
+                                <button type="button" style={styles.confirmBtn} onClick={() => setShowDeleteConfirm(false)}>Cancel</button>
+                                <button
+                                    type="button"
+                                    style={styles.confirmBtn}
+                                    onClick={() => {
+                                        setShowDeleteConfirm(false);
+                                        handleDeleteProject(false);
+                                    }}
+                                >
+                                    Delete Project Only
+                                </button>
+                                <button
+                                    type="button"
+                                    style={styles.dangerBtn}
+                                    onClick={() => {
+                                        setShowDeleteConfirm(false);
+                                        handleDeleteProject(true);
+                                    }}
+                                >
+                                    Delete Project + Tasks
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </Layout>
     );

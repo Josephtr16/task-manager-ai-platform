@@ -1,6 +1,8 @@
 const Task = require('../models/Task');
-const { sendResponse } = require('../utils/ApiResponse');
+const sendResponse = require('../utils/ApiResponse');
 const asyncHandler = require('../middleware/asyncHandler');
+
+const getCompletionDate = (task) => task.completedAt || task.updatedAt || task.createdAt;
 
 // @desc    Get productivity trend (last 7 or 30 days)
 // @route   GET /api/analytics/productivity-trend?days=7
@@ -15,7 +17,10 @@ exports.getProductivityTrend = asyncHandler(async (req, res) => {
 
   const tasks = await Task.find({
     userId: req.user.id,
-    createdAt: { $gte: startDate },
+    $or: [
+      { createdAt: { $gte: startDate } },
+      { completedAt: { $gte: startDate } },
+    ],
   });
 
   // Group by day
@@ -28,15 +33,20 @@ exports.getProductivityTrend = asyncHandler(async (req, res) => {
     const nextDate = new Date(date);
     nextDate.setDate(nextDate.getDate() + 1);
 
-    const dayTasks = tasks.filter(
+    const dayCreatedTasks = tasks.filter(
       (t) => new Date(t.createdAt) >= date && new Date(t.createdAt) < nextDate
     );
 
-    const completed = dayTasks.filter(
-      (t) => t.status === 'done' && t.completedAt && new Date(t.completedAt) >= date && new Date(t.completedAt) < nextDate
-    ).length;
+    const dayCompletedTasks = tasks.filter((t) => {
+      if (t.status !== 'done') return false;
+      const completedOn = getCompletionDate(t);
+      if (!completedOn) return false;
+      const completedAt = new Date(completedOn);
+      return completedAt >= date && completedAt < nextDate;
+    });
 
-    const created = dayTasks.length;
+    const created = dayCreatedTasks.length;
+    const completed = dayCompletedTasks.length;
 
     trendData.push({
       date: date.toISOString().split('T')[0],
@@ -89,17 +99,16 @@ exports.getTimeOfDayAnalysis = asyncHandler(async (req, res) => {
   const tasks = await Task.find({
     userId: req.user.id,
     status: 'done',
-    completedAt: { $exists: true },
   });
 
   // Group by hour
   const hourlyData = Array(24).fill(0);
 
   tasks.forEach((task) => {
-    if (task.completedAt) {
-      const hour = new Date(task.completedAt).getHours();
-      hourlyData[hour]++;
-    }
+    const completedOn = getCompletionDate(task);
+    if (!completedOn) return;
+    const hour = new Date(completedOn).getHours();
+    hourlyData[hour]++;
   });
 
   // Format for chart (only show working hours 6 AM - 10 PM)
@@ -157,8 +166,8 @@ exports.getPerformanceMetrics = asyncHandler(async (req, res) => {
   // Calculate streak
   const calculateStreak = () => {
     const completedTasks = tasks
-      .filter((t) => t.status === 'done' && t.completedAt)
-      .sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt));
+      .filter((t) => t.status === 'done')
+      .sort((a, b) => new Date(getCompletionDate(b)) - new Date(getCompletionDate(a)));
 
     if (completedTasks.length === 0) return 0;
 
@@ -167,7 +176,7 @@ exports.getPerformanceMetrics = asyncHandler(async (req, res) => {
     currentDate.setHours(0, 0, 0, 0);
 
     for (let i = 0; i < completedTasks.length; i++) {
-      const taskDate = new Date(completedTasks[i].completedAt);
+      const taskDate = new Date(getCompletionDate(completedTasks[i]));
       taskDate.setHours(0, 0, 0, 0);
 
       const daysDiff = Math.floor((currentDate - taskDate) / (1000 * 60 * 60 * 24));
@@ -215,7 +224,6 @@ exports.getBestDays = asyncHandler(async (req, res) => {
   const tasks = await Task.find({
     userId: req.user.id,
     status: 'done',
-    completedAt: { $exists: true },
   });
 
   // Count by day of week
@@ -223,10 +231,10 @@ exports.getBestDays = asyncHandler(async (req, res) => {
   const dayCounts = Array(7).fill(0);
 
   tasks.forEach((task) => {
-    if (task.completedAt) {
-      const day = new Date(task.completedAt).getDay();
-      dayCounts[day]++;
-    }
+    const completedOn = getCompletionDate(task);
+    if (!completedOn) return;
+    const day = new Date(completedOn).getDay();
+    dayCounts[day]++;
   });
 
   const chartData = dayNames.map((name, index) => ({
@@ -252,15 +260,15 @@ exports.getAIInsights = asyncHandler(async (req, res) => {
   const tasks = await Task.find({ userId: req.user.id });
 
   // Calculate insights
-  const completedTasks = tasks.filter((t) => t.status === 'done' && t.completedAt);
+  const completedTasks = tasks.filter((t) => t.status === 'done');
 
   // Best productivity time
   const hourlyData = Array(24).fill(0);
   completedTasks.forEach((task) => {
-    if (task.completedAt) {
-      const hour = new Date(task.completedAt).getHours();
-      hourlyData[hour]++;
-    }
+    const completedOn = getCompletionDate(task);
+    if (!completedOn) return;
+    const hour = new Date(completedOn).getHours();
+    hourlyData[hour]++;
   });
   const peakHour = hourlyData.indexOf(Math.max(...hourlyData));
   const peakStartTime = peakHour === 12 ? '12 PM' : peakHour > 12 ? `${peakHour - 12} PM` : `${peakHour} AM`;
@@ -269,10 +277,10 @@ exports.getAIInsights = asyncHandler(async (req, res) => {
   // Best days
   const dayCounts = Array(7).fill(0);
   completedTasks.forEach((task) => {
-    if (task.completedAt) {
-      const day = new Date(task.completedAt).getDay();
-      dayCounts[day]++;
-    }
+    const completedOn = getCompletionDate(task);
+    if (!completedOn) return;
+    const day = new Date(completedOn).getDay();
+    dayCounts[day]++;
   });
   const dayNames = ['Sundays', 'Mondays', 'Tuesdays', 'Wednesdays', 'Thursdays', 'Fridays', 'Saturdays'];
   const bestDayIndex = dayCounts.indexOf(Math.max(...dayCounts));

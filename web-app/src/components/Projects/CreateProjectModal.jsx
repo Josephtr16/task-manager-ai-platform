@@ -5,8 +5,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import { useTheme } from '../../context/ThemeContext';
 import { borderRadius } from '../../theme';
 import CustomSelect from '../common/CustomSelect';
-import AITaskSuggestionsModal from './AITaskSuggestionsModal';
-import projectService from '../../services/projectService';
+import api from '../../services/api';
 
 const CreateProjectModal = ({ isOpen, onClose, onProjectCreated }) => {
     const { theme } = useTheme();
@@ -18,9 +17,8 @@ const CreateProjectModal = ({ isOpen, onClose, onProjectCreated }) => {
         priority: 'medium',
         estimatedTotalHours: 0
     });
-    const [aiSuggestions, setAiSuggestions] = useState(null);
-    const [showAISuggestions, setShowAISuggestions] = useState(false);
-    const [loadingAI, setLoadingAI] = useState(false);
+    const [loadingEnhance, setLoadingEnhance] = useState(false);
+    const [notificationMessage, setNotificationMessage] = useState('');
 
     if (!isOpen) return null;
 
@@ -44,34 +42,46 @@ const CreateProjectModal = ({ isOpen, onClose, onProjectCreated }) => {
         resetForm();
     };
 
-    const handleGetAISuggestions = async () => {
-        if (!formData.title) {
-            alert("Please enter a project title first");
+    const handleEnhanceProject = async () => {
+        if (!formData.title.trim()) {
+            setNotificationMessage('Please enter a project title first');
+            setTimeout(() => setNotificationMessage(''), 3000);
             return;
         }
-        
-        setLoadingAI(true);
-        setShowAISuggestions(true);
-        try {
-            const response = await projectService.getAISuggestions({
-                title: formData.title,
-                description: formData.description,
-                category: formData.category
-            });
-            setAiSuggestions(response.data);
-        } catch (error) {
-            console.error("Error getting AI suggestions:", error);
-            alert("Failed to get AI suggestions. Please try again.");
-            setShowAISuggestions(false);
-        } finally {
-            setLoadingAI(false);
-        }
-    };
 
-    const handleAcceptAI = (tasks) => {
-        setShowAISuggestions(false);
-        // Create project with these tasks
-        handleSubmit(null, tasks);
+        setLoadingEnhance(true);
+        try {
+            const response = await api.post('/ai/enhance-project', {
+                name: formData.title,
+                description: formData.description,
+            });
+            const result = response.data;
+
+            if (result) {
+                const aiCategory = result.category;
+                const allowedCategories = ['Work', 'Personal', 'Health', 'Shopping', 'Study'];
+                const normalizedCategory = allowedCategories.includes(aiCategory)
+                    ? aiCategory
+                    : formData.category;
+
+                setFormData(prev => ({
+                    ...prev,
+                    description: result.description || prev.description,
+                    category: normalizedCategory,
+                    estimatedTotalHours: Number.isFinite(result.estimated_hours)
+                        ? result.estimated_hours
+                        : prev.estimatedTotalHours
+                }));
+                setNotificationMessage('✨ Project enhanced by AI');
+                setTimeout(() => setNotificationMessage(''), 3000);
+            }
+        } catch (error) {
+            console.error("Error enhancing project:", error);
+            setNotificationMessage('Failed to enhance project. Please try again.');
+            setTimeout(() => setNotificationMessage(''), 3000);
+        } finally {
+            setLoadingEnhance(false);
+        }
     };
 
     const resetForm = () => {
@@ -263,11 +273,41 @@ const CreateProjectModal = ({ isOpen, onClose, onProjectCreated }) => {
             gap: '8px',
             transition: 'all 0.2s',
         },
+        aiEnhanceButton: {
+            padding: '10px 16px',
+            borderRadius: borderRadius.md,
+            border: `1px solid ${theme.primary}`,
+            backgroundColor: 'transparent',
+            color: theme.primary,
+            fontSize: '14px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            boxShadow: theme.shadows.neumorphic,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            transition: 'all 0.2s',
+            marginTop: '8px',
+        },
     };
 
     return (
         <div style={styles.overlay} onClick={() => { resetForm(); onClose(); }}>
             <style>{`
+                @keyframes spin {
+                    from { transform: rotate(0deg); }
+                    to { transform: rotate(360deg); }
+                }
+                @keyframes slideDown {
+                    from {
+                        opacity: 0;
+                        transform: translateY(-10px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
                 .close-btn:hover {
                     color: ${theme.error} !important;
                     box-shadow: ${theme.shadows.neumorphic} !important;
@@ -279,6 +319,14 @@ const CreateProjectModal = ({ isOpen, onClose, onProjectCreated }) => {
                 .create-btn:hover {
                     transform: translateY(-1px);
                     box-shadow: 0 6px 16px ${theme.primary}66 !important;
+                }
+                .ai-enhance-btn:hover:not(:disabled) {
+                    background-color: ${theme.primary}11 !important;
+                    transform: translateY(-1px);
+                }
+                .ai-enhance-btn:disabled {
+                    opacity: 0.6;
+                    cursor: not-allowed;
                 }
                 /* Custom DatePicker Styles */
                 .react-datepicker {
@@ -346,6 +394,21 @@ const CreateProjectModal = ({ isOpen, onClose, onProjectCreated }) => {
                     </button>
                 </div>
 
+                {notificationMessage && (
+                    <div style={{
+                        padding: '12px 16px',
+                        marginBottom: '16px',
+                        borderRadius: borderRadius.md,
+                        backgroundColor: notificationMessage.includes('Failed') ? `${theme.error}22` : `${theme.primary}22`,
+                        color: notificationMessage.includes('Failed') ? theme.error : theme.primary,
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        animation: 'slideDown 0.3s ease-out'
+                    }} className="notification">
+                        {notificationMessage}
+                    </div>
+                )}
+
                 <form onSubmit={handleSubmit}>
                     <div style={styles.formGroup}>
                         <label style={styles.label}>Project Title</label>
@@ -359,6 +422,25 @@ const CreateProjectModal = ({ isOpen, onClose, onProjectCreated }) => {
                             required
                             autoFocus
                         />
+                        <button
+                            type="button"
+                            onClick={handleEnhanceProject}
+                            style={{
+                                ...styles.aiEnhanceButton,
+                                opacity: loadingEnhance ? 0.6 : 1,
+                                cursor: loadingEnhance ? 'not-allowed' : 'pointer'
+                            }}
+                            disabled={loadingEnhance}
+                            className="ai-enhance-btn"
+                        >
+                            {loadingEnhance ? (
+                                <>
+                                    <span style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}>⟳</span> Enhancing...
+                                </>
+                            ) : (
+                                <>✨ AI Enhance Project</>
+                            )}
+                        </button>
                     </div>
 
                     <div style={styles.formGroup}>
@@ -432,15 +514,6 @@ const CreateProjectModal = ({ isOpen, onClose, onProjectCreated }) => {
                             Cancel
                         </button>
                         <button
-                            type="button"
-                            onClick={handleGetAISuggestions}
-                            style={{ ...styles.createButton, backgroundColor: 'transparent', color: theme.primary, border: `1px solid ${theme.primary}` }}
-                            className="create-btn"
-                            disabled={loadingAI}
-                        >
-                            {loadingAI ? 'Analyzing...' : <><FaRobot /> AI Suggest Tasks</>}
-                        </button>
-                        <button
                             type="submit"
                             style={styles.createButton}
                             className="create-btn"
@@ -449,14 +522,6 @@ const CreateProjectModal = ({ isOpen, onClose, onProjectCreated }) => {
                         </button>
                     </div>
                 </form>
-
-                <AITaskSuggestionsModal
-                    isOpen={showAISuggestions}
-                    onClose={() => setShowAISuggestions(false)}
-                    suggestions={aiSuggestions}
-                    onAccept={handleAcceptAI}
-                    loading={loadingAI}
-                />
             </div>
         </div>
     );

@@ -96,6 +96,15 @@ exports.addAttachment = asyncHandler(async (req, res) => {
   sendResponse(res, 201, true, { attachment });
 });
 
+// @desc    Remove attachment
+// @route   DELETE /api/tasks/:id/attachments/:attachmentId
+// @access  Private
+exports.removeAttachment = asyncHandler(async (req, res) => {
+  const task = await taskService.removeAttachment(req.params.id, req.user.id, req.params.attachmentId);
+
+  sendResponse(res, 200, true, { task }, 'Attachment removed');
+});
+
 // @desc    Add comment
 // @route   POST /api/tasks/:id/comments
 // @access  Private

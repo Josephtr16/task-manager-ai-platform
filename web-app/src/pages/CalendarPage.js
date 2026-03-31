@@ -4,9 +4,10 @@ import Layout from '../components/Layout/Layout';
 import { tasksAPI } from '../services/api';
 import { useTheme } from '../context/ThemeContext';
 import { borderRadius } from '../theme';
+import { formatTaskDuration } from '../utils/formatTaskDuration';
 import CreateTaskModal from '../components/Tasks/CreateTaskModal';
 import TaskDetailModal from '../components/Tasks/TaskDetailModal';
-import { FaCalendarAlt, FaChevronLeft, FaChevronRight, FaPlus, FaClock, FaCheckCircle } from 'react-icons/fa';
+import { FaCalendarAlt, FaChevronLeft, FaChevronRight, FaPlus, FaClock, FaCheck } from 'react-icons/fa';
 
 const CalendarPage = () => {
   const { theme } = useTheme();
@@ -735,12 +736,12 @@ const CalendarPage = () => {
                             </p>
                             {task.estimatedDuration && (
                               <p style={styles.weekTaskDuration}>
-                                <FaClock size={10} style={{ marginRight: '4px' }} /> {task.estimatedDuration}m
+                                <FaClock size={10} style={{ marginRight: '4px' }} /> {formatTaskDuration(task.estimatedDuration)}
                               </p>
                             )}
                             {task.subtasks?.length > 0 && (
                               <p style={styles.weekTaskSubtasks}>
-                                <FaCheckCircle size={10} style={{ marginRight: '4px' }} /> {task.subtasks.filter(s => s.completed).length}/{task.subtasks.length}
+                                <FaCheck size={10} style={{ marginRight: '4px' }} /> {task.subtasks.filter(s => s.completed).length}/{task.subtasks.length}
                               </p>
                             )}
                           </div>

@@ -24,6 +24,18 @@ const StatsCard = ({ icon, label, value, subtitle, trend, color }) => {
       alignItems: 'center',
       marginBottom: '16px',
     },
+    iconChip: {
+      width: '34px',
+      height: '34px',
+      borderRadius: '10px',
+      backgroundColor: theme.bgMain,
+      boxShadow: theme.shadows.neumorphic,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: theme.primary,
+      fontSize: '16px',
+    },
     label: {
       fontSize: '14px',
       fontWeight: '600',
@@ -82,7 +94,7 @@ const StatsCard = ({ icon, label, value, subtitle, trend, color }) => {
       `}</style>
       <div style={styles.header}>
         <span style={styles.label}>{label}</span>
-        <span style={{ fontSize: '24px' }}>{icon}</span>
+        <span style={styles.iconChip}>{icon}</span>
       </div>
 
       <div style={styles.valueContainer}>

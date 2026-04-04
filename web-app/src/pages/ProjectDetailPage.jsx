@@ -3,10 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout/Layout';
 import projectService from '../services/projectService';
 import { tasksAPI } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { borderRadius } from '../theme';
 import { formatTaskDuration } from '../utils/formatTaskDuration';
-import { FaArrowLeft, FaCalendarAlt, FaTrash, FaPlus, FaCheck, FaClock, FaFlag, FaTag } from 'react-icons/fa';
+import { FaArrowLeft, FaCalendarAlt, FaTrash, FaPlus, FaCheck, FaClock, FaFlag, FaTag, FaShare, FaUserPlus } from 'react-icons/fa';
 import AddTaskToProjectModal from '../components/Projects/AddTaskToProjectModal';
 import TaskDetailModal from '../components/Tasks/TaskDetailModal';
 import AIProjectBreakdownModal from '../components/Projects/AIProjectBreakdownModal';
@@ -15,6 +16,7 @@ const ProjectDetailPage = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const { theme } = useTheme();
+    const { user } = useAuth();
     const [project, setProject] = useState(null);
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -24,6 +26,7 @@ const ProjectDetailPage = () => {
     const [showTaskDetailModal, setShowTaskDetailModal] = useState(false);
     const [showAIProjectBreakdown, setShowAIProjectBreakdown] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [shareEmail, setShareEmail] = useState('');
 
     const showNotification = (type, message) => {
         setNotification({ type, message });
@@ -34,6 +37,15 @@ const ProjectDetailPage = () => {
         loadProjectDetails();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id]);
+
+    const isOwner = project?.accessRole === 'owner';
+    const myPermission = project?.myPermission || (isOwner ? 'edit' : 'view');
+    const canCreateTasks = isOwner || myPermission === 'edit';
+    const canGenerateTasks = isOwner || myPermission === 'edit';
+    const canToggleTaskStatus = isOwner || myPermission === 'edit' || myPermission === 'complete';
+    const canComment = isOwner || myPermission === 'edit' || myPermission === 'complete';
+    const canEditTask = isOwner || myPermission === 'edit';
+    const canDeleteTask = isOwner || myPermission === 'edit';
 
     const loadProjectDetails = async () => {
         try {
@@ -50,6 +62,10 @@ const ProjectDetailPage = () => {
     };
 
     const handleDeleteProject = async (deleteTasks) => {
+        if (!project || project.accessRole !== 'owner') {
+            showNotification('error', 'Only the project owner can delete this project.');
+            return;
+        }
         try {
             await projectService.deleteProject(id, localStorage.getItem('token'), deleteTasks);
             navigate('/projects');
@@ -63,6 +79,10 @@ const ProjectDetailPage = () => {
     };
 
     const handleTaskCreated = async (newTaskData) => {
+        if (!canCreateTasks) {
+            showNotification('error', 'You do not have permission to add tasks to this project.');
+            return;
+        }
         try {
             const response = await tasksAPI.createTask(newTaskData);
             const newTask = response.data.task;
@@ -93,7 +113,41 @@ const ProjectDetailPage = () => {
         setProject(data.project);
     };
 
+    const handleShareProject = async () => {
+        if (!project || project.accessRole !== 'owner') {
+            showNotification('error', 'Only the project owner can share this project.');
+            return;
+        }
+        if (!shareEmail.trim()) return;
+        try {
+            const response = await projectService.shareProject(id, shareEmail);
+            if (response.user) {
+                showNotification('success', `Project shared with ${response.user.email}`);
+                setProject({
+                    ...project,
+                    pendingInvites: [
+                        ...(project.pendingInvites || []),
+                        {
+                            userId: response.user.id,
+                            name: response.user.name,
+                            email: response.user.email,
+                            invitedAt: new Date().toISOString(),
+                        },
+                    ],
+                });
+                setShareEmail('');
+            }
+        } catch (error) {
+            console.error('Share error:', error);
+            showNotification('error', 'Failed to share project: ' + (error.response?.data?.message || error.message));
+        }
+    };
+
     const toggleTaskComplete = async (task, e) => {
+        if (!canToggleTaskStatus) {
+            e.stopPropagation();
+            return;
+        }
         e.stopPropagation();
         const newStatus = task.status === 'done' ? 'todo' : 'done';
         try {
@@ -138,6 +192,10 @@ const ProjectDetailPage = () => {
     };
 
     const handleAddAcceptedAIProjectTasks = async (acceptedTasks) => {
+        if (!canGenerateTasks) {
+            showNotification('error', 'You do not have permission to generate tasks for this project.');
+            return;
+        }
         if (!acceptedTasks || acceptedTasks.length === 0) {
             showNotification('info', 'No tasks accepted. Please accept at least one task.');
             return;
@@ -211,6 +269,36 @@ const ProjectDetailPage = () => {
 
         return new Date(a.deadline) - new Date(b.deadline);
     });
+
+    const handleRemoveSharedUser = async (sharedUserId) => {
+        if (!isOwner) {
+            return;
+        }
+
+        try {
+            await projectService.removeSharedUser(id, sharedUserId);
+            await loadProjectDetails();
+            showNotification('success', 'Collaborator removed successfully.');
+        } catch (error) {
+            console.error('Error removing shared user:', error);
+            showNotification('error', error.response?.data?.message || 'Failed to remove collaborator.');
+        }
+    };
+
+    const handleChangeCollaboratorPermission = async (sharedUserId, permission) => {
+        if (!isOwner) {
+            return;
+        }
+
+        try {
+            await projectService.updateCollaboratorPermission(id, sharedUserId, permission);
+            await loadProjectDetails();
+            showNotification('success', 'Collaborator permission updated.');
+        } catch (error) {
+            console.error('Error updating collaborator permission:', error);
+            showNotification('error', error.response?.data?.message || 'Failed to update permission.');
+        }
+    };
 
     const styles = {
         container: {
@@ -493,6 +581,104 @@ const ProjectDetailPage = () => {
             cursor: 'pointer',
             boxShadow: theme.shadows.neumorphic,
         },
+        shareSection: {
+            backgroundColor: theme.bgMain,
+            borderRadius: borderRadius.lg,
+            padding: '24px',
+            boxShadow: theme.shadows.neumorphic,
+            marginBottom: '32px',
+            border: `1px solid ${theme.border}`,
+        },
+        shareSectionTitle: {
+            fontSize: '18px',
+            fontWeight: '700',
+            color: theme.textPrimary,
+            margin: '0 0 16px 0',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+        },
+        shareInputContainer: {
+            display: 'flex',
+            gap: '12px',
+            marginBottom: '12px',
+        },
+        shareInput: {
+            flex: 1,
+            backgroundColor: theme.bgElevated || theme.bgMain,
+            border: `1px solid ${theme.border}`,
+            borderRadius: borderRadius.md,
+            padding: '10px 14px',
+            fontSize: '14px',
+            color: theme.textPrimary,
+            outline: 'none',
+            boxShadow: theme.shadows.neumorphicInset,
+        },
+        shareButton: {
+            backgroundColor: theme.primary,
+            color: '#fff',
+            border: 'none',
+            borderRadius: borderRadius.md,
+            padding: '10px 20px',
+            fontSize: '14px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            boxShadow: theme.shadows.neumorphic,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            whiteSpace: 'nowrap',
+        },
+        sharedInfo: {
+            fontSize: '13px',
+            color: theme.textMuted,
+            marginTop: '8px',
+        },
+        collaboratorsList: {
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            marginTop: '12px',
+        },
+        collaboratorRow: {
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '10px',
+            padding: '8px 10px',
+            borderRadius: borderRadius.md,
+            backgroundColor: theme.bgElevated || theme.bgMain,
+            border: `1px solid ${theme.border}`,
+        },
+        collaboratorActions: {
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+        },
+        permissionSelect: {
+            backgroundColor: theme.bgMain,
+            border: `1px solid ${theme.border}`,
+            borderRadius: borderRadius.md,
+            color: theme.textPrimary,
+            fontSize: '12px',
+            fontWeight: '600',
+            padding: '6px 8px',
+        },
+        removeShareButton: {
+            border: 'none',
+            borderRadius: borderRadius.md,
+            backgroundColor: theme.error,
+            color: '#fff',
+            padding: '6px 10px',
+            fontSize: '12px',
+            fontWeight: '600',
+            cursor: 'pointer',
+        },
+        readOnlyNotice: {
+            marginTop: '12px',
+            fontSize: '13px',
+            color: theme.textMuted,
+        },
     };
 
     if (loading) {
@@ -558,13 +744,15 @@ const ProjectDetailPage = () => {
                                 <p style={styles.description}>{project.description}</p>
                             )}
                         </div>
-                        <button 
-                            style={styles.deleteButton} 
-                            onClick={confirmDelete}
-                            className="delete-btn"
-                        >
-                            <FaTrash /> Delete Project
-                        </button>
+                        {isOwner && (
+                            <button 
+                                style={styles.deleteButton} 
+                                onClick={confirmDelete}
+                                className="delete-btn"
+                            >
+                                <FaTrash /> Delete Project
+                            </button>
+                        )}
                     </div>
 
                     <div style={styles.metaGrid}>
@@ -608,24 +796,108 @@ const ProjectDetailPage = () => {
                     </div>
                 </div>
 
+                {isOwner ? (
+                    <div style={styles.shareSection}>
+                        <h3 style={styles.shareSectionTitle}><FaShare /> Share Project</h3>
+                        <div style={styles.shareInputContainer}>
+                            <input
+                                type="email"
+                                value={shareEmail}
+                                onChange={(e) => setShareEmail(e.target.value)}
+                                placeholder="Enter email to share with"
+                                style={styles.shareInput}
+                                onKeyPress={(e) => e.key === 'Enter' && handleShareProject()}
+                            />
+                            <button onClick={handleShareProject} style={styles.shareButton}><FaUserPlus /> Invite</button>
+                        </div>
+
+                        <>
+                            <p style={styles.sharedInfo}>Pending invites ({project.pendingInvites?.length || 0})</p>
+                            <div style={styles.collaboratorsList}>
+                                {project.pendingInvites?.length ? (
+                                    project.pendingInvites.map((invite) => (
+                                        <div key={`invite-${invite.userId}`} style={styles.collaboratorRow}>
+                                            <span>{invite.name || invite.email || 'Pending user'} ({invite.email || 'no-email'})</span>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div style={styles.collaboratorRow}>
+                                        <span>No pending invites yet.</span>
+                                    </div>
+                                )}
+                            </div>
+                        </>
+
+                        <>
+                            <p style={styles.sharedInfo}>Collaborators ({project.collaborators?.length || 0})</p>
+                            <div style={styles.collaboratorsList}>
+                                {project.collaborators?.length ? (
+                                    project.collaborators.map((sharedUser) => (
+                                        <div key={`shared-${sharedUser.userId}`} style={styles.collaboratorRow}>
+                                            <span>{sharedUser.name || 'User'} ({sharedUser.email || 'no-email'})</span>
+                                            <div style={styles.collaboratorActions}>
+                                                <select
+                                                    value={sharedUser.permission || 'complete'}
+                                                    onChange={(e) => handleChangeCollaboratorPermission(sharedUser.userId, e.target.value)}
+                                                    style={styles.permissionSelect}
+                                                >
+                                                    <option value="view">View</option>
+                                                    <option value="complete">Complete</option>
+                                                    <option value="edit">Edit</option>
+                                                </select>
+                                                {String(sharedUser.userId) !== String(user?.id) && (
+                                                    <button
+                                                        type="button"
+                                                        style={styles.removeShareButton}
+                                                        onClick={() => handleRemoveSharedUser(sharedUser.userId)}
+                                                    >
+                                                        Remove
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div style={styles.collaboratorRow}>
+                                        <span>No collaborators yet. Invite a user, then they must accept before permissions appear.</span>
+                                    </div>
+                                )}
+                            </div>
+                        </>
+                    </div>
+                ) : (
+                    <div style={styles.shareSection}>
+                        <h3 style={styles.shareSectionTitle}><FaShare /> Shared Project</h3>
+                        <p style={styles.readOnlyNotice}>
+                            Your permission: {myPermission}. {myPermission === 'view' && 'You can view project tasks only.'}
+                            {myPermission === 'complete' && ' You can complete tasks and add comments.'}
+                            {myPermission === 'edit' && ' You can add, edit, and delete project tasks.'}
+                        </p>
+                    </div>
+                )}
+
                 <div style={styles.sectionHeader}>
                     <h2 style={styles.sectionTitle}>Project Tasks</h2>
-                    <div style={{ display: 'flex', gap: '12px' }}>
-                        <button
-                            style={{ ...styles.addTaskBtn, backgroundColor: theme.success, color: '#fff' }}
-                            onClick={() => setShowAIProjectBreakdown(true)}
-                            className="add-btn"
-                        >
-                            🤖 Generate Tasks with AI
-                        </button>
-                        <button 
-                            style={styles.addTaskBtn} 
-                            onClick={() => setShowAddTaskModal(true)}
-                            className="add-btn"
-                        >
-                            <FaPlus /> Add Task
-                        </button>
-                    </div>
+                    {canCreateTasks && (
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                            {canGenerateTasks && (
+                                <button
+                                    style={{ ...styles.addTaskBtn, backgroundColor: theme.success, color: '#fff' }}
+                                    onClick={() => setShowAIProjectBreakdown(true)}
+                                    className="add-btn"
+                                >
+                                    🤖 Generate Tasks with AI
+                                </button>
+                            )}
+                            <button 
+                                style={styles.addTaskBtn} 
+                                onClick={() => setShowAddTaskModal(true)}
+                                className="add-btn"
+                            >
+                                <FaPlus /> Add Task
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 <div style={styles.taskList}>
@@ -648,7 +920,7 @@ const ProjectDetailPage = () => {
                                 >
                                     <div 
                                         style={styles.checkbox(isDone)}
-                                        onClick={(e) => toggleTaskComplete(task, e)}
+                                        onClick={(e) => canToggleTaskStatus && toggleTaskComplete(task, e)}
                                     >
                                         <div style={{ transform: isDone ? 'scale(1)' : 'scale(0)', transition: '0.2s' }}>
                                             <FaCheck size={12} color="#fff" />
@@ -681,16 +953,26 @@ const ProjectDetailPage = () => {
                     )}
                 </div>
 
-                <AddTaskToProjectModal
-                    isOpen={showAddTaskModal}
-                    onClose={() => setShowAddTaskModal(false)}
-                    onTaskCreated={handleTaskCreated}
-                    projectId={id}
-                />
+                {canCreateTasks && (
+                    <AddTaskToProjectModal
+                        isOpen={showAddTaskModal}
+                        onClose={() => setShowAddTaskModal(false)}
+                        onTaskCreated={handleTaskCreated}
+                        projectId={id}
+                    />
+                )}
 
                 <TaskDetailModal
                     task={selectedTask}
                     isOpen={showTaskDetailModal}
+                    canComplete={canToggleTaskStatus}
+                    canComment={canComment}
+                    canEdit={canEditTask}
+                    canDelete={canDeleteTask}
+                    canTrackTime={canEditTask}
+                    canManageAttachments={canEditTask}
+                    canShareTask={canEditTask}
+                    canToggleSubtasks={canToggleTaskStatus}
                     onClose={() => {
                         setShowTaskDetailModal(false);
                         setSelectedTask(null);
@@ -699,12 +981,14 @@ const ProjectDetailPage = () => {
                     onTaskDeleted={handleTaskDeleted}
                 />
 
-                <AIProjectBreakdownModal
-                    isOpen={showAIProjectBreakdown}
-                    onClose={() => setShowAIProjectBreakdown(false)}
-                    project={project}
-                    onAddAcceptedTasks={handleAddAcceptedAIProjectTasks}
-                />
+                {canGenerateTasks && (
+                    <AIProjectBreakdownModal
+                        isOpen={showAIProjectBreakdown}
+                        onClose={() => setShowAIProjectBreakdown(false)}
+                        project={project}
+                        onAddAcceptedTasks={handleAddAcceptedAIProjectTasks}
+                    />
+                )}
 
                 {showDeleteConfirm && (
                     <div style={styles.confirmOverlay} onClick={() => setShowDeleteConfirm(false)}>

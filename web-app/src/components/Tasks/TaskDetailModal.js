@@ -9,7 +9,21 @@ import {
   FaRobot, FaPlay, FaPause, FaClock
 } from 'react-icons/fa';
 
-const TaskDetailModal = ({ task, isOpen, onClose, onTaskUpdated, onTaskDeleted }) => {
+const TaskDetailModal = ({
+  task,
+  isOpen,
+  onClose,
+  onTaskUpdated,
+  onTaskDeleted,
+  canComplete = true,
+  canComment = true,
+  canEdit = true,
+  canDelete = true,
+  canTrackTime = true,
+  canManageAttachments = true,
+  canShareTask = true,
+  canToggleSubtasks = true,
+}) => {
   const { theme } = useTheme();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({});
@@ -585,6 +599,10 @@ const TaskDetailModal = ({ task, isOpen, onClose, onTaskUpdated, onTaskDeleted }
   };
 
   const handleUpdate = async () => {
+    if (!canEdit) {
+      showNotification('error', 'You do not have permission to edit this task.');
+      return;
+    }
     setLoading(true);
     try {
       const response = await tasksAPI.updateTask(task._id, formData);
@@ -601,6 +619,10 @@ const TaskDetailModal = ({ task, isOpen, onClose, onTaskUpdated, onTaskDeleted }
   };
 
   const handleDelete = async () => {
+    if (!canDelete) {
+      showNotification('error', 'You do not have permission to delete this task.');
+      return;
+    }
     setLoading(true);
     try {
       const response = await tasksAPI.deleteTask(task._id);
@@ -618,6 +640,10 @@ const TaskDetailModal = ({ task, isOpen, onClose, onTaskUpdated, onTaskDeleted }
   };
 
   const handleToggleTimer = async () => {
+    if (!canTrackTime) {
+      showNotification('error', 'You do not have permission to track time on this task.');
+      return;
+    }
     try {
       if (isTracking) {
         const response = await timeTrackingAPI.stopTimer(task._id);
@@ -660,6 +686,11 @@ const TaskDetailModal = ({ task, isOpen, onClose, onTaskUpdated, onTaskDeleted }
 
   /* Attachments Helper */
   const handleFileUpload = async (e) => {
+    if (!canManageAttachments) {
+      showNotification('error', 'You do not have permission to manage attachments.');
+      return;
+    }
+
     const file = e.target.files[0];
     if (!file) return;
 
@@ -682,6 +713,10 @@ const TaskDetailModal = ({ task, isOpen, onClose, onTaskUpdated, onTaskDeleted }
 
   /* Comments Helper */
   const handleAddComment = async () => {
+    if (!canComment) {
+      showNotification('error', 'You do not have permission to comment on this task.');
+      return;
+    }
     if (!newComment.trim()) return;
     try {
       const response = await tasksAPI.addComment(task._id, newComment);
@@ -700,6 +735,10 @@ const TaskDetailModal = ({ task, isOpen, onClose, onTaskUpdated, onTaskDeleted }
 
   /* Share Helper */
   const handleShare = async () => {
+    if (!canShareTask) {
+      showNotification('error', 'You do not have permission to share this task.');
+      return;
+    }
     if (!shareEmail.trim()) return;
     try {
       const response = await tasksAPI.shareTask(task._id, shareEmail);
@@ -729,6 +768,11 @@ const TaskDetailModal = ({ task, isOpen, onClose, onTaskUpdated, onTaskDeleted }
   };
 
   const handleRemoveAttachment = async (attachmentId) => {
+    if (!canManageAttachments) {
+      showNotification('error', 'You do not have permission to remove attachments.');
+      return;
+    }
+
     if (!attachmentId) {
       return;
     }
@@ -752,6 +796,11 @@ const TaskDetailModal = ({ task, isOpen, onClose, onTaskUpdated, onTaskDeleted }
       : [];
 
   const handleToggleSubtask = async (subtask) => {
+    if (!canToggleSubtasks) {
+      showNotification('error', 'You do not have permission to update subtasks.');
+      return;
+    }
+
     const subtaskId = subtask?._id || subtask?.id;
     if (!subtaskId) {
       return;
@@ -823,16 +872,18 @@ const TaskDetailModal = ({ task, isOpen, onClose, onTaskUpdated, onTaskDeleted }
         {/* Header */}
         <div style={styles.header}>
           <div style={styles.headerLeft}>
-            <Checkbox
-              checked={formData.status === 'done'}
-              onChange={(e) => {
-                const newStatus = e.target.checked ? 'done' : 'todo';
-                setFormData({ ...formData, status: newStatus });
-                tasksAPI.updateTask(task._id, { status: newStatus })
-                  .then(res => onTaskUpdated(res.data.task));
-              }}
-              style={{ marginTop: '6px' }}
-            />
+            {canComplete && (
+              <Checkbox
+                checked={formData.status === 'done'}
+                onChange={(e) => {
+                  const newStatus = e.target.checked ? 'done' : 'todo';
+                  setFormData({ ...formData, status: newStatus });
+                  tasksAPI.updateTask(task._id, { status: newStatus })
+                    .then(res => onTaskUpdated(res.data.task));
+                }}
+                style={{ marginTop: '6px' }}
+              />
+            )}
             {isEditing ? (
               <input
                 type="text"
@@ -864,19 +915,23 @@ const TaskDetailModal = ({ task, isOpen, onClose, onTaskUpdated, onTaskDeleted }
               </>
             ) : (
               <>
-                <button
-                  onClick={() => setIsEditing(true)}
-                  style={styles.editButton}
-                >
-                  <FaEdit /> Edit
-                </button>
-                <button
-                  onClick={() => setShowDeleteConfirm(true)}
-                  style={styles.deleteButton}
-                  disabled={loading}
-                >
-                  <FaTrash /> Delete
-                </button>
+                {canEdit && (
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    style={styles.editButton}
+                  >
+                    <FaEdit /> Edit
+                  </button>
+                )}
+                {canDelete && (
+                  <button
+                    onClick={() => setShowDeleteConfirm(true)}
+                    style={styles.deleteButton}
+                    disabled={loading}
+                  >
+                    <FaTrash /> Delete
+                  </button>
+                )}
                 <button onClick={onClose} style={styles.closeButton}>
                   <FaTimes />
                 </button>
@@ -962,20 +1017,26 @@ const TaskDetailModal = ({ task, isOpen, onClose, onTaskUpdated, onTaskDeleted }
         {/* Time Tracking */}
         <div style={styles.section}>
           <h3 style={styles.sectionTitle}><FaStopwatch style={{ fontSize: '16px' }} /> Time Tracking</h3>
-          <button
-            onClick={handleToggleTimer}
-            style={{
-              ...styles.timerButton,
-              backgroundColor: isTracking ? theme.error : theme.success, // Use theme colors
-            }}
-          >
-            {isTracking ? <><FaPause /> Stop Timer</> : <><FaPlay /> Start Timer</>}
-          </button>
-          {isTracking && (
-            <p style={{
-              ...styles.trackingText,
-              color: theme.error // Ensure error color usage
-            }}>⏱️ Timer is running...</p>
+          {canTrackTime ? (
+            <>
+              <button
+                onClick={handleToggleTimer}
+                style={{
+                  ...styles.timerButton,
+                  backgroundColor: isTracking ? theme.error : theme.success,
+                }}
+              >
+                {isTracking ? <><FaPause /> Stop Timer</> : <><FaPlay /> Start Timer</>}
+              </button>
+              {isTracking && (
+                <p style={{
+                  ...styles.trackingText,
+                  color: theme.error
+                }}>⏱️ Timer is running...</p>
+              )}
+            </>
+          ) : (
+            <p style={styles.description}>You do not have permission to track time on this task.</p>
           )}
         </div>
 
@@ -997,24 +1058,28 @@ const TaskDetailModal = ({ task, isOpen, onClose, onTaskUpdated, onTaskDeleted }
                 </a>
                 <div style={styles.attachmentActions}>
                   <span style={styles.fileSize}>({Math.round((file.filesize || 0) / 1024)}KB)</span>
-                  <button
-                    type="button"
-                    style={styles.removeAttachmentButton}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleRemoveAttachment(file._id);
-                    }}
-                  >
-                    Remove
-                  </button>
+                  {canManageAttachments && (
+                    <button
+                      type="button"
+                      style={styles.removeAttachmentButton}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveAttachment(file._id);
+                      }}
+                    >
+                      Remove
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
           </div>
-          <label style={styles.uploadButton}>
-            <FaFileUpload /> Upload File
-            <input type="file" onChange={handleFileUpload} style={{ display: 'none' }} />
-          </label>
+          {canManageAttachments && (
+            <label style={styles.uploadButton}>
+              <FaFileUpload /> Upload File
+              <input type="file" onChange={handleFileUpload} style={{ display: 'none' }} />
+            </label>
+          )}
         </div>
 
         {/* Comments */}
@@ -1028,36 +1093,42 @@ const TaskDetailModal = ({ task, isOpen, onClose, onTaskUpdated, onTaskDeleted }
               </div>
             ))}
           </div>
-          <div style={styles.addComment}>
-            <input
-              type="text"
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              placeholder="Add a comment..."
-              style={styles.commentInput}
-              onKeyPress={(e) => e.key === 'Enter' && handleAddComment()}
-            />
-            <button onClick={handleAddComment} style={styles.sendButton}><FaPaperPlane /> Send</button>
-          </div>
+          {canComment ? (
+            <div style={styles.addComment}>
+              <input
+                type="text"
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="Add a comment..."
+                style={styles.commentInput}
+                onKeyPress={(e) => e.key === 'Enter' && handleAddComment()}
+              />
+              <button onClick={handleAddComment} style={styles.sendButton}><FaPaperPlane /> Send</button>
+            </div>
+          ) : (
+            <p style={styles.description}>You do not have permission to add comments.</p>
+          )}
         </div>
 
         {/* Sharing */}
-        <div style={styles.section}>
-          <h3 style={styles.sectionTitle}><FaShare style={{ fontSize: '16px' }} /> Share</h3>
-          <div style={styles.shareInputContainer}>
-            <input
-              type="email"
-              value={shareEmail}
-              onChange={(e) => setShareEmail(e.target.value)}
-              placeholder="Enter email to share with"
-              style={styles.shareInput}
-            />
-            <button onClick={handleShare} style={styles.shareButton}><FaUserPlus /> Invite</button>
+        {canShareTask && (
+          <div style={styles.section}>
+            <h3 style={styles.sectionTitle}><FaShare style={{ fontSize: '16px' }} /> Share</h3>
+            <div style={styles.shareInputContainer}>
+              <input
+                type="email"
+                value={shareEmail}
+                onChange={(e) => setShareEmail(e.target.value)}
+                placeholder="Enter email to share with"
+                style={styles.shareInput}
+              />
+              <button onClick={handleShare} style={styles.shareButton}><FaUserPlus /> Invite</button>
+            </div>
+            {task.sharedWith?.length > 0 && (
+              <p style={styles.sharedInfo}>Shared with {task.sharedWith.length} users</p>
+            )}
           </div>
-          {task.sharedWith?.length > 0 && (
-            <p style={styles.sharedInfo}>Shared with {task.sharedWith.length} users</p>
-          )}
-        </div>
+        )}
 
         {/* Tags */}
         {task.tags && task.tags.length > 0 && (
@@ -1080,11 +1151,13 @@ const TaskDetailModal = ({ task, isOpen, onClose, onTaskUpdated, onTaskDeleted }
             <div style={styles.subtasksList}>
               {displayedSubtasks.map((subtask, index) => (
                 <div key={subtask._id || index} style={styles.subtaskItem}>
-                  <Checkbox
-                    checked={subtask.completed}
-                    onChange={() => handleToggleSubtask(subtask)}
-                    style={{ marginRight: '12px' }}
-                  />
+                  {canToggleSubtasks && (
+                    <Checkbox
+                      checked={subtask.completed}
+                      onChange={() => handleToggleSubtask(subtask)}
+                      style={{ marginRight: '12px' }}
+                    />
+                  )}
                   <span style={{
                     ...styles.subtaskText,
                     textDecoration: subtask.completed ? 'line-through' : 'none',

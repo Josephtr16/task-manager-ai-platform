@@ -51,13 +51,16 @@ api.interceptors.response.use(
 export const authAPI = {
   register: (data) => api.post('/auth/register', data),
   verifyEmail: (data) => api.post('/auth/verify-email', data),
+  resendVerificationEmail: (email) => api.post('/auth/resend-verification', { email }),
   login: (data) => api.post('/auth/login', data),
   getMe: () => api.get('/auth/me'),
+  updatePreferences: (preferences) => api.patch('/auth/preferences', { preferences }),
+  updateProfile: (data) => api.patch('/auth/profile', data),
 };
 
 // Tasks API
 export const tasksAPI = {
-  getTasks: () => api.get('/tasks'),
+  getTasks: (params = {}) => api.get('/tasks', { params }),
   getTask: (id) => api.get(`/tasks/${id}`),
   createTask: (data) => api.post('/tasks', data),
   updateTask: (id, data) => api.put(`/tasks/${id}`, data),
@@ -75,11 +78,11 @@ export const tasksAPI = {
 
 // Time Tracking API
 export const timeTrackingAPI = {
-  startTimer: (taskId) => api.post(`/tasks/${taskId}/start-timer`),
-  stopTimer: (taskId) => api.post(`/tasks/${taskId}/stop-timer`),
-  getTimerStatus: (taskId) => api.get(`/tasks/${taskId}/timer-status`),
-  getTimeLogs: (taskId) => api.get(`/tasks/${taskId}/time-logs`),
-  deleteTimeLog: (taskId, sessionId) => api.delete(`/tasks/${taskId}/time-logs/${sessionId}`),
+  startTimer: (taskId) => api.post(`/tasks/${taskId}/time/start`),
+  stopTimer: (taskId) => api.post(`/tasks/${taskId}/time/stop`),
+  getTimerStatus: (taskId) => api.get(`/tasks/${taskId}/time`),
+  getTimeLogs: (taskId) => api.get(`/tasks/${taskId}/time`),
+  deleteTimeLog: () => Promise.reject(new Error('TimeSession logs are deprecated; embedded task sessions are canonical.')),
 };
 
 // Subtasks API

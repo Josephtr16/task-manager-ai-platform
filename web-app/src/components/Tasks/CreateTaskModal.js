@@ -675,6 +675,7 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
               <DatePicker
                 selected={formData.dueDate ? new Date(formData.dueDate) : null}
                 onChange={date => setFormData(prev => ({ ...prev, dueDate: date ? date.toISOString() : '' }))}
+                minDate={new Date()}
                 dateFormat="MM/dd/yyyy"
                 placeholderText="mm/dd/yyyy"
                 className="custom-datepicker-input"

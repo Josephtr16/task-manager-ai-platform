@@ -17,10 +17,9 @@ export const aiService = {
     return response.data;
   },
 
-  predictTime: async (task, history) => {
+  predictTime: async (task) => {
     const response = await api.post(`${AI_BASE_PATH}/predict-time`, {
       task,
-      history,
     });
     return response.data;
   },

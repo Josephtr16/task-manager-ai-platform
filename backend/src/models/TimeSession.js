@@ -29,4 +29,8 @@ const timeSessionSchema = new mongoose.Schema({
     },
 });
 
+// Optimizes time session lookups by task and recent sessions per user.
+timeSessionSchema.index({ taskId: 1 });
+timeSessionSchema.index({ userId: 1, startAt: -1 });
+
 module.exports = mongoose.model('TimeSession', timeSessionSchema);

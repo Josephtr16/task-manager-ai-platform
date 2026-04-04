@@ -1,7 +1,9 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
+const helmet = require('helmet');
 const connectDB = require('./config/db');
+const { apiLimiter } = require('./middleware/rateLimiter');
 const path = require('path');
 
 // Load env vars
@@ -12,12 +14,25 @@ connectDB();
 
 const app = express();
 
+// Security headers
+app.use(helmet());
+
 // Body parser middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 // Enable CORS
-app.use(cors());
+app.use(
+  cors({
+    origin: process.env.APP_URL,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  })
+);
+
+// API rate limiting
+app.use('/api', apiLimiter);
 
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
@@ -25,10 +40,8 @@ app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 // Mount routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/tasks', require('./routes/tasks'));
-app.use('/api/tasks/:id', require('./routes/timeTracking'));
 app.use('/api/tasks/:id/subtasks', require('./routes/subtasks'));
 app.use('/api/analytics', require('./routes/analytics'));
-app.use('/api/time', require('./routes/timeRoutes'));
 app.use('/api/projects', require('./routes/projects'));
 app.use('/api/ai', require('./routes/ai'));
 

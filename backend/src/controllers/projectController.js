@@ -15,6 +15,18 @@ exports.getProjects = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Get pending project invites for recipient
+// @route   GET /api/projects/invites
+// @access  Private
+exports.getPendingInvites = asyncHandler(async (req, res) => {
+  const projects = await projectService.getPendingInvites(req.user.id);
+
+  sendResponse(res, 200, true, {
+    count: projects.length,
+    projects,
+  });
+});
+
 // @desc    Get single project with tasks
 // @route   GET /api/projects/:id
 // @access  Private
@@ -75,4 +87,42 @@ exports.generateTaskSuggestions = asyncHandler(async (req, res) => {
   }
 
   sendResponse(res, 200, true, suggestions);
+});
+
+// @desc    Share project
+// @route   POST /api/projects/:id/share
+// @access  Private
+exports.shareProject = asyncHandler(async (req, res) => {
+  const user = await projectService.shareProject(req.params.id, req.user.id, req.body.email);
+
+  sendResponse(res, 200, true, { user }, 'Project shared successfully');
+});
+
+// @desc    Accept or decline project share invite
+// @route   POST /api/projects/:id/respond-share
+// @access  Private
+exports.respondToProjectShare = asyncHandler(async (req, res) => {
+  const { action } = req.body;
+  const result = await projectService.respondToShareInvite(req.params.id, req.user.id, action);
+
+  sendResponse(res, 200, true, result, `Project invite ${action}ed successfully`);
+});
+
+// @desc    Remove shared user from project
+// @route   DELETE /api/projects/:id/share/:userId
+// @access  Private
+exports.removeSharedUser = asyncHandler(async (req, res) => {
+  const result = await projectService.removeSharedUser(req.params.id, req.user.id, req.params.userId);
+
+  sendResponse(res, 200, true, result, 'Shared user removed successfully');
+});
+
+// @desc    Update collaborator permission
+// @route   PATCH /api/projects/:id/share/:userId/permission
+// @access  Private
+exports.updateCollaboratorPermission = asyncHandler(async (req, res) => {
+  const { permission } = req.body;
+  const result = await projectService.updateCollaboratorPermission(req.params.id, req.user.id, req.params.userId, permission);
+
+  sendResponse(res, 200, true, result, 'Collaborator permission updated successfully');
 });

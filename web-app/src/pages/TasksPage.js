@@ -12,12 +12,15 @@ import {
   FaSearch, FaPlus, FaCalendarAlt, FaClock, FaCheck, FaFlag, FaTag, FaTimes, FaClipboardList
 } from 'react-icons/fa';
 import CustomSelect from '../components/common/CustomSelect';
+import { TaskCardSkeleton } from '../components/common/SkeletonLoader';
 
 const TasksPage = () => {
   const { theme } = useTheme();
   const [tasks, setTasks] = useState([]);
   const [filteredTasks, setFilteredTasks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
@@ -35,15 +38,31 @@ const TasksPage = () => {
   const [riskSummary, setRiskSummary] = useState('');
   const [notification, setNotification] = useState(null);
   const notificationTimerRef = useRef(null);
+  const lastFilterKeyRef = useRef('');
 
   useEffect(() => {
+    const filterKey = [
+      searchQuery,
+      statusFilter,
+      priorityFilter,
+      categoryFilter,
+      projectFilter,
+      sortBy,
+    ].join('|');
+
+    const filtersChanged = lastFilterKeyRef.current !== filterKey;
+
+    if (filtersChanged && currentPage !== 1) {
+      lastFilterKeyRef.current = filterKey;
+      setCurrentPage(1);
+
+      return;
+    }
+
+    lastFilterKeyRef.current = filterKey;
     loadTasks();
-  }, []);
-
-  useEffect(() => {
-    applyFilters();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tasks, searchQuery, statusFilter, priorityFilter, categoryFilter, projectFilter, sortBy]);
+  }, [currentPage, searchQuery, statusFilter, priorityFilter, categoryFilter, projectFilter, sortBy]);
 
   useEffect(() => {
     return () => {
@@ -67,8 +86,44 @@ const TasksPage = () => {
 
   const loadTasks = async () => {
     try {
-      const response = await tasksAPI.getTasks();
-      setTasks(response.data.tasks);
+      const params = {
+        page: currentPage,
+        sortBy,
+        sortOrder: sortBy === 'deadline' || sortBy === 'title' ? 'asc' : 'desc',
+      };
+
+      if (searchQuery.trim()) {
+        params.search = searchQuery.trim();
+      }
+
+      if (statusFilter !== 'all') {
+        params.status = statusFilter;
+      }
+
+      if (priorityFilter !== 'all') {
+        params.priority = priorityFilter;
+      }
+
+      if (categoryFilter !== 'all') {
+        params.category = categoryFilter;
+      }
+
+      if (projectFilter === 'standalone') {
+        params.projectId = 'none';
+      }
+
+      const response = await tasksAPI.getTasks(params);
+      const responseTasks = response.data.tasks || [];
+      const pagination = response.data.pagination || {};
+
+      setTasks(responseTasks);
+      setTotalPages(pagination.totalPages || 1);
+
+      const displayedTasks = projectFilter === 'project'
+        ? responseTasks.filter(task => !!task.projectId)
+        : responseTasks;
+
+      setFilteredTasks(displayedTasks);
     } catch (error) {
       console.error('Error loading tasks:', error);
     } finally {
@@ -76,67 +131,9 @@ const TasksPage = () => {
     }
   };
 
-  const applyFilters = () => {
-    // Show all tasks, including project-linked tasks
-    let filtered = [...tasks];
-
-    // Search filter
-    if (searchQuery) {
-      filtered = filtered.filter(task =>
-        task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        task.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        task.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
-      );
-    }
-
-    // Status filter
-    if (statusFilter !== 'all') {
-      if (statusFilter === 'active') {
-        filtered = filtered.filter(task => task.status !== 'done');
-      } else {
-        filtered = filtered.filter(task => task.status === statusFilter);
-      }
-    }
-
-    // Priority filter
-    if (priorityFilter !== 'all') {
-      filtered = filtered.filter(task => task.priority === priorityFilter);
-    }
-
-    // Category filter
-    if (categoryFilter !== 'all') {
-      filtered = filtered.filter(task => task.category === categoryFilter);
-    }
-
-    // Project scope filter
-    if (projectFilter === 'standalone') {
-      filtered = filtered.filter(task => !task.projectId);
-    } else if (projectFilter === 'project') {
-      filtered = filtered.filter(task => !!task.projectId);
-    }
-
-    // Sort
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case 'deadline':
-          if (!a.deadline) return 1;
-          if (!b.deadline) return -1;
-          return new Date(a.deadline) - new Date(b.deadline);
-        case 'priority':
-          const priorityOrder = { urgent: 0, high: 1, medium: 2, low: 3 };
-          return priorityOrder[a.priority] - priorityOrder[b.priority];
-        case 'title':
-          return a.title.localeCompare(b.title);
-        default:
-          return new Date(b.createdAt) - new Date(a.createdAt);
-      }
-    });
-
-    setFilteredTasks(filtered);
-  };
-
   const handleTaskCreated = (newTask) => {
     setTasks([newTask, ...tasks]);
+    loadTasks();
   };
 
   const handleTaskClick = (task) => {
@@ -147,12 +144,14 @@ const TasksPage = () => {
   const handleTaskUpdated = (updatedTask) => {
     setTasks(tasks.map(t => t._id === updatedTask._id ? updatedTask : t));
     setSelectedTask(updatedTask);
+    loadTasks();
   };
 
   const handleTaskDeleted = (taskId) => {
     setTasks(tasks.filter(t => t._id !== taskId));
     setShowDetailModal(false);
     setSelectedTask(null);
+    loadTasks();
   };
 
   const handleAIPrioritize = async () => {
@@ -551,15 +550,12 @@ const TasksPage = () => {
   if (loading) {
     return (
       <Layout>
-        <div style={styles.loading}>
-          <style>{`
-            @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-            }
-            `}</style>
-          <div style={styles.spinner} />
-          <p>Loading tasks...</p>
+        <div style={styles.container}>
+          <div style={styles.grid}>
+            {Array.from({ length: 6 }).map((_, index) => (
+              <TaskCardSkeleton key={index} />
+            ))}
+          </div>
         </div>
       </Layout>
     );
@@ -845,6 +841,38 @@ const TasksPage = () => {
             </div>
           )}
         </div>
+
+        {filteredTasks.length > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginTop: '24px' }}>
+            <button
+              type="button"
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              style={{
+                ...styles.clearButton,
+                opacity: currentPage === 1 ? 0.5 : 1,
+                cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+              }}
+            >
+              Previous
+            </button>
+            <span style={{ alignSelf: 'center', color: theme.textSecondary, fontWeight: '600' }}>
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              type="button"
+              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+              disabled={currentPage >= totalPages}
+              style={{
+                ...styles.clearButton,
+                opacity: currentPage >= totalPages ? 0.5 : 1,
+                cursor: currentPage >= totalPages ? 'not-allowed' : 'pointer',
+              }}
+            >
+              Next
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Modals */}

@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { authAPI } from '../../services/api';
 import AuthLayout from './AuthLayout';
 
 const Login = () => {
@@ -10,6 +11,8 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [resendSuccess, setResendSuccess] = useState('');
   const { login } = useAuth();
   const { theme, isDarkMode } = useTheme();
   const navigate = useNavigate();
@@ -33,6 +36,27 @@ const Login = () => {
     setLoading(false);
   };
 
+  const handleResendEmail = async () => {
+    if (!email) {
+      setError('Please enter your email address');
+      return;
+    }
+
+    setResending(true);
+    setError('');
+    setResendSuccess('');
+
+    try {
+      await authAPI.resendVerificationEmail(email);
+      setResendSuccess('Verification email sent! Check your inbox.');
+      setTimeout(() => setResendSuccess(''), 5000);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to resend email. Please try again.');
+    } finally {
+      setResending(false);
+    }
+  };
+
   const styles = getStyles(theme, isDarkMode);
 
   return (
@@ -49,6 +73,16 @@ const Login = () => {
         <div style={styles.error}>
           <span>⚠️</span>
           <span>{error}</span>
+          {error.includes('verify') && (
+            <button
+              type="button"
+              onClick={handleResendEmail}
+              style={styles.resendButton}
+              disabled={resending}
+            >
+              {resending ? '⏳ Sending...' : '📩 Resend Email'}
+            </button>
+          )}
         </div>
       )}
 
@@ -56,6 +90,13 @@ const Login = () => {
         <div style={styles.success}>
           <span>✅</span>
           <span>{successMessage}</span>
+        </div>
+      )}
+
+      {resendSuccess && (
+        <div style={styles.success}>
+          <span>✅</span>
+          <span>{resendSuccess}</span>
         </div>
       )}
 
@@ -170,6 +211,20 @@ const getStyles = (theme, isDarkMode) => ({
     gap: '8px',
     color: '#B91C1C', // Dark red text
     fontSize: '14px',
+    justifyContent: 'space-between',
+  },
+  resendButton: {
+    backgroundColor: '#EF4444',
+    color: '#FFF',
+    border: 'none',
+    borderRadius: '6px',
+    padding: '6px 12px',
+    fontSize: '13px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    whiteSpace: 'nowrap',
+    marginLeft: '8px',
   },
   success: {
     backgroundColor: '#F0FDF4',

@@ -10,6 +10,7 @@ import QuickStats from './QuickStats';
 import CreateTaskModal from '../Tasks/CreateTaskModal';
 import TaskDetailModal from '../Tasks/TaskDetailModal';
 import Layout from '../Layout/Layout';
+import { StatsCardSkeleton } from '../common/SkeletonLoader';
 import { FaChartLine, FaCheckCircle, FaClock, FaFireAlt } from 'react-icons/fa';
 
 const Dashboard = () => {
@@ -176,15 +177,12 @@ const Dashboard = () => {
   if (loading) {
     return (
       <Layout>
-        <div style={styles.loading}>
-          <style>{`
-                @keyframes spin {
-                    0% { transform: rotate(0deg); }
-                    100% { transform: rotate(360deg); }
-                }
-            `}</style>
-          <div style={styles.spinner}></div>
-          <p>Loading your dashboard...</p>
+        <div style={styles.container}>
+          <div style={styles.statsGrid}>
+            {Array.from({ length: 4 }).map((_, index) => (
+              <StatsCardSkeleton key={index} />
+            ))}
+          </div>
         </div>
       </Layout>
     );

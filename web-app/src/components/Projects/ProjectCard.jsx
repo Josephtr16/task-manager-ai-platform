@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import { borderRadius } from '../../theme';
-import { FaCalendarAlt, FaTasks, FaTag, FaFlag } from 'react-icons/fa';
+import { FaCalendarAlt, FaTasks, FaTag, FaFlag, FaShare } from 'react-icons/fa';
 
 const ProjectCard = ({ project }) => {
     const { theme } = useTheme();
@@ -168,6 +168,15 @@ const ProjectCard = ({ project }) => {
                 }}>
                     <FaFlag size={10} /> {project.priority.toUpperCase()}
                 </span>
+                {project.accessRole === 'shared' && (
+                    <span style={{
+                        ...styles.badge,
+                        backgroundColor: theme.success + '20',
+                        color: theme.success
+                    }}>
+                        <FaShare size={10} /> Shared With Me
+                    </span>
+                )}
             </div>
 
             <div style={styles.progressSection}>

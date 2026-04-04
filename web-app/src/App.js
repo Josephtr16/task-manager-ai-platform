@@ -7,6 +7,7 @@ import Login from './components/Auth/Login';
 import Register from './components/Auth/Register';
 import VerifyEmail from './components/Auth/VerifyEmail';
 import Dashboard from './components/Dashboard/Dashboard';
+import ErrorBoundary from './components/common/ErrorBoundary';
 import TasksPage from './pages/TasksPage';
 import KanbanPage from './pages/KanbanPage';
 import CalendarPage from './pages/CalendarPage';
@@ -51,28 +52,28 @@ function App() {
 
             {/* Protected Routes */}
             <Route path="/dashboard" element={
-              <ProtectedRoute><Dashboard /></ProtectedRoute>
+              <ProtectedRoute><ErrorBoundary><Dashboard /></ErrorBoundary></ProtectedRoute>
             } />
             <Route path="/tasks" element={
-              <ProtectedRoute><TasksPage /></ProtectedRoute>
+              <ProtectedRoute><ErrorBoundary><TasksPage /></ErrorBoundary></ProtectedRoute>
             } />
             <Route path="/kanban" element={
-              <ProtectedRoute><KanbanPage /></ProtectedRoute>
+              <ProtectedRoute><ErrorBoundary><KanbanPage /></ErrorBoundary></ProtectedRoute>
             } />
             <Route path="/calendar" element={
-              <ProtectedRoute><CalendarPage /></ProtectedRoute>
+              <ProtectedRoute><ErrorBoundary><CalendarPage /></ErrorBoundary></ProtectedRoute>
             } />
             <Route path="/insights" element={
-              <ProtectedRoute><InsightsPage /></ProtectedRoute>
+              <ProtectedRoute><ErrorBoundary><InsightsPage /></ErrorBoundary></ProtectedRoute>
             } />
             <Route path="/projects" element={
-              <ProtectedRoute><ProjectsPage /></ProtectedRoute>
+              <ProtectedRoute><ErrorBoundary><ProjectsPage /></ErrorBoundary></ProtectedRoute>
             } />
             <Route path="/projects/:id" element={
-              <ProtectedRoute><ProjectDetailPage /></ProtectedRoute>
+              <ProtectedRoute><ErrorBoundary><ProjectDetailPage /></ErrorBoundary></ProtectedRoute>
             } />
             <Route path="/settings" element={
-              <ProtectedRoute><SettingsPage /></ProtectedRoute>
+              <ProtectedRoute><ErrorBoundary><SettingsPage /></ErrorBoundary></ProtectedRoute>
             } />
 
             {/* Default redirect */}

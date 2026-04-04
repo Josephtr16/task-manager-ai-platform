@@ -177,6 +177,45 @@ class AuthService extends BaseService {
         };
     }
 
+    async resendVerificationEmail(email) {
+        // Normalize email
+        const normalizedEmail = email.trim().toLowerCase();
+
+        // Find user
+        const user = await this.model.findOne({ email: normalizedEmail });
+
+        if (!user) {
+            throw new AppError('User not found with this email', 404);
+        }
+
+        // Check if already verified
+        if (user.isVerified) {
+            throw new AppError('Email is already verified. Please log in.', 400);
+        }
+
+        // Generate new verification token
+        const verificationToken = crypto.randomBytes(32).toString('hex');
+        const verificationTokenHash = await this.hashToken(verificationToken);
+
+        // Update token
+        user.verificationTokenHash = verificationTokenHash;
+        user.verificationTokenExpires = Date.now() + 30 * 60 * 1000; // 30 minutes
+        await user.save();
+
+        // Send verification email
+        try {
+            await emailService.sendVerificationEmail(user.email, verificationToken);
+        } catch (error) {
+            console.error('Error sending verification email:', error);
+            throw new AppError('Failed to send verification email', 500);
+        }
+
+        return {
+            success: true,
+            message: 'Verification email sent successfully'
+        };
+    }
+
     async getMe(userId) {
         const user = await this.findById(userId);
         if (!user) {

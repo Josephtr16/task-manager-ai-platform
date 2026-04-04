@@ -57,8 +57,23 @@ const CalendarPage = () => {
   };
 
   const handleDateClick = (date) => {
+    if (isPastDate(date)) {
+      return;
+    }
     setSelectedDate(date);
     setShowCreateModal(true);
+  };
+
+  const startOfToday = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today;
+  };
+
+  const isPastDate = (date) => {
+    const normalized = new Date(date);
+    normalized.setHours(0, 0, 0, 0);
+    return normalized < startOfToday();
   };
 
   const getPriorityColor = (priority) => {
@@ -341,6 +356,12 @@ const CalendarPage = () => {
       boxShadow: theme.shadows.neumorphicInset, // Inset for today
       border: `1px solid ${theme.primary}20`,
     },
+    monthDayPast: {
+      backgroundColor: theme.bgElevated,
+      filter: 'grayscale(0.35)',
+      opacity: 0.75,
+      cursor: 'not-allowed',
+    },
     dayNumber: {
       display: 'inline-flex',
       alignItems: 'center',
@@ -377,6 +398,17 @@ const CalendarPage = () => {
       textOverflow: 'ellipsis',
       display: 'block',
     },
+    taskPillCompleted: {
+      backgroundColor: `${theme.success}20`,
+      borderLeft: `3px solid ${theme.success}`,
+    },
+    taskPillTextCompleted: {
+      color: theme.success,
+      fontWeight: '700',
+      textDecoration: 'line-through',
+      textDecorationThickness: '2px',
+      textDecorationColor: theme.success,
+    },
     moreTasksText: {
       fontSize: '11px',
       color: theme.textMuted,
@@ -406,6 +438,11 @@ const CalendarPage = () => {
     },
     weekDayToday: {
       boxShadow: theme.shadows.neumorphicInset,
+    },
+    weekDayPast: {
+      backgroundColor: theme.bgElevated,
+      opacity: 0.75,
+      cursor: 'not-allowed',
     },
     weekDayHeader: {
       padding: '12px 8px',
@@ -456,6 +493,13 @@ const CalendarPage = () => {
       fontWeight: '600',
       margin: '0 0 4px 0',
     },
+    weekTaskTitleCompleted: {
+      color: theme.success,
+      fontWeight: '700',
+      textDecoration: 'line-through',
+      textDecorationThickness: '2px',
+      textDecorationColor: theme.success,
+    },
     weekTaskDuration: {
       fontSize: '11px',
       color: theme.textMuted,
@@ -495,6 +539,10 @@ const CalendarPage = () => {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    weekAddButtonDisabled: {
+      cursor: 'not-allowed',
+      opacity: 0.45,
     },
     legend: {
       display: 'flex',
@@ -548,8 +596,16 @@ const CalendarPage = () => {
              box-shadow: ${theme.shadows.neumorphic} !important;
              z-index: 5;
            }
+           .calendar-day.disabled-day:hover {
+             background-color: ${theme.bgElevated} !important;
+             box-shadow: none !important;
+             z-index: 1;
+           }
            .calendar-day:hover .add-task-hint {
              opacity: 1 !important;
+           }
+           .calendar-day.disabled-day:hover .add-task-hint {
+             opacity: 0 !important;
            }
         `}</style>
 
@@ -625,6 +681,7 @@ const CalendarPage = () => {
               {getMonthDays().map(({ date, currentMonth }, index) => {
                 const dayTasks = getTasksForDate(date);
                 const isCurrentDay = isToday(date);
+                const isPastDay = isPastDate(date);
 
                 return (
                   <div
@@ -633,9 +690,10 @@ const CalendarPage = () => {
                       ...styles.monthDay,
                       ...(!currentMonth && styles.monthDayOtherMonth),
                       ...(isCurrentDay && styles.monthDayToday),
+                      ...(isPastDay && styles.monthDayPast),
                     }}
                     onClick={() => handleDateClick(date)}
-                    className="calendar-day"
+                    className={`calendar-day${isPastDay ? ' disabled-day' : ''}`}
                   >
                     <span style={{
                       ...styles.dayNumber,
@@ -651,8 +709,12 @@ const CalendarPage = () => {
                           key={task._id}
                           style={{
                             ...styles.taskPill,
-                            backgroundColor: getPriorityColor(task.priority) + '30',
-                            borderLeft: `3px solid ${getPriorityColor(task.priority)}`,
+                            ...(task.status === 'done'
+                              ? styles.taskPillCompleted
+                              : {
+                                  backgroundColor: getPriorityColor(task.priority) + '30',
+                                  borderLeft: `3px solid ${getPriorityColor(task.priority)}`,
+                                }),
                           }}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -661,7 +723,9 @@ const CalendarPage = () => {
                         >
                           <span style={{
                             ...styles.taskPillText,
-                            color: getPriorityColor(task.priority),
+                            ...(task.status === 'done'
+                              ? styles.taskPillTextCompleted
+                              : { color: getPriorityColor(task.priority) }),
                           }}>
                             {task.title}
                           </span>
@@ -688,6 +752,7 @@ const CalendarPage = () => {
               {getWeekDays().map((date, index) => {
                 const dayTasks = getTasksForDate(date);
                 const isCurrentDay = isToday(date);
+                const isPastDay = isPastDate(date);
 
                 return (
                   <div
@@ -695,9 +760,10 @@ const CalendarPage = () => {
                     style={{
                       ...styles.weekDay,
                       ...(isCurrentDay && styles.weekDayToday),
+                      ...(isPastDay && styles.weekDayPast),
                     }}
                     onClick={() => handleDateClick(date)}
-                    className="calendar-day"
+                    className={`calendar-day${isPastDay ? ' disabled-day' : ''}`}
                   >
                     {/* Day Header */}
                     <div style={styles.weekDayHeader}>
@@ -720,8 +786,15 @@ const CalendarPage = () => {
                             key={task._id}
                             style={{
                               ...styles.weekTaskCard,
-                              backgroundColor: getPriorityColor(task.priority) + '20',
-                              borderLeft: `3px solid ${getPriorityColor(task.priority)}`,
+                              ...(task.status === 'done'
+                                ? {
+                                    backgroundColor: `${theme.success}1A`,
+                                    borderLeft: `3px solid ${theme.success}`,
+                                  }
+                                : {
+                                    backgroundColor: getPriorityColor(task.priority) + '20',
+                                    borderLeft: `3px solid ${getPriorityColor(task.priority)}`,
+                                  }),
                             }}
                             onClick={(e) => {
                               e.stopPropagation();
@@ -730,7 +803,9 @@ const CalendarPage = () => {
                           >
                             <p style={{
                               ...styles.weekTaskTitle,
-                              color: getPriorityColor(task.priority),
+                              ...(task.status === 'done'
+                                ? styles.weekTaskTitleCompleted
+                                : { color: getPriorityColor(task.priority) }),
                             }}>
                               {task.title}
                             </p>
@@ -753,11 +828,15 @@ const CalendarPage = () => {
                       )}
 
                       <button
-                        style={styles.weekAddButton}
+                        style={{
+                          ...styles.weekAddButton,
+                          ...(isPastDay && styles.weekAddButtonDisabled),
+                        }}
                         onClick={(e) => {
                           e.stopPropagation();
                           handleDateClick(date);
                         }}
+                        disabled={isPastDay}
                       >
                         <FaPlus style={{ marginRight: '4px' }} /> Add task
                       </button>

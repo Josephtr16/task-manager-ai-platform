@@ -6,11 +6,12 @@ const sendResponse = require('../utils/ApiResponse');
 // @route   GET /api/tasks
 // @access  Private
 exports.getTasks = asyncHandler(async (req, res) => {
-  const tasks = await taskService.getTasks(req.user.id);
+  const { tasks, pagination } = await taskService.getTasks(req.user.id, req.query);
 
   sendResponse(res, 200, true, {
     count: tasks.length,
     tasks,
+    pagination,
   });
 });
 

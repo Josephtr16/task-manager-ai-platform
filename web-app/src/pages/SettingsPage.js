@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout/Layout';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { authAPI } from '../services/api';
 import { borderRadius } from '../theme';
 import { FaUser, FaPalette, FaBell, FaRobot, FaLock, FaMoon, FaSun, FaSave } from 'react-icons/fa';
 
@@ -10,23 +11,47 @@ const SettingsPage = () => {
   const { user } = useAuth();
   const { theme, isDarkMode, toggleTheme } = useTheme();
   const [activeTab, setActiveTab] = useState('profile');
+  const [saveState, setSaveState] = useState({ type: '', message: '' });
+  const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
-    username: user?.username || '',
+    name: user?.name || '',
     email: user?.email || '',
     theme: isDarkMode ? 'dark' : 'light',
-    notifications: true,
-    emailDigest: false,
+    workingHoursStart: user?.preferences?.workingHours?.start || '09:00',
+    workingHoursEnd: user?.preferences?.workingHours?.end || '17:00',
+    taskReminders: user?.preferences?.notifications?.taskReminders ?? true,
+    emailDigest: user?.preferences?.notifications?.dailySummary ?? true,
     aiSuggestions: true,
     autoPrioritize: true,
     dataSharing: false,
     language: 'en',
     timezone: 'UTC-5',
+    currentPassword: '',
+    newPassword: '',
   });
 
   // Sync formal state with global theme state
   useEffect(() => {
     setFormData(prev => ({ ...prev, theme: isDarkMode ? 'dark' : 'light' }));
   }, [isDarkMode]);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      name: user.name || '',
+      email: user.email || '',
+      workingHoursStart: user.preferences?.workingHours?.start || prev.workingHoursStart,
+      workingHoursEnd: user.preferences?.workingHours?.end || prev.workingHoursEnd,
+      taskReminders: user.preferences?.notifications?.taskReminders ?? prev.taskReminders,
+      emailDigest: user.preferences?.notifications?.dailySummary ?? prev.emailDigest,
+      aiSuggestions: user.preferences?.notifications?.aiSuggestions ?? prev.aiSuggestions,
+      theme: user.preferences?.theme || (isDarkMode ? 'dark' : 'light'),
+    }));
+  }, [user, isDarkMode]);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -42,12 +67,41 @@ const SettingsPage = () => {
     }
   };
 
-  const handleSave = () => {
-    // API call to save settings would go here
-    const btn = document.getElementById('save-btn');
-    if (btn) {
-      btn.innerText = 'Saved!';
-      setTimeout(() => btn.innerText = 'Save Changes', 2000);
+  const handleSave = async () => {
+    setIsSaving(true);
+    setSaveState({ type: '', message: '' });
+
+    try {
+      await authAPI.updatePreferences({
+        theme: formData.theme,
+        workingHours: {
+          start: formData.workingHoursStart,
+          end: formData.workingHoursEnd,
+        },
+        notifications: {
+          taskReminders: formData.taskReminders,
+          aiSuggestions: formData.aiSuggestions,
+          dailySummary: formData.emailDigest,
+        },
+        kanbanColumns: user?.preferences?.kanbanColumns,
+      });
+
+      const profilePayload = { name: formData.name };
+      if (formData.currentPassword || formData.newPassword) {
+        profilePayload.currentPassword = formData.currentPassword;
+        profilePayload.newPassword = formData.newPassword;
+      }
+
+      await authAPI.updateProfile(profilePayload);
+
+      setSaveState({ type: 'success', message: 'Settings saved successfully.' });
+    } catch (error) {
+      setSaveState({
+        type: 'error',
+        message: error.response?.data?.message || error.message || 'Failed to save settings.',
+      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -290,11 +344,11 @@ const SettingsPage = () => {
           <div style={styles.section}>
             <h2 style={styles.sectionTitle}>Profile Settings</h2>
             <div style={styles.formGroup}>
-              <label style={styles.label}>Username</label>
+              <label style={styles.label}>Name</label>
               <input
                 type="text"
-                name="username"
-                value={formData.username}
+                name="name"
+                value={formData.name}
                 onChange={handleInputChange}
                 style={styles.input}
               />
@@ -305,7 +359,7 @@ const SettingsPage = () => {
                 type="email"
                 name="email"
                 value={formData.email}
-                onChange={handleInputChange}
+                readOnly
                 style={styles.input}
               />
             </div>
@@ -316,6 +370,26 @@ const SettingsPage = () => {
                 rows="4"
                 placeholder="Tell us about yourself"
                 style={styles.textarea}
+              />
+            </div>
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Current Password</label>
+              <input
+                type="password"
+                name="currentPassword"
+                value={formData.currentPassword}
+                onChange={handleInputChange}
+                style={styles.input}
+              />
+            </div>
+            <div style={styles.formGroup}>
+              <label style={styles.label}>New Password</label>
+              <input
+                type="password"
+                name="newPassword"
+                value={formData.newPassword}
+                onChange={handleInputChange}
+                style={styles.input}
               />
             </div>
           </div>
@@ -351,6 +425,26 @@ const SettingsPage = () => {
                 </button>
               </div>
             </div>
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Working Hours Start</label>
+              <input
+                type="time"
+                name="workingHoursStart"
+                value={formData.workingHoursStart}
+                onChange={handleInputChange}
+                style={styles.input}
+              />
+            </div>
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Working Hours End</label>
+              <input
+                type="time"
+                name="workingHoursEnd"
+                value={formData.workingHoursEnd}
+                onChange={handleInputChange}
+                style={styles.input}
+              />
+            </div>
             <div style={styles.settingItem}>
               <div style={styles.settingInfo}>
                 <span style={styles.settingLabel}>Compact View</span>
@@ -381,8 +475,8 @@ const SettingsPage = () => {
               <label style={styles.toggleLabel}>
                 <input
                   type="checkbox"
-                  name="notifications"
-                  checked={formData.notifications}
+                  name="taskReminders"
+                  checked={formData.taskReminders}
                   onChange={handleInputChange}
                   style={styles.toggleInput}
                 />
@@ -538,12 +632,23 @@ const SettingsPage = () => {
             {renderContent()}
 
             <div style={styles.actions}>
+              {saveState.message ? (
+                <div style={{
+                  marginRight: '16px',
+                  alignSelf: 'center',
+                  color: saveState.type === 'success' ? theme.success : theme.error,
+                  fontWeight: '600',
+                }}>
+                  {saveState.message}
+                </div>
+              ) : null}
               <button
                 id="save-btn"
                 style={styles.saveButton}
                 onClick={handleSave}
+                disabled={isSaving}
               >
-                <FaSave style={{ marginRight: '8px' }} /> Save Changes
+                <FaSave style={{ marginRight: '8px' }} /> {isSaving ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </div>

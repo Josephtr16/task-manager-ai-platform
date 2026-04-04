@@ -46,7 +46,7 @@ const taskSchema = new mongoose.Schema({
     type: String,
     trim: true,
   }],
-  // Dependencies for Gantt Chart
+  // Task dependencies
   dependencies: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Task',
@@ -131,6 +131,49 @@ const taskSchema = new mongoose.Schema({
     type: Number, // in minutes
     default: null,
   },
+  scheduleStartAt: {
+    type: Date,
+    default: null,
+  },
+  scheduleEndAt: {
+    type: Date,
+    default: null,
+  },
+  scheduleDurationMinutes: {
+    type: Number,
+    default: null,
+  },
+  scheduleLocked: {
+    type: Boolean,
+    default: false,
+  },
+  scheduleSource: {
+    type: String,
+    enum: ['auto', 'manual'],
+    default: 'auto',
+  },
+  scheduleUpdatedAt: {
+    type: Date,
+    default: null,
+  },
+  aiAccuracy: {
+    predictedMinutes: {
+      type: Number,
+      default: null,
+    },
+    actualMinutes: {
+      type: Number,
+      default: null,
+    },
+    errorPercent: {
+      type: Number,
+      default: null,
+    },
+    recordedAt: {
+      type: Date,
+      default: null,
+    },
+  },
   kanbanColumn: {
     type: String,
     enum: ['todo', 'inProgress', 'review', 'done'],
@@ -142,5 +185,20 @@ const taskSchema = new mongoose.Schema({
   },
 });
 
+taskSchema.pre('save', function (next) {
+  if (this.timeTracking && Array.isArray(this.timeTracking.sessions)) {
+    this.timeTracking.totalTime = this.timeTracking.sessions.reduce((sum, s) => sum + (s.duration || 0), 0);
+  }
+
+  next();
+});
+
+// Optimizes task lookups and filtering by user, status, deadline, project, creation date, and category.
+taskSchema.index({ userId: 1 });
+taskSchema.index({ userId: 1, status: 1 });
+taskSchema.index({ userId: 1, deadline: 1 });
+taskSchema.index({ projectId: 1 });
+taskSchema.index({ userId: 1, createdAt: -1 });
+taskSchema.index({ userId: 1, category: 1 });
 
 module.exports = mongoose.model('Task', taskSchema);

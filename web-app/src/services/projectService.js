@@ -41,6 +41,36 @@ const getAISuggestions = async (projectData) => {
     return response.data;
 };
 
+// Share project with another user
+const shareProject = async (projectId, email) => {
+    const response = await api.post(`${API_URL}/${projectId}/share`, { email });
+    return response.data;
+};
+
+// Get pending invites for the current user
+const getPendingInvites = async () => {
+    const response = await api.get(`${API_URL}/invites`);
+    return response.data.projects;
+};
+
+// Accept or decline a project invite
+const respondToShareInvite = async (projectId, action) => {
+    const response = await api.post(`${API_URL}/${projectId}/respond-share`, { action });
+    return response.data;
+};
+
+// Remove collaborator from project (owner only)
+const removeSharedUser = async (projectId, userId) => {
+    const response = await api.delete(`${API_URL}/${projectId}/share/${userId}`);
+    return response.data;
+};
+
+// Update collaborator permission (owner only)
+const updateCollaboratorPermission = async (projectId, userId, permission) => {
+    const response = await api.patch(`${API_URL}/${projectId}/share/${userId}/permission`, { permission });
+    return response.data;
+};
+
 const projectService = {
     getProjects,
     getProject,
@@ -48,6 +78,11 @@ const projectService = {
     updateProject,
     deleteProject,
     getAISuggestions,
+    shareProject,
+    getPendingInvites,
+    respondToShareInvite,
+    removeSharedUser,
+    updateCollaboratorPermission,
 };
 
 export default projectService;

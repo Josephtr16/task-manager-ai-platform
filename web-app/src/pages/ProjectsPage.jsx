@@ -6,8 +6,9 @@ import { useTheme } from '../context/ThemeContext';
 import { borderRadius } from '../theme';
 import ProjectList from '../components/Projects/ProjectList';
 import CreateProjectModal from '../components/Projects/CreateProjectModal';
-import { FaPlus, FaSearch, FaTimes } from 'react-icons/fa';
+import { FaPlus, FaSearch, FaTimes, FaCheck, FaTimesCircle } from 'react-icons/fa';
 import CustomSelect from '../components/common/CustomSelect';
+import { ProjectCardSkeleton } from '../components/common/SkeletonLoader';
 
 const ProjectsPage = () => {
     const { theme } = useTheme();
@@ -18,6 +19,7 @@ const ProjectsPage = () => {
     const [statusFilter, setStatusFilter] = useState('all');
     const [categoryFilter, setCategoryFilter] = useState('all');
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [pendingInvites, setPendingInvites] = useState([]);
 
     useEffect(() => {
         loadProjects();
@@ -32,8 +34,12 @@ const ProjectsPage = () => {
     const loadProjects = async () => {
         try {
             setLoading(true);
-            const data = await projectService.getProjects(localStorage.getItem('token'));
-            setProjects(data);
+            const [projectsData, invitesData] = await Promise.all([
+                projectService.getProjects(localStorage.getItem('token')),
+                projectService.getPendingInvites(),
+            ]);
+            setProjects(projectsData);
+            setPendingInvites(invitesData || []);
         } catch (error) {
             console.error('Error loading projects:', error);
         } finally {
@@ -69,6 +75,15 @@ const ProjectsPage = () => {
             setShowCreateModal(false);
         } catch (error) {
             console.error('Error creating project:', error);
+        }
+    };
+
+    const handleRespondToInvite = async (projectId, action) => {
+        try {
+            await projectService.respondToShareInvite(projectId, action);
+            await loadProjects();
+        } catch (error) {
+            console.error(`Error trying to ${action} invite:`, error);
         }
     };
 
@@ -197,20 +212,74 @@ const ProjectsPage = () => {
             zIndex: 50,
             transition: 'all 0.3s ease',
         },
+        invitesSection: {
+            backgroundColor: theme.bgMain,
+            borderRadius: borderRadius.lg,
+            padding: '20px',
+            boxShadow: theme.shadows.neumorphic,
+            marginBottom: '24px',
+            border: `1px solid ${theme.border}`,
+        },
+        invitesTitle: {
+            margin: '0 0 12px 0',
+            fontSize: '18px',
+            fontWeight: '700',
+            color: theme.textPrimary,
+        },
+        inviteRow: {
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '12px',
+            padding: '10px 0',
+            borderTop: `1px solid ${theme.border}`,
+        },
+        inviteActions: {
+            display: 'flex',
+            gap: '8px',
+            flexShrink: 0,
+        },
+        inviteBtnAccept: {
+            border: 'none',
+            borderRadius: borderRadius.md,
+            padding: '8px 12px',
+            cursor: 'pointer',
+            color: '#fff',
+            backgroundColor: theme.success,
+            fontWeight: '600',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+        },
+        inviteBtnDecline: {
+            border: 'none',
+            borderRadius: borderRadius.md,
+            padding: '8px 12px',
+            cursor: 'pointer',
+            color: '#fff',
+            backgroundColor: theme.error,
+            fontWeight: '600',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+        },
     };
 
     if (loading) {
         return (
             <Layout>
-                <div style={styles.loading}>
-                    <style>{`
-                        @keyframes spin {
-                            0% { transform: rotate(0deg); }
-                            100% { transform: rotate(360deg); }
-                        }
-                    `}</style>
-                    <div style={styles.spinner} />
-                    <p>Loading projects...</p>
+                <div style={styles.container}>
+                    <div
+                        style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+                            gap: '24px',
+                        }}
+                    >
+                        {Array.from({ length: 4 }).map((_, index) => (
+                            <ProjectCardSkeleton key={index} />
+                        ))}
+                    </div>
                 </div>
             </Layout>
         );
@@ -296,6 +365,38 @@ const ProjectsPage = () => {
                         </div>
                     </div>
                 </div>
+
+                {pendingInvites.length > 0 && (
+                    <div style={styles.invitesSection}>
+                        <h3 style={styles.invitesTitle}>Pending Project Invites</h3>
+                        {pendingInvites.map((project) => (
+                            <div key={project._id} style={styles.inviteRow}>
+                                <div>
+                                    <strong>{project.title}</strong>
+                                    <div style={{ color: theme.textSecondary, fontSize: '13px', marginTop: '4px' }}>
+                                        Owner: {project.owner?.name || project.owner?.email || 'Unknown'}
+                                    </div>
+                                </div>
+                                <div style={styles.inviteActions}>
+                                    <button
+                                        type="button"
+                                        style={styles.inviteBtnAccept}
+                                        onClick={() => handleRespondToInvite(project._id, 'accept')}
+                                    >
+                                        <FaCheck /> Accept
+                                    </button>
+                                    <button
+                                        type="button"
+                                        style={styles.inviteBtnDecline}
+                                        onClick={() => handleRespondToInvite(project._id, 'decline')}
+                                    >
+                                        <FaTimesCircle /> Decline
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
 
                 <ProjectList 
                     projects={filteredProjects} 

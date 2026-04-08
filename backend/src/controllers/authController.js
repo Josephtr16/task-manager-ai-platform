@@ -2,7 +2,6 @@ const authService = require('../services/authService');
 const asyncHandler = require('../middleware/asyncHandler');
 const sendResponse = require('../utils/ApiResponse');
 const User = require('../models/User');
-const bcrypt = require('bcryptjs');
 const AppError = require('../utils/AppError');
 
 // @desc    Register new user
@@ -36,6 +35,34 @@ exports.resendVerificationEmail = asyncHandler(async (req, res) => {
   const result = await authService.resendVerificationEmail(email);
 
   sendResponse(res, 200, true, result, 'Verification email sent successfully');
+});
+
+// @desc    Forgot password
+// @route   POST /api/auth/forgot-password
+// @access  Public
+exports.forgotPassword = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    throw new AppError('Email is required', 400);
+  }
+
+  const result = await authService.forgotPassword(email);
+  sendResponse(res, 200, true, result, result.message);
+});
+
+// @desc    Reset password
+// @route   POST /api/auth/reset-password
+// @access  Public
+exports.resetPassword = asyncHandler(async (req, res) => {
+  const { email, token, newPassword } = req.body;
+
+  if (!email || !token || !newPassword) {
+    throw new AppError('Email, token and newPassword are required', 400);
+  }
+
+  const result = await authService.resetPassword(email, token, newPassword);
+  sendResponse(res, 200, true, result, result.message);
 });
 
 // @desc    Login user
@@ -105,7 +132,8 @@ exports.updateProfile = asyncHandler(async (req, res) => {
       throw new AppError('Current password is incorrect', 401);
     }
 
-    user.password = await bcrypt.hash(newPassword, 10);
+    user.password = newPassword;
+    user.passwordChangedAt = Date.now() - 1000; // 1s buffer for token timing
   }
 
   await user.save();

@@ -1,6 +1,5 @@
 // src/pages/InsightsPage.js
 import React, { useState, useEffect } from 'react';
-import Layout from '../components/Layout/Layout';
 import { analyticsAPI } from '../services/api';
 import { useTheme } from '../context/ThemeContext';
 import { borderRadius } from '../theme';
@@ -8,7 +7,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, Legend,
 } from 'recharts';
-import { FaChartLine, FaCalendarAlt, FaClock, FaBullseye, FaSync, FaChartPie, FaTrophy } from 'react-icons/fa';
+import { FaChartLine, FaCalendarAlt, FaClock, FaBullseye, FaSync, FaChartPie, FaTrophy, FaRobot } from 'react-icons/fa';
 
 const InsightsPage = () => {
   const { theme } = useTheme();
@@ -21,6 +20,7 @@ const InsightsPage = () => {
   const [loading, setLoading] = useState(true);
   const [trendDays, setTrendDays] = useState(7);
   const [loadError, setLoadError] = useState('');
+  const isFirstMountRef = React.useRef(true);
 
   const loadAnalytics = React.useCallback(async () => {
     setLoading(true);
@@ -399,17 +399,17 @@ const InsightsPage = () => {
 
   if (loading) {
     return (
-      <Layout>
+      <>
         <div style={styles.loading}>
           <div style={styles.spinner} />
           <p>Loading AI insights...</p>
         </div>
-      </Layout>
+      </>
     );
   }
 
   return (
-    <Layout>
+    <>
       <div style={styles.container}>
         <style>{`
           @keyframes spin {
@@ -422,7 +422,7 @@ const InsightsPage = () => {
         <div style={styles.header}>
           <div>
             <h1 style={styles.title}>
-              <span style={{ fontSize: '28px', marginRight: '12px' }}>🤖</span>
+              <FaRobot style={{ marginRight: '12px' }} />
               AI Insights
             </h1>
             <p style={styles.subtitle}>
@@ -742,7 +742,7 @@ const InsightsPage = () => {
           </div>
         </div>
       </div>
-    </Layout>
+    </>
   );
 };
 

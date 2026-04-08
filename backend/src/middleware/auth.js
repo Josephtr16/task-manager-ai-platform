@@ -20,14 +20,26 @@ exports.protect = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = await User.findById(decoded.id);
-    
-    if (!req.user) {
+    const user = await User.findById(decoded.id).select('+passwordChangedAt');
+
+    if (!user) {
       return res.status(401).json({
         success: false,
         message: 'User not found',
       });
     }
+
+    if (user.passwordChangedAt) {
+      const changedTimestamp = parseInt(user.passwordChangedAt.getTime() / 1000, 10);
+      if (decoded.iat < changedTimestamp) {
+        return res.status(401).json({
+          success: false,
+          message: 'Password recently changed. Please log in again.',
+        });
+      }
+    }
+
+    req.user = user;
     
     next();
   } catch (error) {

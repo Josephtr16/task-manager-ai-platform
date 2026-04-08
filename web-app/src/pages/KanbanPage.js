@@ -1,6 +1,5 @@
 // src/pages/KanbanPage.js
 import React, { useState, useEffect } from 'react';
-import Layout from '../components/Layout/Layout';
 import { tasksAPI } from '../services/api';
 import { useTheme } from '../context/ThemeContext';
 import { borderRadius } from '../theme';
@@ -18,6 +17,7 @@ const KanbanPage = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [draggedTask, setDraggedTask] = useState(null);
   const [dragOverColumn, setDragOverColumn] = useState(null);
+  const isFirstMountRef = React.useRef(true);
 
   const COLUMNS = [
     { id: 'todo', title: 'To Do', icon: <FaClipboardList />, color: theme.textMuted },
@@ -27,13 +27,30 @@ const KanbanPage = () => {
   ];
 
   useEffect(() => {
+    // Only show loading on first mount in entire app, not on page re-entries
+    if (!isFirstMountRef.current) {
+      setLoading(false);
+    }
+    isFirstMountRef.current = false;
     loadTasks();
   }, []);
 
   const loadTasks = async () => {
     try {
-      const response = await tasksAPI.getTasks();
-      setTasks(response.data.tasks);
+      setLoading(true);
+      let allTasks = [];
+      let page = 1;
+      let hasMore = true;
+
+      while (hasMore) {
+        const response = await tasksAPI.getTasks({ page, limit: 100 });
+        const { tasks, pagination } = response.data;
+        allTasks = [...allTasks, ...tasks];
+        hasMore = pagination?.hasMore ?? false;
+        page += 1;
+      }
+
+      setTasks(allTasks);
     } catch (error) {
       console.error('Error loading tasks:', error);
     } finally {
@@ -71,8 +88,13 @@ const KanbanPage = () => {
     }
   };
 
-  const formatDeadline = (deadline) => {
+  const formatDeadline = (deadline, status) => {
     if (!deadline) return null;
+
+    if (status === 'done') {
+      return { text: 'Completed', color: theme.success };
+    }
+
     const date = new Date(deadline);
     const now = new Date();
     const diff = Math.ceil((date - now) / (1000 * 60 * 60 * 24));
@@ -446,17 +468,17 @@ const KanbanPage = () => {
 
   if (loading) {
     return (
-      <Layout>
+      <>
         <div style={styles.loading}>
           <div style={styles.spinner} />
           <p>Loading Kanban board...</p>
         </div>
-      </Layout>
+      </>
     );
   }
 
   return (
-    <Layout>
+    <>
       <div style={styles.container}>
         <style>{`
           @keyframes spin {
@@ -597,7 +619,7 @@ const KanbanPage = () => {
           <FaPlus />
         </button>
       </div>
-    </Layout>
+    </>
   );
 };
 
@@ -612,7 +634,7 @@ const KanbanCard = ({
   isDragging,
   styles, // Passed from parent styles
 }) => {
-  const deadline = formatDeadline(task.deadline);
+  const deadline = formatDeadline(task.deadline, task.status);
   const completedSubtasks = task.subtasks?.filter(s => s.completed).length || 0;
   const totalSubtasks = task.subtasks?.length || 0;
   const subtaskPercentage = totalSubtasks > 0

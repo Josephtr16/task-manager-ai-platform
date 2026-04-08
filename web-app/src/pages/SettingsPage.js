@@ -1,6 +1,5 @@
 // src/pages/SettingsPage.js
 import React, { useState, useEffect } from 'react';
-import Layout from '../components/Layout/Layout';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { authAPI } from '../services/api';
@@ -13,6 +12,7 @@ const SettingsPage = () => {
   const [activeTab, setActiveTab] = useState('profile');
   const [saveState, setSaveState] = useState({ type: '', message: '' });
   const [isSaving, setIsSaving] = useState(false);
+  const [themeTouched, setThemeTouched] = useState(false);
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || '',
@@ -30,7 +30,7 @@ const SettingsPage = () => {
     newPassword: '',
   });
 
-  // Sync formal state with global theme state
+  // Keep the form in sync with the current app theme.
   useEffect(() => {
     setFormData(prev => ({ ...prev, theme: isDarkMode ? 'dark' : 'light' }));
   }, [isDarkMode]);
@@ -62,9 +62,11 @@ const SettingsPage = () => {
   };
 
   const handleThemeChange = (newTheme) => {
-    if ((newTheme === 'dark' && !isDarkMode) || (newTheme === 'light' && isDarkMode)) {
-      toggleTheme();
-    }
+    setThemeTouched(true);
+    setFormData(prev => ({
+      ...prev,
+      theme: newTheme,
+    }));
   };
 
   const handleSave = async () => {
@@ -94,7 +96,22 @@ const SettingsPage = () => {
 
       await authAPI.updateProfile(profilePayload);
 
-      setSaveState({ type: 'success', message: 'Settings saved successfully.' });
+      if (themeTouched && ((formData.theme === 'dark') !== isDarkMode)) {
+        toggleTheme();
+      }
+
+      const passwordChanged = Boolean(formData.currentPassword || formData.newPassword);
+      const message = passwordChanged
+        ? 'Password changed successfully.'
+        : 'Settings saved successfully.';
+
+      setSaveState({ type: 'success', message });
+      setThemeTouched(false);
+      setFormData(prev => ({
+        ...prev,
+        currentPassword: '',
+        newPassword: '',
+      }));
     } catch (error) {
       setSaveState({
         type: 'error',
@@ -578,7 +595,7 @@ const SettingsPage = () => {
   };
 
   return (
-    <Layout>
+    <>
       <div style={styles.container}>
         <style>{`
           input:checked + span {
@@ -654,7 +671,7 @@ const SettingsPage = () => {
           </div>
         </div>
       </div>
-    </Layout>
+    </>
   );
 };
 

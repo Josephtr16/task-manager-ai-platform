@@ -18,11 +18,19 @@ const proxyEndpoint = (endpoint) => async (req, res) => {
         headers: {
           'Content-Type': 'application/json',
         },
+        timeout: 30000,
       }
     );
 
     return res.status(response.status).json(response.data);
   } catch (error) {
+    if (error.code === 'ECONNABORTED') {
+      return res.status(504).json({
+        success: false,
+        message: 'AI service timed out. Please try again.',
+      });
+    }
+
     if (error.response) {
       return res.status(error.response.status).json(error.response.data);
     }
@@ -40,7 +48,10 @@ const enhanceProject = async (req, res) => {
     const response = await axios.post(
       `${AI_SERVICE_BASE_URL}/ai/enhance-project`,
       { name, description },
-      { headers: { 'Content-Type': 'application/json' } }
+      {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 30000,
+      }
     );
     const data = response.data || {};
     return res.status(200).json({
@@ -49,6 +60,13 @@ const enhanceProject = async (req, res) => {
       category: data.category || 'Work',
     });
   } catch (error) {
+    if (error.code === 'ECONNABORTED') {
+      return res.status(504).json({
+        success: false,
+        message: 'AI service timed out. Please try again.',
+      });
+    }
+
     if (error.response) {
       return res.status(error.response.status).json(error.response.data);
     }
@@ -68,6 +86,7 @@ const prioritizeTasks = async (req, res) => {
         headers: {
           'Content-Type': 'application/json',
         },
+        timeout: 30000,
       }
     );
 
@@ -91,6 +110,13 @@ const prioritizeTasks = async (req, res) => {
 
     return res.status(response.status).json(response.data);
   } catch (error) {
+    if (error.code === 'ECONNABORTED') {
+      return res.status(504).json({
+        success: false,
+        message: 'AI service timed out. Please try again.',
+      });
+    }
+
     if (error.response) {
       return res.status(error.response.status).json(error.response.data);
     }
@@ -159,6 +185,7 @@ const predictTime = async (req, res) => {
         headers: {
           'Content-Type': 'application/json',
         },
+        timeout: 30000,
       }
     );
 
@@ -179,6 +206,13 @@ const predictTime = async (req, res) => {
 
     return res.status(response.status).json(response.data);
   } catch (error) {
+    if (error.code === 'ECONNABORTED') {
+      return res.status(504).json({
+        success: false,
+        message: 'AI service timed out. Please try again.',
+      });
+    }
+
     if (error.response) {
       return res.status(error.response.status).json(error.response.data);
     }

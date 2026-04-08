@@ -3,7 +3,7 @@ import React from 'react';
 import { useTheme } from '../../context/ThemeContext';
 import { borderRadius } from '../../theme';
 
-const StatsCard = ({ icon, label, value, subtitle, trend, color }) => {
+const StatsCard = ({ icon, label, value, subtitle, trend, color, customContent = null }) => {
   const { theme } = useTheme();
 
   const styles = {
@@ -33,7 +33,7 @@ const StatsCard = ({ icon, label, value, subtitle, trend, color }) => {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      color: theme.primary,
+      color: color || theme.primary,
       fontSize: '16px',
     },
     label: {
@@ -82,6 +82,9 @@ const StatsCard = ({ icon, label, value, subtitle, trend, color }) => {
       transition: 'width 1s cubic-bezier(0.4, 0, 0.2, 1)',
       boxShadow: '0 0 8px rgba(0,0,0,0.3)', // Glow effect
     },
+    customContent: {
+      marginTop: '4px',
+    },
   };
 
   return (
@@ -97,22 +100,28 @@ const StatsCard = ({ icon, label, value, subtitle, trend, color }) => {
         <span style={styles.iconChip}>{icon}</span>
       </div>
 
-      <div style={styles.valueContainer}>
-        <h2 style={styles.value}>{value}</h2>
-        {trend && (
-          <span style={{ ...styles.trend, color: trend > 0 ? theme.success : theme.error }}>
-            {trend > 0 ? '↗' : '↘'}
-          </span>
-        )}
-      </div>
+      {customContent ? (
+        <div style={styles.customContent}>{customContent}</div>
+      ) : (
+        <>
+          <div style={styles.valueContainer}>
+            <h2 style={styles.value}>{value}</h2>
+            {trend && (
+              <span style={{ ...styles.trend, color: trend > 0 ? theme.success : theme.error }}>
+                {trend > 0 ? '↗' : '↘'}
+              </span>
+            )}
+          </div>
 
-      {subtitle && <p style={styles.subtitle}>{subtitle}</p>}
+          {subtitle && <p style={styles.subtitle}>{subtitle}</p>}
 
-      <div style={styles.progressContainer}>
-        <div style={{ ...styles.progressBar, backgroundColor: color + '20' }}>
-          <div style={{ ...styles.progress, backgroundColor: color, width: `${Math.min(value, 100)}%` }} />
-        </div>
-      </div>
+          <div style={styles.progressContainer}>
+            <div style={{ ...styles.progressBar, backgroundColor: color + '20' }}>
+              <div style={{ ...styles.progress, backgroundColor: color, width: `${Math.min(value, 100)}%` }} />
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };

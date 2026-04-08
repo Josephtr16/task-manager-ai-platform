@@ -1,6 +1,5 @@
 // src/pages/CalendarPage.js
 import React, { useState, useEffect } from 'react';
-import Layout from '../components/Layout/Layout';
 import { tasksAPI } from '../services/api';
 import { useTheme } from '../context/ThemeContext';
 import { borderRadius } from '../theme';
@@ -20,8 +19,14 @@ const CalendarPage = () => {
   // eslint-disable-next-line no-unused-vars
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTask, setSelectedTask] = useState(null);
+  const isFirstMountRef = React.useRef(true);
 
   useEffect(() => {
+    // Only show loading on first mount in entire app, not on page re-entries
+    if (!isFirstMountRef.current) {
+      setLoading(false);
+    }
+    isFirstMountRef.current = false;
     loadTasks();
   }, []);
 
@@ -574,17 +579,17 @@ const CalendarPage = () => {
 
   if (loading) {
     return (
-      <Layout>
+      <>
         <div style={styles.loading}>
           <div style={styles.spinner} />
           <p>Loading calendar...</p>
         </div>
-      </Layout>
+      </>
     );
   }
 
   return (
-    <Layout>
+    <>
       <div style={styles.container}>
         <style>{`
           @keyframes spin {
@@ -885,7 +890,7 @@ const CalendarPage = () => {
           onTaskDeleted={handleTaskDeleted}
         />
       </div>
-    </Layout>
+    </>
   );
 };
 

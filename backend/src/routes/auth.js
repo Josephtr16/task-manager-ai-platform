@@ -1,6 +1,16 @@
 const express = require('express');
 const router = express.Router();
-const { register, login, getMe, verifyEmail, updatePreferences, updateProfile, resendVerificationEmail } = require('../controllers/authController');
+const {
+	register,
+	login,
+	getMe,
+	verifyEmail,
+	updatePreferences,
+	updateProfile,
+	resendVerificationEmail,
+	forgotPassword,
+	resetPassword,
+} = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
 const { authLimiter } = require('../middleware/rateLimiter');
 const validate = require('../middleware/validate');
@@ -10,6 +20,8 @@ const { updatePreferencesSchema, updateProfileSchema } = require('../validation/
 router.post('/register', authLimiter, validate(registerSchema), register);
 router.post('/verify-email', verifyEmail);
 router.post('/resend-verification', resendVerificationEmail);
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password', resetPassword);
 router.post('/login', authLimiter, validate(loginSchema), login);
 router.get('/me', protect, getMe);
 router.patch('/preferences', protect, validate(updatePreferencesSchema), updatePreferences);

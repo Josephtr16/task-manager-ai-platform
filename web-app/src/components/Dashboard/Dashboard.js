@@ -1,5 +1,5 @@
 // src/components/Dashboard/Dashboard.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { tasksAPI } from '../../services/api';
@@ -9,27 +9,54 @@ import UpcomingTasks from './UpcomingTasks';
 import QuickStats from './QuickStats';
 import CreateTaskModal from '../Tasks/CreateTaskModal';
 import TaskDetailModal from '../Tasks/TaskDetailModal';
-import Layout from '../Layout/Layout';
 import { StatsCardSkeleton } from '../common/SkeletonLoader';
-import { FaChartLine, FaCheckCircle, FaClock, FaFireAlt } from 'react-icons/fa';
+import { FaChartLine, FaCheckCircle, FaCalendarAlt, FaChartPie } from 'react-icons/fa';
+
+const DASHBOARD_CACHE_KEY = 'taskflow_dashboard_cache';
+
+const readDashboardCache = () => {
+  try {
+    const cached = sessionStorage.getItem(DASHBOARD_CACHE_KEY);
+    return cached ? JSON.parse(cached) : null;
+  } catch {
+    return null;
+  }
+};
+
+const writeDashboardCache = (payload) => {
+  try {
+    sessionStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify(payload));
+  } catch {
+    // Ignore storage errors.
+  }
+};
 
 const Dashboard = () => {
+  const cachedDashboardState = readDashboardCache();
   const { user } = useAuth();
   const { theme } = useTheme();
-  const [tasks, setTasks] = useState([]);
-  const [stats, setStats] = useState(null);
-  const [upcomingTasks, setUpcomingTasks] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [tasks, setTasks] = useState(cachedDashboardState?.tasks || []);
+  const [stats, setStats] = useState(cachedDashboardState?.stats || null);
+  const [upcomingTasks, setUpcomingTasks] = useState(cachedDashboardState?.upcomingTasks || []);
+  const [loading, setLoading] = useState(!cachedDashboardState);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
 
   useEffect(() => {
+    if (cachedDashboardState) {
+      setLoading(false);
+    }
     loadDashboardData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadDashboardData = async () => {
     try {
+      if (!cachedDashboardState) {
+        setLoading(true);
+      }
+
       const [tasksRes, statsRes, upcomingRes] = await Promise.all([
         tasksAPI.getTasks(),
         tasksAPI.getStatistics(),
@@ -38,6 +65,11 @@ const Dashboard = () => {
       setTasks(tasksRes.data.tasks);
       setStats(statsRes.data.stats);
       setUpcomingTasks(upcomingRes.data.tasks);
+      writeDashboardCache({
+        tasks: tasksRes.data.tasks,
+        stats: statsRes.data.stats,
+        upcomingTasks: upcomingRes.data.tasks,
+      });
     } catch (error) {
       console.error('Error loading dashboard:', error);
     } finally {
@@ -85,6 +117,60 @@ const Dashboard = () => {
     setSelectedTask(null);
     loadDashboardData();
   };
+
+  const busiestDayData = useMemo(() => {
+    const labels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const counts = Array(7).fill(0);
+
+    (tasks || []).forEach((task) => {
+      if (task.status !== 'done' || !task.completedAt) return;
+      const completedDate = new Date(task.completedAt);
+      if (!Number.isNaN(completedDate.getTime())) {
+        counts[completedDate.getDay()] += 1;
+      }
+    });
+
+    const maxCount = Math.max(...counts, 0);
+    const busiestIndex = counts.findIndex((count) => count === maxCount);
+
+    if (maxCount === 0 || busiestIndex < 0) {
+      return {
+        labels,
+        counts,
+        maxCount: 1,
+        busiestLabel: 'No data',
+        busiestCount: 0,
+      };
+    }
+
+    return {
+      labels,
+      counts,
+      maxCount,
+      busiestLabel: labels[busiestIndex],
+      busiestCount: maxCount,
+    };
+  }, [tasks]);
+
+  const categoryBreakdownData = useMemo(() => {
+    const activeTasks = (tasks || []).filter((task) => task.status !== 'done');
+    const categoryCounts = activeTasks.reduce((acc, task) => {
+      const category = (task.category || 'Other').trim() || 'Other';
+      acc[category] = (acc[category] || 0) + 1;
+      return acc;
+    }, {});
+
+    const entries = Object.entries(categoryCounts)
+      .map(([category, count]) => ({ category, count }))
+      .sort((a, b) => b.count - a.count);
+
+    const total = entries.reduce((sum, item) => sum + item.count, 0);
+
+    return {
+      entries,
+      total,
+    };
+  }, [tasks]);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -176,7 +262,7 @@ const Dashboard = () => {
 
   if (loading) {
     return (
-      <Layout>
+      <>
         <div style={styles.container}>
           <div style={styles.statsGrid}>
             {Array.from({ length: 4 }).map((_, index) => (
@@ -184,16 +270,25 @@ const Dashboard = () => {
             ))}
           </div>
         </div>
-      </Layout>
+      </>
     );
   }
 
   return (
-    <Layout>
+    <>
       <style>{`
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+        }
+        
+        .dashboard-container {
+          animation: fadeIn 0.2s ease-in;
+        }
+        
+        @keyframes fadeIn {
+          from { opacity: 0.95; }
+          to { opacity: 1; }
         }
         
         .fab:hover {
@@ -207,7 +302,7 @@ const Dashboard = () => {
             }
         }
       `}</style>
-      <div style={styles.container}>
+      <div style={styles.container} className="dashboard-container">
         {/* Greeting */}
         <div style={styles.greeting}>
           <h1 style={styles.greetingTitle}>
@@ -224,7 +319,7 @@ const Dashboard = () => {
             icon={<FaChartLine />}
             label="Productivity Score"
             value={stats?.productivityScore || 0}
-            color={theme.primary}
+            color={theme.info}
           />
           <StatsCard
             icon={<FaCheckCircle />}
@@ -233,18 +328,139 @@ const Dashboard = () => {
             color={theme.success}
           />
           <StatsCard
-            icon={<FaClock />}
-            label="Focus Time"
-            value={`${stats?.focusTime || 0}m`}
-            subtitle="Today's focused work"
+            icon={<FaCalendarAlt />}
+            label="Busiest Day"
             color={theme.warning}
+            customContent={(
+              <>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '8px' }}>
+                  <h2 style={{
+                    fontSize: '36px',
+                    fontWeight: '800',
+                    color: theme.textPrimary,
+                    margin: 0,
+                    textShadow: theme.type === 'dark' ? '2px 2px 4px rgba(0,0,0,0.3)' : 'none',
+                  }}>
+                    {busiestDayData.busiestLabel}
+                  </h2>
+                  <span style={{ fontSize: '13px', color: theme.textMuted }}>
+                    {busiestDayData.busiestCount} completed
+                  </span>
+                </div>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
+                  gap: '6px',
+                  alignItems: 'end',
+                  height: '44px',
+                  marginBottom: '8px',
+                }}>
+                  {busiestDayData.counts.map((count, index) => {
+                    const height = Math.max(6, Math.round((count / busiestDayData.maxCount) * 100));
+                    return (
+                      <div
+                        key={busiestDayData.labels[index]}
+                        style={{
+                          height: `${height}%`,
+                          borderRadius: '4px',
+                          backgroundColor: count > 0 ? theme.warning : `${theme.warning}25`,
+                          boxShadow: count > 0 ? `0 0 8px ${theme.warning}40` : 'none',
+                        }}
+                        title={`${busiestDayData.labels[index]}: ${count}`}
+                      />
+                    );
+                  })}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: '6px' }}>
+                  {busiestDayData.labels.map((label) => (
+                    <span
+                      key={label}
+                      style={{ fontSize: '11px', textAlign: 'center', color: theme.textMuted }}
+                    >
+                      {label}
+                    </span>
+                  ))}
+                </div>
+              </>
+            )}
           />
           <StatsCard
-            icon={<FaFireAlt />}
-            label="Streak"
-            value={`${stats?.streak || 0} days`}
-            subtitle="Keep it going"
+            icon={<FaChartPie />}
+            label="Category Breakdown"
             color={theme.error}
+            customContent={(
+              <>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '8px' }}>
+                  <h2 style={{
+                    fontSize: '36px',
+                    fontWeight: '800',
+                    color: theme.textPrimary,
+                    margin: 0,
+                    textShadow: theme.type === 'dark' ? '2px 2px 4px rgba(0,0,0,0.3)' : 'none',
+                  }}>
+                    {categoryBreakdownData.total}
+                  </h2>
+                  <span style={{ fontSize: '13px', color: theme.textMuted }}>
+                    active tasks
+                  </span>
+                </div>
+                <div style={{
+                  padding: '2px',
+                  borderRadius: '4px',
+                  backgroundColor: theme.bgMain,
+                  boxShadow: theme.shadows.neumorphicInset,
+                  marginBottom: '10px',
+                }}>
+                  <div style={{
+                    height: '8px',
+                    borderRadius: '3px',
+                    overflow: 'hidden',
+                    display: 'flex',
+                    backgroundColor: `${theme.primary}20`,
+                  }}>
+                    {categoryBreakdownData.total === 0 ? (
+                      <div style={{ width: '100%', backgroundColor: `${theme.textMuted}30` }} />
+                    ) : (
+                      categoryBreakdownData.entries.map((item, index) => {
+                        const color = theme.error;
+                        const width = (item.count / categoryBreakdownData.total) * 100;
+                        return (
+                          <div
+                            key={item.category}
+                            style={{ width: `${width}%`, backgroundColor: color }}
+                            title={`${item.category}: ${item.count}`}
+                          />
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 10px' }}>
+                  {(categoryBreakdownData.entries.slice(0, 3)).map((item, index) => {
+                    const color = theme.error;
+                    return (
+                      <div key={item.category} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{
+                          width: '8px',
+                          height: '8px',
+                          borderRadius: '999px',
+                          backgroundColor: color,
+                          boxShadow: `0 0 6px ${color}60`,
+                        }} />
+                        <span style={{ fontSize: '12px', color: theme.textSecondary }}>
+                          {item.category} ({item.count})
+                        </span>
+                      </div>
+                    );
+                  })}
+                  {categoryBreakdownData.entries.length === 0 && (
+                    <span style={{ fontSize: '12px', color: theme.textMuted }}>
+                      No active tasks
+                    </span>
+                  )}
+                </div>
+              </>
+            )}
           />
         </div>
 
@@ -255,6 +471,8 @@ const Dashboard = () => {
               tasks={tasks}
               onTaskClick={handleTaskClick}
               onToggleTask={handleToggleTaskFromRecommendations}
+              onTaskDeleted={handleTaskDeleted}
+              onTaskUpdated={handleTaskUpdated}
             />
           </div>
           <div style={styles.rightSidebar}>
@@ -293,7 +511,7 @@ const Dashboard = () => {
           onTaskDeleted={handleTaskDeleted}
         />
       </div>
-    </Layout>
+    </>
   );
 };
 

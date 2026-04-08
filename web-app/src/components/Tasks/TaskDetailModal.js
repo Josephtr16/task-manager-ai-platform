@@ -997,19 +997,27 @@ const TaskDetailModal = ({
 
         {/* Estimated Duration */}
         <div style={styles.section}>
-          <h3 style={styles.sectionTitle}><FaClock style={{ fontSize: '16px' }} /> Estimated Duration (minutes)</h3>
+          <h3 style={styles.sectionTitle}><FaClock style={{ fontSize: '16px' }} /> Estimated Duration</h3>
           {isEditing ? (
-            <input
-              type="number"
-              name="estimatedDuration"
-              value={formData.estimatedDuration || 60}
-              onChange={handleChange}
-              style={styles.input}
-              min="1"
-            />
+            <div>
+              <input
+                type="number"
+                name="estimatedDuration"
+                value={formData.estimatedDuration || 60}
+                onChange={handleChange}
+                style={styles.input}
+                min="1"
+              />
+              <p style={{ fontSize: '12px', color: theme.textMuted, marginTop: '6px' }}>in minutes</p>
+            </div>
           ) : (
             <p style={styles.description}>
-              {formData.estimatedDuration || 60} minutes
+              {(() => {
+                const mins = Number(formData.estimatedDuration) || 60;
+                if (mins < 60) return `${mins}m`;
+                const hours = mins / 60;
+                return Number.isInteger(hours) ? `${hours}h` : `${hours.toFixed(1)}h`;
+              })()}
             </p>
           )}
         </div>

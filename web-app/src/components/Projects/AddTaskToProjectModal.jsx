@@ -446,16 +446,19 @@ const AddTaskToProjectModal = ({ isOpen, onClose, onTaskCreated, projectId }) =>
                     </div>
 
                     <div style={styles.formGroup}>
-                        <label style={styles.label}><FaClock /> Estimated Duration (minutes)</label>
-                        <input
-                            type="number"
-                            name="estimatedDuration"
-                            value={formData.estimatedDuration}
-                            onChange={handleInputChange}
-                            placeholder="e.g., 60"
-                            style={styles.input}
-                            min="1"
-                        />
+                        <label style={styles.label}><FaClock /> Estimated Duration</label>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <input
+                                type="number"
+                                name="estimatedDuration"
+                                value={formData.estimatedDuration}
+                                onChange={handleInputChange}
+                                placeholder="e.g., 60"
+                                style={{ ...styles.input, flex: 1 }}
+                                min="1"
+                            />
+                            <span style={{ fontSize: '14px', fontWeight: '600', color: theme.textMuted, whiteSpace: 'nowrap' }}>minutes</span>
+                        </div>
                     </div>
 
                     <div style={styles.formGroup}>

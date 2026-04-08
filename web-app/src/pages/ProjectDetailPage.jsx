@@ -11,6 +11,7 @@ import { FaArrowLeft, FaCalendarAlt, FaTrash, FaPlus, FaCheck, FaClock, FaFlag, 
 import AddTaskToProjectModal from '../components/Projects/AddTaskToProjectModal';
 import TaskDetailModal from '../components/Tasks/TaskDetailModal';
 import AIProjectBreakdownModal from '../components/Projects/AIProjectBreakdownModal';
+import CustomPermissionSelect from '../components/common/CustomPermissionSelect';
 
 const ProjectDetailPage = () => {
     const { id } = useParams();
@@ -630,49 +631,72 @@ const ProjectDetailPage = () => {
             whiteSpace: 'nowrap',
         },
         sharedInfo: {
-            fontSize: '13px',
-            color: theme.textMuted,
-            marginTop: '8px',
+            fontSize: '14px',
+            fontWeight: '600',
+            color: theme.textPrimary,
+            marginTop: '16px',
+            marginBottom: '12px',
+            padding: '8px 0',
+            borderBottom: `1px solid ${theme.border}`,
         },
         collaboratorsList: {
             display: 'flex',
             flexDirection: 'column',
-            gap: '8px',
+            gap: '10px',
             marginTop: '12px',
         },
         collaboratorRow: {
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            gap: '10px',
-            padding: '8px 10px',
-            borderRadius: borderRadius.md,
+            gap: '12px',
+            padding: '14px 16px',
+            borderRadius: borderRadius.lg,
             backgroundColor: theme.bgElevated || theme.bgMain,
             border: `1px solid ${theme.border}`,
+            boxShadow: theme.type === 'dark' 
+                ? '0 2px 4px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.05)' 
+                : '0 2px 4px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.5)',
+            transition: 'all 0.2s ease',
+            cursor: 'default',
         },
         collaboratorActions: {
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
+            gap: '10px',
+            marginLeft: 'auto',
         },
         permissionSelect: {
-            backgroundColor: theme.bgMain,
-            border: `1px solid ${theme.border}`,
-            borderRadius: borderRadius.md,
+            backgroundColor: theme.bgElevated || theme.bgMain,
+            border: `1.5px solid ${theme.border}`,
+            borderRadius: borderRadius.lg,
             color: theme.textPrimary,
-            fontSize: '12px',
+            fontSize: '14px',
             fontWeight: '600',
-            padding: '6px 8px',
+            padding: '10px 14px',
+            cursor: 'pointer',
+            outline: 'none',
+            transition: 'all 0.2s ease',
+            boxShadow: theme.type === 'dark' 
+                ? '0 2px 4px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.05)' 
+                : '0 2px 4px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.5)',
+            appearance: 'none',
+            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='${encodeURIComponent(theme.textPrimary)}' d='M6 9L1 4h10z'/%3E%3C/svg%3E")`,
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'right 10px center',
+            paddingRight: '32px',
         },
         removeShareButton: {
-            border: 'none',
-            borderRadius: borderRadius.md,
-            backgroundColor: theme.error,
-            color: '#fff',
-            padding: '6px 10px',
-            fontSize: '12px',
+            border: `1.5px solid ${theme.error}`,
+            borderRadius: borderRadius.lg,
+            backgroundColor: 'transparent',
+            color: theme.error,
+            padding: '10px 16px',
+            fontSize: '14px',
             fontWeight: '600',
             cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            boxShadow: 'none',
         },
         readOnlyNotice: {
             marginTop: '12px',
@@ -704,6 +728,28 @@ const ProjectDetailPage = () => {
                 .task-item:hover { transform: translateX(4px); border-color: ${theme.primary}40 !important; }
                 .delete-btn:hover { background-color: ${theme.error}15 !important; }
                 .add-btn:hover { transform: translateY(-2px); }
+                .collaborator-row:hover { 
+                    background-color: ${theme.bgElevated}80 !important;
+                    border-color: ${theme.primary}40 !important;
+                    box-shadow: ${theme.type === 'dark' 
+                        ? '0 4px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)' 
+                        : '0 4px 8px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.5)'} !important;
+                }
+                .permission-select:focus { 
+                    border-color: ${theme.primary} !important;
+                    box-shadow: 0 0 0 3px ${theme.primary}25 !important;
+                }
+                .permission-select:hover {
+                    border-color: ${theme.primary}60 !important;
+                }
+                .remove-btn:hover { 
+                    background-color: ${theme.error}15 !important;
+                    border-color: ${theme.error}80 !important;
+                    transform: translateY(-1px);
+                }
+                .remove-btn:active {
+                    transform: translateY(0);
+                }
             `}</style>
             <div style={styles.container}>
                 {notification && (
@@ -816,12 +862,12 @@ const ProjectDetailPage = () => {
                             <div style={styles.collaboratorsList}>
                                 {project.pendingInvites?.length ? (
                                     project.pendingInvites.map((invite) => (
-                                        <div key={`invite-${invite.userId}`} style={styles.collaboratorRow}>
+                                        <div key={`invite-${invite.userId}`} style={styles.collaboratorRow} className="collaborator-row">
                                             <span>{invite.name || invite.email || 'Pending user'} ({invite.email || 'no-email'})</span>
                                         </div>
                                     ))
                                 ) : (
-                                    <div style={styles.collaboratorRow}>
+                                    <div style={styles.collaboratorRow} className="collaborator-row">
                                         <span>No pending invites yet.</span>
                                     </div>
                                 )}
@@ -833,22 +879,20 @@ const ProjectDetailPage = () => {
                             <div style={styles.collaboratorsList}>
                                 {project.collaborators?.length ? (
                                     project.collaborators.map((sharedUser) => (
-                                        <div key={`shared-${sharedUser.userId}`} style={styles.collaboratorRow}>
+                                        <div key={`shared-${sharedUser.userId}`} style={styles.collaboratorRow} className="collaborator-row">
                                             <span>{sharedUser.name || 'User'} ({sharedUser.email || 'no-email'})</span>
                                             <div style={styles.collaboratorActions}>
-                                                <select
-                                                    value={sharedUser.permission || 'complete'}
-                                                    onChange={(e) => handleChangeCollaboratorPermission(sharedUser.userId, e.target.value)}
-                                                    style={styles.permissionSelect}
-                                                >
-                                                    <option value="view">View</option>
-                                                    <option value="complete">Complete</option>
-                                                    <option value="edit">Edit</option>
-                                                </select>
+                                                <div style={{ flex: 1, minWidth: '120px' }}>
+                                                    <CustomPermissionSelect
+                                                        value={sharedUser.permission || 'complete'}
+                                                        onChange={(permission) => handleChangeCollaboratorPermission(sharedUser.userId, permission)}
+                                                    />
+                                                </div>
                                                 {String(sharedUser.userId) !== String(user?.id) && (
                                                     <button
                                                         type="button"
                                                         style={styles.removeShareButton}
+                                                        className="remove-btn"
                                                         onClick={() => handleRemoveSharedUser(sharedUser.userId)}
                                                     >
                                                         Remove
@@ -858,7 +902,7 @@ const ProjectDetailPage = () => {
                                         </div>
                                     ))
                                 ) : (
-                                    <div style={styles.collaboratorRow}>
+                                    <div style={styles.collaboratorRow} className="collaborator-row">
                                         <span>No collaborators yet. Invite a user, then they must accept before permissions appear.</span>
                                     </div>
                                 )}

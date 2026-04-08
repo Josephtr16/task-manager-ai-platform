@@ -1,10 +1,8 @@
 const express = require('express');
-const router = express.Router({ mergeParams: true }); // Important: mergeParams to access :id from parent
+const router = express.Router({ mergeParams: true });
 const {
   startTimer,
   stopTimer,
-  getTimeLogs,
-  deleteTimeLog,
   getTimerStatus,
 } = require('../controllers/timeTrackingController');
 const { protect } = require('../middleware/auth');
@@ -12,10 +10,8 @@ const { protect } = require('../middleware/auth');
 // All routes are protected
 router.use(protect);
 
-router.post('/start-timer', startTimer);
-router.post('/stop-timer', stopTimer);
-router.get('/timer-status', getTimerStatus);
-router.get('/time-logs', getTimeLogs);
-router.delete('/time-logs/:sessionId', deleteTimeLog);
+router.post('/:taskId/time/start', startTimer);
+router.post('/:taskId/time/stop', stopTimer);
+router.get('/:taskId/time', getTimerStatus);
 
 module.exports = router;

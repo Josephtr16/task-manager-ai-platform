@@ -29,6 +29,12 @@ const userSchema = new mongoose.Schema({
   },
   verificationTokenHash: String,
   verificationTokenExpires: Date,
+  resetPasswordTokenHash: String,
+  resetPasswordExpires: Date,
+  passwordChangedAt: {
+    type: Date,
+    select: false,
+  },
   createdAt: {
     type: Date,
     default: Date.now,
@@ -75,10 +81,11 @@ userSchema.index({ verificationTokenHash: 1 });
 // Hash password before saving
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) {
-    next();
+    return next();
   }
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
+  return next();
 });
 
 // Compare password method

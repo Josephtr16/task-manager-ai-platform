@@ -40,10 +40,12 @@ app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 // Mount routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/tasks', require('./routes/tasks'));
+app.use('/api/tasks', require('./routes/timeTracking'));
 app.use('/api/tasks/:id/subtasks', require('./routes/subtasks'));
 app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/projects', require('./routes/projects'));
 app.use('/api/ai', require('./routes/ai'));
+app.use('/api/notifications', require('./routes/notifications'));
 
 // Basic route
 app.get('/', (req, res) => {
@@ -58,6 +60,14 @@ app.get('/', (req, res) => {
 });
 
 const errorMiddleware = require('./middleware/errorMiddleware');
+
+// 404 handler for unmatched routes
+app.use((req, res, next) => {
+  res.status(404).json({
+    success: false,
+    message: `Route not found: ${req.method} ${req.originalUrl}`,
+  });
+});
 
 // Error handler
 app.use(errorMiddleware);

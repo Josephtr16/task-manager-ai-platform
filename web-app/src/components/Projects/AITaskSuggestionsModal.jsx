@@ -398,7 +398,7 @@ const AITaskSuggestionsModal = ({ isOpen, onClose, suggestions, onAccept, loadin
                                                 value={task.estimated_minutes}
                                                 onChange={(e) => handleUpdateTask(task.id, 'estimated_minutes', e.target.value)}
                                             />
-                                            <span style={{ fontSize: '12px', color: theme.textMuted }}>min</span>
+                                            <span style={{ fontSize: '12px', color: theme.textMuted, whiteSpace: 'nowrap' }}>minutes</span>
                                         </div>
                                         <button 
                                             style={styles.actionBtn}

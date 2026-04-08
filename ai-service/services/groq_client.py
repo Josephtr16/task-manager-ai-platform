@@ -1,6 +1,7 @@
 import os, json
 from groq import Groq
 from dotenv import load_dotenv
+from fastapi import HTTPException
 
 load_dotenv()
 
@@ -18,4 +19,10 @@ def ask_groq(system_prompt: str, user_prompt: str, max_tokens: int = 1500, tempe
     )
     text = response.choices[0].message.content.strip()
     text = text.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
-    return json.loads(text)
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        raise HTTPException(
+            status_code=500,
+            detail=f"AI returned invalid JSON. Raw output (first 300 chars): {text[:300]}"
+        )

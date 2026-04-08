@@ -216,6 +216,54 @@ class AuthService extends BaseService {
         };
     }
 
+    async forgotPassword(email) {
+        const normalizedEmail = email.trim().toLowerCase();
+        const user = await this.model.findOne({ email: normalizedEmail });
+
+        if (!user) {
+            throw new AppError('User not found with this email', 404);
+        }
+
+        const resetToken = crypto.randomBytes(32).toString('hex');
+        const resetPasswordTokenHash = await this.hashToken(resetToken);
+
+        user.resetPasswordTokenHash = resetPasswordTokenHash;
+        user.resetPasswordExpires = Date.now() + 60 * 60 * 1000;
+        await user.save();
+
+        await emailService.sendPasswordResetEmail(user.email, resetToken);
+
+        return {
+            success: true,
+            message: 'Password reset link sent. Please check your inbox.'
+        };
+    }
+
+    async resetPassword(email, token, newPassword) {
+        const normalizedEmail = email.trim().toLowerCase();
+        const resetPasswordTokenHash = await this.hashToken(token);
+
+        const user = await this.model.findOne({
+            email: normalizedEmail,
+            resetPasswordTokenHash,
+            resetPasswordExpires: { $gt: Date.now() },
+        }).select('+password');
+
+        if (!user) {
+            throw new AppError('Invalid or expired reset token', 400);
+        }
+
+        user.password = newPassword;
+        user.resetPasswordTokenHash = undefined;
+        user.resetPasswordExpires = undefined;
+        await user.save();
+
+        return {
+            success: true,
+            message: 'Password reset successful. You can now log in.'
+        };
+    }
+
     async getMe(userId) {
         const user = await this.findById(userId);
         if (!user) {

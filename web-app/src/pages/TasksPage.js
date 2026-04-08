@@ -1,6 +1,5 @@
 // src/pages/TasksPage.js
 import React, { useState, useEffect, useRef } from 'react';
-import Layout from '../components/Layout/Layout';
 import { tasksAPI } from '../services/api';
 import aiService from '../services/aiService';
 import { useTheme } from '../context/ThemeContext';
@@ -14,13 +13,33 @@ import {
 import CustomSelect from '../components/common/CustomSelect';
 import { TaskCardSkeleton } from '../components/common/SkeletonLoader';
 
+const TASKS_CACHE_KEY = 'taskflow_tasks_page_cache';
+
+const readTasksCache = () => {
+  try {
+    const cached = sessionStorage.getItem(TASKS_CACHE_KEY);
+    return cached ? JSON.parse(cached) : null;
+  } catch {
+    return null;
+  }
+};
+
+const writeTasksCache = (payload) => {
+  try {
+    sessionStorage.setItem(TASKS_CACHE_KEY, JSON.stringify(payload));
+  } catch {
+    // Ignore storage errors.
+  }
+};
+
 const TasksPage = () => {
+  const cachedTasksState = readTasksCache();
   const { theme } = useTheme();
-  const [tasks, setTasks] = useState([]);
-  const [filteredTasks, setFilteredTasks] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [tasks, setTasks] = useState(cachedTasksState?.tasks || []);
+  const [filteredTasks, setFilteredTasks] = useState(cachedTasksState?.filteredTasks || []);
+  const [loading, setLoading] = useState(!cachedTasksState);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const [totalPages, setTotalPages] = useState(cachedTasksState?.totalPages || 1);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
@@ -39,6 +58,7 @@ const TasksPage = () => {
   const [notification, setNotification] = useState(null);
   const notificationTimerRef = useRef(null);
   const lastFilterKeyRef = useRef('');
+  const [hasCache, setHasCache] = useState(Boolean(cachedTasksState));
 
   useEffect(() => {
     const filterKey = [
@@ -60,6 +80,14 @@ const TasksPage = () => {
     }
 
     lastFilterKeyRef.current = filterKey;
+    
+    // Only show loading if we have no cached page data yet.
+    if (!hasCache) {
+      setLoading(true);
+    } else {
+      setLoading(false);
+    }
+    
     loadTasks();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, searchQuery, statusFilter, priorityFilter, categoryFilter, projectFilter, sortBy]);
@@ -112,6 +140,10 @@ const TasksPage = () => {
         params.projectId = 'none';
       }
 
+      if (!hasCache && tasks.length === 0) {
+        setLoading(true);
+      }
+
       const response = await tasksAPI.getTasks(params);
       const responseTasks = response.data.tasks || [];
       const pagination = response.data.pagination || {};
@@ -123,7 +155,22 @@ const TasksPage = () => {
         ? responseTasks.filter(task => !!task.projectId)
         : responseTasks;
 
-      setFilteredTasks(displayedTasks);
+      const shouldPushCompletedToBottom = statusFilter === 'all' && (sortBy === 'createdAt' || sortBy === 'deadline');
+
+      const orderedTasks = shouldPushCompletedToBottom
+        ? [
+            ...displayedTasks.filter(task => task.status !== 'done'),
+            ...displayedTasks.filter(task => task.status === 'done'),
+          ]
+        : displayedTasks;
+
+      setFilteredTasks(orderedTasks);
+      setHasCache(true);
+      writeTasksCache({
+        tasks: responseTasks,
+        filteredTasks: orderedTasks,
+        totalPages: pagination.totalPages || 1,
+      });
     } catch (error) {
       console.error('Error loading tasks:', error);
     } finally {
@@ -268,8 +315,13 @@ const TasksPage = () => {
     }
   };
 
-  const formatDate = (date) => {
+  const formatDate = (date, isCompleted = false) => {
     if (!date) return null;
+
+    if (isCompleted) {
+      return { text: 'Completed', color: theme.success };
+    }
+
     const d = new Date(date);
     const now = new Date();
     const diff = Math.ceil((d - now) / (1000 * 60 * 60 * 24));
@@ -549,7 +601,7 @@ const TasksPage = () => {
 
   if (loading) {
     return (
-      <Layout>
+      <>
         <div style={styles.container}>
           <div style={styles.grid}>
             {Array.from({ length: 6 }).map((_, index) => (
@@ -557,16 +609,25 @@ const TasksPage = () => {
             ))}
           </div>
         </div>
-      </Layout>
+      </>
     );
   }
 
   return (
-    <Layout>
+    <>
       <style>{`
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+        }
+        
+        .tasks-page-container {
+          animation: fadeIn 0.2s ease-in;
+        }
+        
+        @keyframes fadeIn {
+          from { opacity: 0.95; }
+          to { opacity: 1; }
         }
         
         .fab:hover {
@@ -590,7 +651,7 @@ const TasksPage = () => {
             border-color: ${theme.primary}40 !important; // Subtle glow on hover
         }
       `}</style>
-      <div style={styles.container}>
+      <div style={styles.container} className="tasks-page-container">
         {notification && (
           <div
             style={{
@@ -901,14 +962,14 @@ const TasksPage = () => {
       >
         <FaPlus />
       </button>
-    </Layout>
+    </>
   );
 };
 
 // Task Card Component
 const TaskCard = ({ task, aiPriorityScore, onClick, getPriorityColor, getStatusColor, formatDate, completed }) => {
   const { theme } = useTheme();
-  const deadline = formatDate(task.deadline);
+  const deadline = formatDate(task.deadline, completed);
 
   const styles = {
     taskCard: {

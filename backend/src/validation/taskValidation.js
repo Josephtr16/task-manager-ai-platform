@@ -1,5 +1,12 @@
 const Joi = require('joi');
 
+const recurrenceSchema = Joi.object({
+    enabled: Joi.boolean().default(false),
+    frequency: Joi.string().valid('daily', 'weekly', 'monthly').default('weekly'),
+    nextOccurrence: Joi.date().allow(null),
+    parentTaskId: Joi.string().allow(null, ''),
+});
+
 const createTaskSchema = Joi.object({
     title: Joi.string().required().trim().messages({
         'any.required': 'Please add a task title'
@@ -14,6 +21,7 @@ const createTaskSchema = Joi.object({
     tags: Joi.array().items(Joi.string().trim()),
     dependencies: Joi.array().items(Joi.string()),
     order: Joi.number(),
+    recurrence: recurrenceSchema,
     subtasks: Joi.array().items(
         Joi.object({
             title: Joi.string().required(),
@@ -34,6 +42,7 @@ const updateTaskSchema = Joi.object({
     tags: Joi.array().items(Joi.string().trim()),
     dependencies: Joi.array().items(Joi.string()),
     order: Joi.number(),
+    recurrence: recurrenceSchema,
     subtasks: Joi.array().items(
         Joi.object({
             title: Joi.string().required(),

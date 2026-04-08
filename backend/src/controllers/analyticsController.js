@@ -285,6 +285,13 @@ exports.getAIInsights = asyncHandler(async (req, res) => {
   const dayNames = ['Sundays', 'Mondays', 'Tuesdays', 'Wednesdays', 'Thursdays', 'Fridays', 'Saturdays'];
   const bestDayIndex = dayCounts.indexOf(Math.max(...dayCounts));
   const bestDay = dayNames[bestDayIndex];
+  
+  // Find second-best day
+  const sortedDays = dayCounts
+    .map((count, index) => ({ count, index, name: dayNames[index] }))
+    .filter(d => d.index !== bestDayIndex)
+    .sort((a, b) => b.count - a.count);
+  const secondBestDay = sortedDays.length > 0 && sortedDays[0].count > 0 ? sortedDays[0].name : null;
 
   // Time management accuracy
   const tasksWithEstimate = tasks.filter((t) => t.estimatedDuration && t.timeTracking?.totalTime);
@@ -321,7 +328,9 @@ exports.getAIInsights = asyncHandler(async (req, res) => {
       id: 2,
       icon: 'calendar',
       title: 'Best Days',
-      description: `${bestDay} and Tuesdays are your most productive days`,
+      description: secondBestDay
+        ? `${bestDay} and ${secondBestDay} are your most productive days`
+        : `${bestDay} is your most productive day`,
       confidence: 82,
     },
     {

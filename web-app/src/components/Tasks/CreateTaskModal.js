@@ -18,6 +18,8 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
     category: 'Work',
     priority: 'medium',
     estimatedDuration: 60,
+    recurrenceEnabled: false,
+    recurrenceFrequency: 'weekly',
     tags: [],
     subtasks: [],
   };
@@ -78,6 +80,13 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
       category: formData.category,
       priority: formData.priority,
       estimatedDuration: Number(formData.estimatedDuration) || 60,
+      recurrence: formData.recurrenceEnabled ? {
+        enabled: true,
+        frequency: formData.recurrenceFrequency,
+      } : {
+        enabled: false,
+        frequency: 'weekly',
+      },
       tags: formData.tags,
       status: 'todo',
       subtasks: formData.subtasks.map((subtask) => ({
@@ -220,6 +229,12 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
     { value: 'Health', label: 'Health' },
     { value: 'Learning', label: 'Learning' },
     { value: 'Family', label: 'Family' }
+  ];
+
+  const recurrenceOptions = [
+    { value: 'daily', label: 'Daily' },
+    { value: 'weekly', label: 'Weekly' },
+    { value: 'monthly', label: 'Monthly' },
   ];
 
   const styles = {
@@ -438,6 +453,87 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
       display: 'flex',
       alignItems: 'center',
     },
+    recurringCard: {
+      backgroundColor: theme.bgMain,
+      borderRadius: borderRadius.lg,
+      boxShadow: theme.shadows.neumorphic,
+      padding: '14px',
+      border: `1px solid ${theme.border}`,
+    },
+    recurringToggleRow: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: '12px',
+    },
+    recurringToggleLabel: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '3px',
+    },
+    recurringTitle: {
+      color: theme.textPrimary,
+      fontSize: '14px',
+      fontWeight: '700',
+      margin: 0,
+    },
+    recurringSubtitle: {
+      color: theme.textMuted,
+      fontSize: '12px',
+      margin: 0,
+    },
+    switch: {
+      position: 'relative',
+      width: '46px',
+      height: '26px',
+      borderRadius: '999px',
+      border: 'none',
+      cursor: 'pointer',
+      backgroundColor: formData.recurrenceEnabled ? theme.primary : theme.border,
+      boxShadow: theme.shadows.neumorphicInset,
+      transition: 'all 0.2s ease',
+      flexShrink: 0,
+      padding: 0,
+    },
+    switchKnob: {
+      position: 'absolute',
+      top: '3px',
+      left: formData.recurrenceEnabled ? '23px' : '3px',
+      width: '20px',
+      height: '20px',
+      borderRadius: '50%',
+      backgroundColor: '#fff',
+      boxShadow: '0 2px 6px rgba(0,0,0,0.25)',
+      transition: 'left 0.2s ease',
+    },
+    frequencyLabel: {
+      marginTop: '12px',
+      marginBottom: '8px',
+      fontSize: '12px',
+      fontWeight: '700',
+      color: theme.textSecondary,
+      textTransform: 'uppercase',
+      letterSpacing: '0.4px',
+    },
+    frequencyPills: {
+      display: 'flex',
+      gap: '8px',
+      flexWrap: 'wrap',
+    },
+    frequencyPill: (option) => ({
+      border: 'none',
+      borderRadius: '999px',
+      padding: '8px 14px',
+      cursor: 'pointer',
+      fontSize: '13px',
+      fontWeight: '700',
+      boxShadow: formData.recurrenceFrequency === option.value
+        ? `inset 2px 2px 6px rgba(0,0,0,0.18)`
+        : theme.shadows.neumorphic,
+      color: formData.recurrenceFrequency === option.value ? '#fff' : theme.textSecondary,
+      backgroundColor: formData.recurrenceFrequency === option.value ? theme.primary : theme.bgMain,
+      transition: 'all 0.2s ease',
+    }),
     aiAssistButton: {
       marginTop: '10px',
       padding: '10px 14px',
@@ -692,16 +788,57 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
           </div>
 
           <div style={styles.formGroup}>
-            <label style={styles.label}><FaClock /> Estimated Duration (minutes)</label>
-            <input
-              type="number"
-              name="estimatedDuration"
-              value={formData.estimatedDuration}
-              onChange={handleInputChange}
-              placeholder="e.g., 60"
-              style={styles.input}
-              min="1"
-            />
+            <label style={styles.label}><FaClock /> Estimated Duration</label>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <input
+                type="number"
+                name="estimatedDuration"
+                value={formData.estimatedDuration}
+                onChange={handleInputChange}
+                placeholder="e.g., 60"
+                style={{ ...styles.input, flex: 1 }}
+                min="1"
+              />
+              <span style={{ fontSize: '14px', fontWeight: '600', color: theme.textMuted, whiteSpace: 'nowrap' }}>minutes</span>
+            </div>
+          </div>
+
+          <div style={styles.formGroup}>
+            <label style={styles.label}>Recurring</label>
+            <div style={styles.recurringCard}>
+              <div style={styles.recurringToggleRow}>
+                <div style={styles.recurringToggleLabel}>
+                  <p style={styles.recurringTitle}>Enable recurring task</p>
+                  <p style={styles.recurringSubtitle}>Automatically create the next occurrence when completed</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, recurrenceEnabled: !prev.recurrenceEnabled }))}
+                  style={styles.switch}
+                  aria-label="Toggle recurring task"
+                  aria-pressed={formData.recurrenceEnabled}
+                >
+                  <span style={styles.switchKnob} />
+                </button>
+              </div>
+            </div>
+            {formData.recurrenceEnabled && (
+              <>
+                <div style={styles.frequencyLabel}>Repeat every</div>
+                <div style={styles.frequencyPills}>
+                  {recurrenceOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      style={styles.frequencyPill(option)}
+                      onClick={() => setFormData(prev => ({ ...prev, recurrenceFrequency: option.value }))}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
 
           <div style={styles.formGroup}>

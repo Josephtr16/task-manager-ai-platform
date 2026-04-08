@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import Layout from '../components/Layout/Layout';
 // removed useAuth
 import projectService from '../services/projectService';
 import { useTheme } from '../context/ThemeContext';
@@ -10,18 +9,41 @@ import { FaPlus, FaSearch, FaTimes, FaCheck, FaTimesCircle } from 'react-icons/f
 import CustomSelect from '../components/common/CustomSelect';
 import { ProjectCardSkeleton } from '../components/common/SkeletonLoader';
 
+const PROJECTS_CACHE_KEY = 'taskflow_projects_page_cache';
+
+const readProjectsCache = () => {
+    try {
+        const cached = sessionStorage.getItem(PROJECTS_CACHE_KEY);
+        return cached ? JSON.parse(cached) : null;
+    } catch {
+        return null;
+    }
+};
+
+const writeProjectsCache = (payload) => {
+    try {
+        sessionStorage.setItem(PROJECTS_CACHE_KEY, JSON.stringify(payload));
+    } catch {
+        // Ignore storage errors.
+    }
+};
+
 const ProjectsPage = () => {
+    const cachedProjectsState = readProjectsCache();
     const { theme } = useTheme();
-    const [projects, setProjects] = useState([]);
-    const [filteredProjects, setFilteredProjects] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [projects, setProjects] = useState(cachedProjectsState?.projects || []);
+    const [filteredProjects, setFilteredProjects] = useState(cachedProjectsState?.filteredProjects || []);
+    const [loading, setLoading] = useState(!cachedProjectsState);
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [categoryFilter, setCategoryFilter] = useState('all');
     const [showCreateModal, setShowCreateModal] = useState(false);
-    const [pendingInvites, setPendingInvites] = useState([]);
+    const [pendingInvites, setPendingInvites] = useState(cachedProjectsState?.pendingInvites || []);
 
     useEffect(() => {
+        if (cachedProjectsState) {
+            setLoading(false);
+        }
         loadProjects();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
@@ -33,13 +55,20 @@ const ProjectsPage = () => {
 
     const loadProjects = async () => {
         try {
-            setLoading(true);
+            if (!cachedProjectsState) {
+                setLoading(true);
+            }
             const [projectsData, invitesData] = await Promise.all([
                 projectService.getProjects(localStorage.getItem('token')),
                 projectService.getPendingInvites(),
             ]);
             setProjects(projectsData);
             setPendingInvites(invitesData || []);
+            writeProjectsCache({
+                projects: projectsData,
+                pendingInvites: invitesData || [],
+                filteredProjects: projectsData,
+            });
         } catch (error) {
             console.error('Error loading projects:', error);
         } finally {
@@ -267,7 +296,7 @@ const ProjectsPage = () => {
 
     if (loading) {
         return (
-            <Layout>
+            <>
                 <div style={styles.container}>
                     <div
                         style={{
@@ -281,13 +310,22 @@ const ProjectsPage = () => {
                         ))}
                     </div>
                 </div>
-            </Layout>
+            </>
         );
     }
 
     return (
-        <Layout>
+        <>
             <style>{`
+                .projects-page-container {
+                  animation: fadeIn 0.2s ease-in;
+                }
+                
+                @keyframes fadeIn {
+                  from { opacity: 0.95; }
+                  to { opacity: 1; }
+                }
+                
                 .create-btn:hover {
                     transform: translateY(-2px);
                     box-shadow: 0 6px 16px ${theme.primary}66 !important;
@@ -297,7 +335,7 @@ const ProjectsPage = () => {
                     box-shadow: 0 0 20px ${theme.primary}80 !important;
                 }
             `}</style>
-            <div style={styles.container}>
+            <div style={styles.container} className="projects-page-container">
                 <div style={styles.header}>
                     <div>
                         <h1 style={styles.title}>Projects</h1>
@@ -418,7 +456,7 @@ const ProjectsPage = () => {
                     <FaPlus />
                 </button>
             </div>
-        </Layout>
+        </>
     );
 };
 

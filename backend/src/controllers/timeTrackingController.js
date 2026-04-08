@@ -5,7 +5,8 @@ const Task = require('../models/Task');
 // @access  Private
 const startTracking = async (req, res) => {
   try {
-    const task = await Task.findById(req.params.id);
+    const taskId = req.params.taskId || req.params.id;
+    const task = await Task.findById(taskId);
 
     if (!task) {
       return res.status(404).json({
@@ -54,7 +55,8 @@ const startTracking = async (req, res) => {
 // @access  Private
 const stopTracking = async (req, res) => {
   try {
-    const task = await Task.findById(req.params.id);
+    const taskId = req.params.taskId || req.params.id;
+    const task = await Task.findById(taskId);
 
     if (!task) {
       return res.status(404).json({
@@ -123,7 +125,8 @@ const stopTracking = async (req, res) => {
 // @access  Private
 const getTimeStats = async (req, res) => {
   try {
-    const task = await Task.findById(req.params.id);
+    const taskId = req.params.taskId || req.params.id;
+    const task = await Task.findById(taskId);
 
     if (!task) {
       return res.status(404).json({

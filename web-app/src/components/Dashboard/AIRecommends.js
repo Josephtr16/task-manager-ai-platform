@@ -1,14 +1,15 @@
-// src/components/Dashboard/AIRecommends.js
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import { borderRadius } from '../../theme';
 import { formatTaskDuration } from '../../utils/formatTaskDuration';
-import { FaRobot, FaCalendarAlt, FaClock, FaArrowRight, FaCheck, FaFlag, FaRegLightbulb, FaClipboardList } from 'react-icons/fa';
+import { FaRobot, FaCalendarAlt, FaClock, FaArrowRight, FaCheck, FaFlag, FaRegLightbulb, FaClipboardList, FaTrash } from 'react-icons/fa';
+import { tasksAPI } from '../../services/api';
 
-const AIRecommends = ({ tasks, onTaskClick, onToggleTask }) => {
+const AIRecommends = ({ tasks, onTaskClick, onToggleTask, onTaskDeleted, onTaskUpdated }) => {
   const { theme } = useTheme();
   const navigate = useNavigate();
+  const token = localStorage.getItem('token');
 
   const getPriorityColor = (priority) => {
     switch (priority) {
@@ -37,6 +38,18 @@ const AIRecommends = ({ tasks, onTaskClick, onToggleTask }) => {
     e.stopPropagation();
     if (onToggleTask) {
       onToggleTask(task);
+    }
+  };
+
+  const handleDeleteTask = async (e, taskId) => {
+    e.stopPropagation();
+    if (!window.confirm('Are you sure you want to delete this task?')) return;
+    
+    try {
+      await tasksAPI.deleteTask(taskId, token);
+      if (onTaskDeleted) onTaskDeleted(taskId);
+    } catch (error) {
+      console.error('Error deleting task:', error);
     }
   };
 
@@ -250,6 +263,85 @@ const AIRecommends = ({ tasks, onTaskClick, onToggleTask }) => {
       alignItems: 'center',
       gap: '6px',
       fontWeight: '500',
+    },
+    taskActions: {
+      display: 'flex',
+      gap: '8px',
+      alignItems: 'center',
+      marginLeft: '40px',
+      marginTop: '12px',
+      borderTop: `1px solid ${theme.border}30`,
+      paddingTop: '12px',
+      position: 'relative',
+    },
+    statusButton: {
+      backgroundColor: theme.bgMain,
+      color: theme.textPrimary,
+      border: 'none',
+      borderRadius: '12px',
+      padding: '8px 16px',
+      fontSize: '13px',
+      fontWeight: '600',
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '6px',
+      boxShadow: theme.shadows.neumorphic,
+      transition: 'all 0.2s ease',
+      minWidth: '110px',
+    },
+    statusButtonActive: {
+      backgroundColor: theme.success,
+      color: '#fff',
+      boxShadow: `${theme.shadows.neumorphic}, 0 4px 12px ${theme.success}40`,
+    },
+    deleteButton: {
+      backgroundColor: theme.bgMain,
+      color: theme.error,
+      border: `2px solid ${theme.error}`,
+      borderRadius: '12px',
+      padding: '6px 14px',
+      fontSize: '13px',
+      fontWeight: '600',
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '4px',
+      boxShadow: theme.shadows.neumorphic,
+      transition: 'all 0.2s ease',
+    },
+    dropdown: {
+      position: 'absolute',
+      top: '100%',
+      left: 0,
+      marginTop: '8px',
+      backgroundColor: theme.bgMain,
+      borderRadius: '12px',
+      boxShadow: `${theme.shadows.neumorphic}, 0 8px 24px ${theme.textPrimary}15`,
+      zIndex: 1000,
+      minWidth: '160px',
+      overflow: 'hidden',
+      border: `1px solid ${theme.border}`,
+    },
+    menuItem: {
+      padding: '10px 16px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      cursor: 'pointer',
+      fontSize: '13px',
+      fontWeight: '500',
+      color: theme.textPrimary,
+      transition: 'all 0.15s ease',
+      borderBottom: `1px solid ${theme.border}30`,
+    },
+    menuItemHover: {
+      backgroundColor: theme.primary + '10',
+      color: theme.primary,
+      paddingLeft: '20px',
+    },
+    menuItemDanger: {
+      color: theme.error,
     },
     aiInsight: {
       marginLeft: '38px',

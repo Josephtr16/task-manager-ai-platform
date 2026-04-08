@@ -199,12 +199,17 @@ class TaskService extends BaseService {
             await projectService.calculateProjectProgress(task.projectId);
         }
 
-        await schedulerService.scheduleUserTasks(task.userId);
+        try {
+            await schedulerService.scheduleUserTasks(task.userId);
+        } catch (scheduleErr) {
+            console.warn('Scheduler failed (non-fatal):', scheduleErr.message);
+        }
         return this.model.findById(task._id).populate('projectId', 'title category status');
     }
 
     async updateTask(id, userId, updateData) {
         let task = await this.findById(id);
+        let recurringTaskPayload = null;
 
         if (!task) {
             throw new AppError('Task not found', 404);
@@ -271,6 +276,48 @@ class TaskService extends BaseService {
                     completed: true,
                 }));
             }
+
+            if (task.recurrence?.enabled) {
+                const frequency = task.recurrence.frequency || 'weekly';
+                const baseDeadline = task.deadline ? new Date(task.deadline) : new Date();
+                const nextDeadline = new Date(baseDeadline);
+
+                if (frequency === 'daily') {
+                    nextDeadline.setDate(nextDeadline.getDate() + 1);
+                } else if (frequency === 'monthly') {
+                    nextDeadline.setDate(nextDeadline.getDate() + 30);
+                } else {
+                    nextDeadline.setDate(nextDeadline.getDate() + 7);
+                }
+
+                recurringTaskPayload = {
+                    userId: task.userId,
+                    projectId: task.projectId || null,
+                    title: task.title,
+                    description: task.description,
+                    category: task.category,
+                    priority: task.priority,
+                    status: 'todo',
+                    deadline: nextDeadline,
+                    estimatedDuration: task.estimatedDuration,
+                    tags: Array.isArray(task.tags) ? [...task.tags] : [],
+                    dependencies: Array.isArray(task.dependencies) ? [...task.dependencies] : [],
+                    order: task.order || 0,
+                    subtasks: Array.isArray(task.subtasks)
+                        ? task.subtasks.map((subtask) => ({
+                            title: subtask.title,
+                            completed: false,
+                        }))
+                        : [],
+                    recurrence: {
+                        enabled: true,
+                        frequency,
+                        nextOccurrence: nextDeadline,
+                        parentTaskId: task._id,
+                    },
+                    completedAt: null,
+                };
+            }
         }
 
         task = await this.model.findByIdAndUpdate(id, updateData, {
@@ -286,7 +333,15 @@ class TaskService extends BaseService {
             await projectService.calculateProjectProgress(task.projectId._id || task.projectId);
         }
 
-        await schedulerService.scheduleUserTasks(task.userId);
+        if (recurringTaskPayload) {
+            await this.model.create(recurringTaskPayload);
+        }
+
+        try {
+            await schedulerService.scheduleUserTasks(task.userId);
+        } catch (scheduleErr) {
+            console.warn('Scheduler failed (non-fatal):', scheduleErr.message);
+        }
 
         return task;
     }
@@ -318,7 +373,11 @@ class TaskService extends BaseService {
             await projectService.calculateProjectProgress(projectId);
         }
 
-        await schedulerService.scheduleUserTasks(task.userId);
+        try {
+            await schedulerService.scheduleUserTasks(task.userId);
+        } catch (scheduleErr) {
+            console.warn('Scheduler failed (non-fatal):', scheduleErr.message);
+        }
         return true;
     }
 

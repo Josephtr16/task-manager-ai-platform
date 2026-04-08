@@ -38,6 +38,12 @@ const taskSchema = new mongoose.Schema({
   deadline: {
     type: Date,
   },
+  recurrence: {
+    enabled: { type: Boolean, default: false },
+    frequency: { type: String, enum: ['daily', 'weekly', 'monthly'], default: 'weekly' },
+    nextOccurrence: { type: Date, default: null },
+    parentTaskId: { type: mongoose.Schema.Types.ObjectId, ref: 'Task', default: null },
+  },
   estimatedDuration: {
     type: Number, // in minutes
     default: 60,
@@ -119,10 +125,6 @@ const taskSchema = new mongoose.Schema({
       default: Date.now,
     },
   }],
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
   completedAt: {
     type: Date,
     default: null,
@@ -174,16 +176,19 @@ const taskSchema = new mongoose.Schema({
       default: null,
     },
   },
-  kanbanColumn: {
+  aiPriorityScore: {
+    type: Number,
+    default: null,
+  },
+  aiInsight: {
     type: String,
-    enum: ['todo', 'inProgress', 'review', 'done'],
-    default: 'todo',
+    default: null,
   },
-  updatedAt: {
-    type: Date,
-    default: Date.now,
+  aiPredictedDuration: {
+    type: Number,
+    default: null,
   },
-});
+}, { timestamps: true });
 
 taskSchema.pre('save', function (next) {
   if (this.timeTracking && Array.isArray(this.timeTracking.sessions)) {

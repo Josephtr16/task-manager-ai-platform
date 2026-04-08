@@ -2,6 +2,12 @@ const Joi = require('joi');
 
 const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
 
+const kanbanColumnSchema = Joi.object({
+  id: Joi.string().trim().required(),
+  title: Joi.string().trim().required(),
+  order: Joi.number().integer().min(0).required(),
+});
+
 const updatePreferencesSchema = Joi.object({
   preferences: Joi.object({
     theme: Joi.string().valid('light', 'dark', 'auto').optional(),
@@ -14,6 +20,7 @@ const updatePreferencesSchema = Joi.object({
       aiSuggestions: Joi.boolean().optional(),
       dailySummary: Joi.boolean().optional(),
     }).optional(),
+    kanbanColumns: Joi.array().items(kanbanColumnSchema).optional(),
   }).required(),
 });
 

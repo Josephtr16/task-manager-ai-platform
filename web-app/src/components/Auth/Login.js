@@ -123,6 +123,11 @@ const Login = () => {
             style={styles.input}
             required
           />
+          <div style={styles.forgotRow}>
+            <Link to="/forgot-password" style={styles.forgotLink}>
+              Forgot password?
+            </Link>
+          </div>
         </div>
 
         <button
@@ -247,6 +252,17 @@ const getStyles = (theme, isDarkMode) => ({
     display: 'flex',
     flexDirection: 'column',
     gap: '8px',
+  },
+  forgotRow: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    marginTop: '4px',
+  },
+  forgotLink: {
+    color: theme.primary,
+    textDecoration: 'none',
+    fontSize: '13px',
+    fontWeight: '600',
   },
   label: {
     fontSize: '14px',

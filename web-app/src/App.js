@@ -1,13 +1,16 @@
 // src/App.js
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import Login from './components/Auth/Login';
 import Register from './components/Auth/Register';
 import VerifyEmail from './components/Auth/VerifyEmail';
+import ForgotPassword from './components/Auth/ForgotPassword';
+import ResetPassword from './components/Auth/ResetPassword';
 import Dashboard from './components/Dashboard/Dashboard';
 import ErrorBoundary from './components/common/ErrorBoundary';
+import Layout from './components/Layout/Layout';
 import TasksPage from './pages/TasksPage';
 import KanbanPage from './pages/KanbanPage';
 import CalendarPage from './pages/CalendarPage';
@@ -39,6 +42,15 @@ const ProtectedRoute = ({ children }) => {
   return isAuthenticated ? children : <Navigate to="/login" />;
 };
 
+// Persistent Layout Route - keeps Layout/sidebar mounted across these routes
+const ProtectedLayoutRoute = () => (
+  <ProtectedRoute>
+    <Layout>
+      <Outlet />
+    </Layout>
+  </ProtectedRoute>
+);
+
 function App() {
   return (
     <Router>
@@ -49,31 +61,23 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
 
-            {/* Protected Routes */}
-            <Route path="/dashboard" element={
-              <ProtectedRoute><ErrorBoundary><Dashboard /></ErrorBoundary></ProtectedRoute>
-            } />
-            <Route path="/tasks" element={
-              <ProtectedRoute><ErrorBoundary><TasksPage /></ErrorBoundary></ProtectedRoute>
-            } />
-            <Route path="/kanban" element={
-              <ProtectedRoute><ErrorBoundary><KanbanPage /></ErrorBoundary></ProtectedRoute>
-            } />
-            <Route path="/calendar" element={
-              <ProtectedRoute><ErrorBoundary><CalendarPage /></ErrorBoundary></ProtectedRoute>
-            } />
-            <Route path="/insights" element={
-              <ProtectedRoute><ErrorBoundary><InsightsPage /></ErrorBoundary></ProtectedRoute>
-            } />
-            <Route path="/projects" element={
-              <ProtectedRoute><ErrorBoundary><ProjectsPage /></ErrorBoundary></ProtectedRoute>
-            } />
+            {/* Protected Routes with Persistent Layout Shell */}
+            <Route element={<ProtectedLayoutRoute />}>
+              <Route path="/dashboard" element={<ErrorBoundary><Dashboard /></ErrorBoundary>} />
+              <Route path="/tasks" element={<ErrorBoundary><TasksPage /></ErrorBoundary>} />
+              <Route path="/projects" element={<ErrorBoundary><ProjectsPage /></ErrorBoundary>} />
+              <Route path="/kanban" element={<ErrorBoundary><KanbanPage /></ErrorBoundary>} />
+              <Route path="/calendar" element={<ErrorBoundary><CalendarPage /></ErrorBoundary>} />
+              <Route path="/insights" element={<ErrorBoundary><InsightsPage /></ErrorBoundary>} />
+              <Route path="/settings" element={<ErrorBoundary><SettingsPage /></ErrorBoundary>} />
+            </Route>
+
+            {/* Project Detail Route (individual project pages) */}
             <Route path="/projects/:id" element={
               <ProtectedRoute><ErrorBoundary><ProjectDetailPage /></ErrorBoundary></ProtectedRoute>
-            } />
-            <Route path="/settings" element={
-              <ProtectedRoute><ErrorBoundary><SettingsPage /></ErrorBoundary></ProtectedRoute>
             } />
 
             {/* Default redirect */}

@@ -43,6 +43,16 @@ api.interceptors.response.use(
     // Extract error message from our standard error format
     const message = error.response?.data?.message || error.message || 'Something went wrong';
     console.error('API Error:', message);
+
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      // Avoid redirect loop on auth pages
+      if (!window.location.pathname.startsWith('/login')
+        && !window.location.pathname.startsWith('/register')) {
+        window.location.href = '/login';
+      }
+    }
+
     return Promise.reject(error);
   }
 );
@@ -52,6 +62,8 @@ export const authAPI = {
   register: (data) => api.post('/auth/register', data),
   verifyEmail: (data) => api.post('/auth/verify-email', data),
   resendVerificationEmail: (email) => api.post('/auth/resend-verification', { email }),
+  forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
+  resetPassword: (data) => api.post('/auth/reset-password', data),
   login: (data) => api.post('/auth/login', data),
   getMe: () => api.get('/auth/me'),
   updatePreferences: (preferences) => api.patch('/auth/preferences', { preferences }),
@@ -103,6 +115,12 @@ export const analyticsAPI = {
   getBestDays: () => api.get('/analytics/best-days'),
   getAIInsights: () => api.get('/analytics/ai-insights'),
   getCompletionRate: (days = 30) => api.get(`/analytics/completion-rate?days=${days}`),
+};
+
+export const notificationsAPI = {
+  getNotifications: () => api.get('/notifications'),
+  markRead: (id) => api.patch(`/notifications/${id}/read`),
+  markAllRead: () => api.patch('/notifications/read-all'),
 };
 
 export default api;

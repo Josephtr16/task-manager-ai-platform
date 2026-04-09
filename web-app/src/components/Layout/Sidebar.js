@@ -21,7 +21,7 @@ import {
   FaChevronRight,
 } from 'react-icons/fa';
 
-const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 260 }) => {
+const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 232 }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
@@ -108,25 +108,25 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 260
     sidebar: {
       width: `${sidebarWidth}px`,
       minHeight: '100vh',
-      backgroundColor: theme.bgMain,
-      boxShadow: theme.type === 'dark' ? '4px 0 24px rgba(0,0,0,0.2)' : '4px 0 24px rgba(0,0,0,0.05)',
+      backgroundColor: theme.bgCard,
+      borderRight: `1px solid ${theme.border}`,
       display: 'flex',
       flexDirection: 'column',
-      padding: isCollapsed ? '20px 10px' : '24px 16px',
+      padding: isCollapsed ? '20px 8px' : '24px 10px',
       position: 'fixed',
       left: 0,
       top: 0,
       bottom: 0,
       zIndex: 100,
-      transition: 'width 0.28s cubic-bezier(0.22, 1, 0.36, 1), padding 0.28s cubic-bezier(0.22, 1, 0.36, 1)',
+      transition: 'width 200ms ease, padding 200ms ease',
     },
     logo: {
       display: 'flex',
       alignItems: 'center',
       justifyContent: isCollapsed ? 'center' : 'flex-start',
-      gap: isCollapsed ? '0' : '16px',
-      padding: isCollapsed ? '0 0 24px 0' : '0 8px 26px 8px',
-      marginBottom: '16px',
+      gap: isCollapsed ? '0' : '12px',
+      padding: isCollapsed ? '24px 0 20px 0' : '24px 8px 20px 8px',
+      marginBottom: '12px',
       width: '100%',
     },
     logoLeft: {
@@ -137,22 +137,26 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 260
       minWidth: 0,
     },
     logoIcon: {
-      width: '40px',
-      height: '40px',
-      borderRadius: '12px',
-      backgroundColor: theme.bgMain,
-      boxShadow: theme.shadows.neumorphic,
+      width: '36px',
+      height: '36px',
+      borderRadius: '10px',
+      background: theme.accent,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
+      color: '#fff',
+      fontFamily: '"Fraunces", serif',
+      fontStyle: 'italic',
+      fontSize: '18px',
+      fontWeight: '600',
+      letterSpacing: '-0.02em',
     },
     logoText: {
-      fontSize: '22px',
-      fontWeight: '800',
-      background: `linear-gradient(135deg, ${theme.primary}, ${theme.aiPurple})`,
-      WebkitBackgroundClip: 'text',
-      WebkitTextFillColor: 'transparent',
-      letterSpacing: '0.5px',
+      fontFamily: '"Geist", sans-serif',
+      fontSize: '13px',
+      fontWeight: '500',
+      color: theme.textPrimary,
+      letterSpacing: '0.01em',
       whiteSpace: 'nowrap',
       lineHeight: 1,
     },
@@ -160,15 +164,15 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 260
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      width: '30px',
-      height: '44px',
-      borderRadius: '10px',
-      border: 'none',
+      width: '32px',
+      height: '32px',
+      borderRadius: '50%',
+      border: `1px solid ${theme.borderMedium}`,
       cursor: 'pointer',
       color: theme.textSecondary,
-      backgroundColor: theme.bgMain,
-      boxShadow: theme.shadows.neumorphic,
-      transition: 'all 0.2s ease',
+      backgroundColor: theme.bgElevated,
+      boxShadow: 'none',
+      transition: 'all 150ms ease',
       flexShrink: 0,
       position: 'absolute',
       right: '-14px',
@@ -179,39 +183,45 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 260
     nav: {
       display: 'flex',
       flexDirection: 'column',
-      gap: '12px',
+      gap: '4px',
       flex: 1,
     },
     menuItem: {
       display: 'flex',
       alignItems: 'center',
       justifyContent: isCollapsed ? 'center' : 'flex-start',
-      gap: isCollapsed ? '0' : '16px',
-      padding: isCollapsed ? '12px' : '14px 20px',
-      borderRadius: borderRadius.lg,
-      border: 'none',
+      gap: isCollapsed ? '0' : '12px',
+      padding: isCollapsed ? '0' : '0 12px',
+      height: '40px',
+      margin: '2px 8px',
+      borderRadius: '8px',
+      border: '1px solid transparent',
       cursor: 'pointer',
       width: '100%',
       textAlign: isCollapsed ? 'center' : 'left',
-      fontSize: '15px',
+      fontSize: '13px',
       fontWeight: '600',
-      transition: 'all 0.3s ease',
+      transition: 'all 150ms ease',
       position: 'relative',
       color: theme.textSecondary,
       outline: 'none',
       backgroundColor: 'transparent', // Default transparent
     },
     menuItemActive: {
-      color: theme.primary,
-      backgroundColor: theme.bgMain,
-      boxShadow: theme.shadows.neumorphicActive,
+      color: theme.accent,
+      backgroundColor: theme.bgElevated,
+      border: `1px solid ${theme.borderMedium}`,
     },
     menuIcon: {
-      fontSize: '18px',
+      fontSize: '16px',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      width: '24px',
+      width: '20px',
+      backgroundColor: 'transparent',
+      borderRadius: '0',
+      padding: '0',
+      margin: '0',
     },
     menuLabel: {
       flex: 1,
@@ -221,7 +231,7 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 260
     },
     bottom: {
       borderTop: `1px solid ${theme.border}`,
-      paddingTop: '24px',
+      paddingTop: '16px',
       marginTop: 'auto',
     },
     userProfile: {
@@ -230,26 +240,28 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 260
       justifyContent: isCollapsed ? 'center' : 'space-between',
       flexDirection: isCollapsed ? 'column' : 'row',
       gap: isCollapsed ? '10px' : '12px',
-      padding: isCollapsed ? '10px 8px' : '12px',
-      marginBottom: '16px',
+      padding: isCollapsed ? '8px' : '12px',
+      marginBottom: '12px',
       borderRadius: borderRadius.lg,
-      backgroundColor: theme.bgMain,
-      boxShadow: theme.shadows.neumorphic,
+      backgroundColor: theme.bgElevated,
+      border: `1px solid ${theme.border}`,
       width: '100%',
+      minHeight: '72px',
     },
     avatar: {
-      width: '40px',
-      height: '40px',
+      width: '32px',
+      height: '32px',
       borderRadius: '50%',
-      background: `linear-gradient(135deg, ${theme.primary}, ${theme.aiPurple})`,
+      background: theme.accent,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       color: '#fff',
-      fontSize: '16px',
+      fontFamily: '"Fraunces", serif',
+      fontStyle: 'italic',
+      fontSize: '14px',
       fontWeight: '700',
       flexShrink: 0,
-      boxShadow: '2px 2px 5px rgba(0,0,0,0.2)',
     },
     userInfo: {
       flex: 1,
@@ -258,8 +270,8 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 260
       minWidth: 0,
     },
     userName: {
-      fontSize: '14px',
-      fontWeight: '700',
+      fontSize: '12px',
+      fontWeight: '500',
       color: theme.textPrimary,
       margin: 0,
       whiteSpace: 'nowrap',
@@ -283,15 +295,16 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 260
       display: 'flex',
       alignItems: 'center',
       gap: '16px',
-      padding: '12px 20px',
-      borderRadius: borderRadius.lg,
+      padding: '0 16px',
+      height: '40px',
+      borderRadius: '8px',
       border: 'none',
       cursor: 'pointer',
       width: '100%',
       textAlign: 'left',
       fontSize: '14px',
       fontWeight: '500',
-      transition: 'all 0.3s ease',
+      transition: 'all 150ms ease',
       color: theme.textSecondary,
       backgroundColor: 'transparent',
     },
@@ -299,15 +312,16 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 260
       display: 'flex',
       alignItems: 'center',
       gap: '16px',
-      padding: '12px 20px',
-      borderRadius: borderRadius.lg,
+      padding: '0 16px',
+      height: '40px',
+      borderRadius: '8px',
       border: 'none',
       cursor: 'pointer',
       width: '100%',
       textAlign: 'left',
       fontSize: '14px',
       fontWeight: '500',
-      transition: 'all 0.3s ease',
+      transition: 'all 150ms ease',
       backgroundColor: 'transparent',
       color: theme.error,
     },
@@ -322,8 +336,8 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 260
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      width: '32px',
-      height: '32px',
+      width: '28px',
+      height: '28px',
       borderRadius: '8px',
       border: 'none',
       backgroundColor: 'transparent',
@@ -339,23 +353,21 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 260
     },
     badge: {
       position: 'absolute',
-      top: '-4px',
-      right: '-4px',
-      minWidth: '18px',
-      height: '18px',
-      borderRadius: '999px',
-      backgroundColor: '#ef4444',
-      color: '#fff',
-      fontSize: '10px',
+      top: '-1px',
+      right: '-1px',
+      minWidth: '8px',
+      height: '8px',
+      borderRadius: '50%',
+      backgroundColor: theme.accent,
+      color: 'transparent',
+      fontSize: '0',
       fontWeight: '700',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '0 4px',
-      boxShadow: theme.type === 'dark'
-        ? '0 6px 14px rgba(239,68,68,0.45)'
-        : '0 6px 14px rgba(239,68,68,0.35)',
-      border: `1px solid ${theme.type === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.5)'}`,
+      padding: '0',
+      boxShadow: `0 0 0 2px ${theme.bgCard}`,
+      border: 'none',
     },
     notificationPanelBackdrop: {
       position: 'fixed',
@@ -363,29 +375,27 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 260
       left: `${sidebarWidth}px`,
       right: 0,
       bottom: 0,
-      background: theme.type === 'dark' ? 'rgba(9, 12, 18, 0.2)' : 'rgba(18, 24, 32, 0.08)',
-      backdropFilter: 'blur(2px)',
+      background: 'rgba(0,0,0,0.55)',
+      backdropFilter: 'blur(6px)',
       zIndex: 85,
       opacity: isNotificationOpen ? 1 : 0,
       pointerEvents: isNotificationOpen ? 'auto' : 'none',
-      transition: 'opacity 0.28s ease',
+      transition: 'opacity 250ms ease-out',
     },
     notificationPanel: {
       position: 'fixed',
-      top: '14px',
-      left: `${sidebarWidth + 10}px`,
-      height: 'calc(100vh - 28px)',
-      width: '360px',
-      backgroundColor: theme.bgMain,
-      background: theme.bgMain,
-      border: `1px solid ${theme.border}`,
-      borderRadius: '24px',
-      boxShadow: theme.shadows.card,
+      top: 0,
+      left: `${sidebarWidth}px`,
+      height: '100vh',
+      width: '320px',
+      backgroundColor: theme.bgCard,
+      borderRight: `1px solid ${theme.border}`,
+      boxShadow: theme.shadows.md,
       zIndex: 90,
-      clipPath: isNotificationOpen ? 'inset(0 0 0 0)' : 'inset(0 100% 0 0)',
+      transform: isNotificationOpen ? 'translateX(0)' : 'translateX(-100%)',
       opacity: isNotificationOpen ? 1 : 0,
       pointerEvents: isNotificationOpen ? 'auto' : 'none',
-      transition: 'clip-path 0.36s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.24s ease',
+      transition: 'transform 200ms ease, opacity 200ms ease',
       display: 'flex',
       flexDirection: 'column',
       overflow: 'hidden',
@@ -394,9 +404,9 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 260
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'center',
-      padding: '16px 18px 14px 18px',
+      padding: '16px',
       borderBottom: `1px solid ${theme.border}`,
-      backgroundColor: theme.bgMain,
+      backgroundColor: theme.bgCard,
     },
     notificationList: {
       flex: 1,
@@ -408,16 +418,16 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 260
     },
     notificationItem: {
       border: `1px solid ${theme.border}`,
-      borderRadius: borderRadius.md,
-      padding: '12px 14px',
-      backgroundColor: theme.bgMain,
-      boxShadow: theme.shadows.neumorphic,
+      borderRadius: '8px',
+      padding: '14px 16px',
+      backgroundColor: theme.bgSurface,
+      boxShadow: 'none',
       cursor: 'pointer',
-      transition: 'transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease',
+      transition: 'transform 150ms ease, box-shadow 150ms ease, border-color 150ms ease',
+      position: 'relative',
     },
     notificationUnread: {
-      borderLeft: `3px solid ${theme.primary}`,
-      boxShadow: theme.shadows.neumorphicInset,
+      backgroundColor: theme.bgRaised,
     },
     notificationMessage: {
       fontSize: '13px',
@@ -427,21 +437,21 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 260
       fontWeight: '500',
     },
     notificationMeta: {
-      marginTop: '8px',
+      marginTop: '4px',
       fontSize: '11px',
       color: theme.textMuted,
     },
     markAllButton: {
       border: `1px solid ${theme.border}`,
-      borderRadius: '10px',
+      borderRadius: '8px',
       padding: '6px 10px',
-      backgroundColor: theme.bgMain,
-      boxShadow: theme.shadows.neumorphic,
+      backgroundColor: theme.bgRaised,
+      boxShadow: 'none',
       color: theme.primary,
       cursor: 'pointer',
       fontSize: '12px',
       fontWeight: '600',
-      transition: 'all 0.2s ease',
+      transition: 'all 150ms ease',
     },
     emptyState: {
       fontSize: '13px',
@@ -451,8 +461,18 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 260
       padding: '20px 14px',
       borderRadius: borderRadius.lg,
       border: `1px dashed ${theme.border}`,
-      backgroundColor: theme.bgMain,
-      boxShadow: theme.shadows.neumorphicInset,
+      backgroundColor: theme.bgSurface,
+      boxShadow: 'none',
+    },
+    unreadDot: {
+      position: 'absolute',
+      right: '16px',
+      top: '50%',
+      width: '6px',
+      height: '6px',
+      borderRadius: '50%',
+      backgroundColor: theme.accent,
+      transform: 'translateY(-50%)',
     },
   };
 
@@ -460,28 +480,63 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 260
     <div style={styles.sidebar}>
       {/* Dynamic Hover Styles */}
       <style>{`
+        .sidebar-menu-item .menu-icon {
+          background-color: transparent !important;
+          border-radius: 0 !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          outline: none !important;
+          box-shadow: none !important;
+          border: none !important;
+          filter: none !important;
+          width: auto !important;
+          height: auto !important;
+          min-width: unset !important;
+          min-height: unset !important;
+        }
+        .sidebar-menu-item .menu-icon svg {
+          background-color: transparent !important;
+          border-radius: 0 !important;
+          outline: none !important;
+          box-shadow: none !important;
+          filter: none !important;
+          display: inline !important;
+        }
+        .sidebar-menu-item .menu-icon svg circle,
+        .sidebar-menu-item .menu-icon svg ellipse,
+        .sidebar-menu-item .menu-icon svg rect[rx],
+        .sidebar-menu-item .menu-icon svg rect[ry] {
+          fill: none !important;
+          stroke: none !important;
+        }
+        .sidebar-menu-item:focus .menu-icon,
+        .sidebar-menu-item:focus-visible .menu-icon {
+          background-color: transparent !important;
+          outline: none !important;
+          box-shadow: none !important;
+        }
         .sidebar-menu-item:hover {
-          background-color: ${theme.type === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)'} !important;
+          background-color: ${theme.bgElevated} !important;
           color: ${theme.textPrimary} !important;
-          transform: ${isCollapsed ? 'none' : 'translateX(4px)'};
+          transform: ${isCollapsed ? 'none' : 'translateX(2px)'};
         }
         .sidebar-menu-item.active {
-          background-color: ${theme.bgMain} !important;
-          color: ${theme.primary} !important;
+          background-color: ${theme.bgElevated} !important;
+          color: ${theme.accent} !important;
           transform: none !important;
         }
         .sidebar-menu-item:hover .menu-icon {
           color: ${theme.textPrimary} !important;
         }
         .sidebar-menu-item.active .menu-icon {
-          color: ${theme.primary} !important;
+          color: ${theme.accent} !important;
         }
         .logout-btn:hover {
           background-color: ${theme.error}15 !important;
           color: ${theme.error} !important;
         }
         .icon-btn:hover {
-          background-color: ${theme.type === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)'} !important;
+          background-color: ${theme.bgElevated} !important;
           color: ${theme.primary} !important;
         }
         .icon-btn.logout:hover {
@@ -493,8 +548,8 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 260
         }
         .notif-item:hover {
           transform: translateY(-1px);
-          box-shadow: ${theme.shadows.card} !important;
-          border-color: ${theme.primary}33 !important;
+          box-shadow: ${theme.shadows.md} !important;
+          border-color: ${theme.borderMedium} !important;
         }
         .notif-mark-all:hover {
           background-color: ${theme.type === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'} !important;
@@ -505,9 +560,9 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 260
       <div style={styles.logo}>
         <div style={styles.logoLeft}>
           <div style={styles.logoIcon}>
-            <FaLayerGroup size={24} color={theme.primary} />
+            TF
           </div>
-          {!isCollapsed && <span style={styles.logoText}>TaskFlow AI</span>}
+          {!isCollapsed && <span style={styles.logoText}>TaskFlow</span>}
         </div>
       </div>
 
@@ -568,7 +623,7 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 260
               <span style={styles.bellWrapper}>
                 <FaBell />
                 {unreadCount > 0 && (
-                  <span style={styles.badge}>{unreadCount > 99 ? '99+' : unreadCount}</span>
+                    <span style={styles.badge} aria-hidden="true" />
                 )}
               </span>
             </button>
@@ -637,6 +692,7 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 260
               >
                 <p style={styles.notificationMessage}>{notification.message}</p>
                 <div style={styles.notificationMeta}>{formatTimeAgo(notification.createdAt)}</div>
+                {!notification.read && <span style={styles.unreadDot} />}
               </div>
             ))
           )}

@@ -930,7 +930,7 @@ const ProjectDetailPage = () => {
                                     onClick={() => setShowAIProjectBreakdown(true)}
                                     className="add-btn"
                                 >
-                                    🤖 Generate Tasks with AI
+                                    Generate Tasks with AI
                                 </button>
                             )}
                             <button 

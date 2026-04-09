@@ -1,17 +1,17 @@
 import React from 'react';
 
 const shimmerStyle = {
-  background: '#e8e8e4',
+  background: 'linear-gradient(90deg, var(--bg-card) 25%, var(--bg-elevated) 50%, var(--bg-card) 75%)',
+  backgroundSize: '200% 100%',
   borderRadius: '10px',
-  animation: 'skeletonPulse 1.5s ease-in-out infinite',
+  animation: 'shimmer 1.5s linear infinite',
 };
 
 const SkeletonAnimation = () => (
   <style>{`
-    @keyframes skeletonPulse {
-      0% { opacity: 0.4; }
-      50% { opacity: 1; }
-      100% { opacity: 0.4; }
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
     }
   `}</style>
 );
@@ -23,8 +23,8 @@ export const TaskCardSkeleton = () => {
         borderRadius: '16px',
         padding: '20px',
         minHeight: '240px',
-        background: '#f6f6f3',
-        border: '1px solid #ecece6',
+        background: 'var(--bg-card)',
+        border: '1px solid var(--border)',
         display: 'flex',
         flexDirection: 'column',
         gap: '14px',
@@ -53,8 +53,8 @@ export const StatsCardSkeleton = () => {
         borderRadius: '16px',
         padding: '20px',
         minHeight: '145px',
-        background: '#f6f6f3',
-        border: '1px solid #ecece6',
+        background: 'var(--bg-card)',
+        border: '1px solid var(--border)',
         display: 'flex',
         flexDirection: 'column',
         gap: '14px',
@@ -76,8 +76,8 @@ export const ProjectCardSkeleton = () => {
         borderRadius: '18px',
         padding: '22px',
         minHeight: '230px',
-        background: '#f6f6f3',
-        border: '1px solid #ecece6',
+        background: 'var(--bg-card)',
+        border: '1px solid var(--border)',
         display: 'flex',
         flexDirection: 'column',
         gap: '14px',

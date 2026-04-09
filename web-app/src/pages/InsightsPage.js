@@ -64,16 +64,16 @@ const InsightsPage = () => {
     theme.primary,
     theme.success,
     theme.error,
-    theme.aiPurple || '#8b5cf6',
-    theme.warning || '#f59e0b',
-    '#EC4899',
+    theme.info,
+    theme.warning,
+    theme.copper,
   ];
 
   const styles = {
     container: {
       padding: '32px',
       minHeight: '100vh',
-      backgroundColor: theme.bgMain, // Neomorphic background
+      backgroundColor: theme.bgMain,
     },
     loading: {
       display: 'flex',
@@ -90,7 +90,7 @@ const InsightsPage = () => {
       border: `4px solid ${theme.bgMain}`,
       borderTop: `4px solid ${theme.primary}`,
       borderRadius: '50%',
-      boxShadow: theme.shadows.neumorphic,
+      boxShadow: theme.shadows.float,
       animation: 'spin 1s linear infinite',
     },
     header: {
@@ -100,11 +100,11 @@ const InsightsPage = () => {
       marginBottom: '32px',
     },
     title: {
+      fontFamily: '"Syne", sans-serif',
       fontSize: '32px',
       fontWeight: '800',
       color: theme.textPrimary,
       margin: '0 0 4px 0',
-      textShadow: theme.type === 'dark' ? '2px 2px 4px rgba(0,0,0,0.3)' : 'none',
       display: 'flex',
       alignItems: 'center',
     },
@@ -114,18 +114,18 @@ const InsightsPage = () => {
       margin: 0,
     },
     refreshButton: {
-      backgroundColor: theme.bgMain,
-      border: 'none',
-      borderRadius: borderRadius.lg,
+      backgroundColor: theme.bgCard,
+      border: `1px solid ${theme.border}`,
+      borderRadius: '999px',
       padding: '10px 20px',
       fontSize: '14px',
       color: theme.textPrimary,
       cursor: 'pointer',
-      boxShadow: theme.shadows.neumorphic,
+      boxShadow: 'none',
       display: 'flex',
       alignItems: 'center',
       fontWeight: '600',
-      transition: 'all 0.2s',
+      transition: 'all 150ms ease',
     },
     errorBanner: {
       backgroundColor: `${theme.error}1a`,
@@ -144,11 +144,11 @@ const InsightsPage = () => {
       marginBottom: '32px',
     },
     insightCard: {
-      backgroundColor: theme.bgMain,
+      backgroundColor: theme.bgCard,
       borderRadius: borderRadius.lg,
       padding: '24px',
-      boxShadow: theme.shadows.neumorphic, // Neomorphic card
-      border: `1px solid transparent`,
+      boxShadow: theme.shadows.card,
+      border: `1px solid ${theme.border}`,
     },
     insightCardHeader: {
       display: 'flex',
@@ -161,8 +161,8 @@ const InsightsPage = () => {
       color: theme.primary,
       padding: '10px',
       borderRadius: '12px',
-      backgroundColor: theme.bgMain,
-      boxShadow: theme.shadows.neumorphic,
+      backgroundColor: theme.bgElevated,
+      boxShadow: 'none',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -179,10 +179,10 @@ const InsightsPage = () => {
     confidenceBar: {
       width: '80px',
       height: '6px',
-      backgroundColor: theme.bgMain,
+      backgroundColor: theme.bgElevated,
       borderRadius: '3px',
       overflow: 'hidden',
-      boxShadow: theme.shadows.neumorphicInset,
+      boxShadow: 'none',
     },
     confidenceFill: {
       height: '100%',
@@ -207,10 +207,11 @@ const InsightsPage = () => {
       gap: '24px',
     },
     chartCard: {
-      backgroundColor: theme.bgMain,
+      backgroundColor: theme.bgCard,
       borderRadius: borderRadius.lg,
       padding: '24px',
-      boxShadow: theme.shadows.neumorphic,
+      boxShadow: theme.shadows.card,
+      border: `1px solid ${theme.border}`,
     },
     chartHeader: {
       display: 'flex',
@@ -234,10 +235,11 @@ const InsightsPage = () => {
     trendToggle: {
       display: 'flex',
       gap: '8px',
-      backgroundColor: theme.bgMain,
+      backgroundColor: theme.bgCard,
       padding: '4px',
-      borderRadius: '12px',
-      boxShadow: theme.shadows.neumorphicInset,
+      borderRadius: '999px',
+      boxShadow: 'none',
+      border: `1px solid ${theme.border}`,
     },
     trendButton: {
       backgroundColor: 'transparent',
@@ -248,12 +250,12 @@ const InsightsPage = () => {
       fontWeight: '600',
       color: theme.textSecondary,
       cursor: 'pointer',
-      transition: 'all 0.2s',
+      transition: 'all 120ms ease',
     },
     trendButtonActive: {
-      backgroundColor: theme.bgMain,
-      color: theme.primary,
-      boxShadow: theme.shadows.neumorphic,
+      backgroundColor: theme.bgOverlay,
+      color: theme.textPrimary,
+      boxShadow: theme.shadows.sm,
     },
     emptyChart: {
       display: 'flex',
@@ -263,15 +265,16 @@ const InsightsPage = () => {
       color: theme.textMuted,
       fontSize: '14px',
       textAlign: 'center',
-      border: `2px dashed ${theme.border}`,
+      border: `1px dashed ${theme.borderMedium || theme.border}`,
       borderRadius: '8px',
+      backgroundColor: theme.bgRaised,
     },
     tooltip: {
-      backgroundColor: theme.bgMain,
-      border: 'none',
+      backgroundColor: theme.bgOverlay,
+      border: `1px solid ${theme.borderMedium || theme.border}`,
       borderRadius: '8px',
       padding: '12px',
-      boxShadow: theme.shadows.neumorphic,
+      boxShadow: theme.shadows.md,
     },
     tooltipLabel: {
       fontSize: '13px',
@@ -300,7 +303,7 @@ const InsightsPage = () => {
       height: '10px',
       borderRadius: '50%',
       flexShrink: 0,
-      boxShadow: '0 0 5px currentColor',
+      boxShadow: 'none',
     },
     pieLegendLabel: {
       fontSize: '13px',
@@ -367,7 +370,7 @@ const InsightsPage = () => {
       flexDirection: 'column',
       alignItems: 'center',
       gap: '4px',
-      boxShadow: theme.shadows.neumorphicInset,
+      boxShadow: 'none',
     },
     statValue: {
       fontSize: '18px',
@@ -579,7 +582,7 @@ const InsightsPage = () => {
                         border: 'none',
                         borderRadius: '8px',
                         color: theme.textPrimary,
-                        boxShadow: theme.shadows.neumorphic,
+                        boxShadow: theme.shadows.sm,
                       }}
                     />
                   </PieChart>
@@ -655,7 +658,7 @@ const InsightsPage = () => {
                   <Bar
                     dataKey="count"
                     name="Tasks Completed"
-                    fill={theme.aiPurple || '#8b5cf6'}
+                    fill={theme.accent}
                     radius={[4, 4, 0, 0]}
                   />
                 </BarChart>
@@ -683,7 +686,7 @@ const InsightsPage = () => {
                         fill="none"
                         stroke={theme.bgMain}
                         strokeWidth="3"
-                        style={{ filter: `drop-shadow(${theme.shadows.neumorphicInset})` }} // Inset background
+                        style={{ filter: 'none' }} // Inset background
                       />
                       <path
                         d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
@@ -710,7 +713,7 @@ const InsightsPage = () => {
                         fill="none"
                         stroke={theme.bgMain}
                         strokeWidth="3"
-                        style={{ filter: `drop-shadow(${theme.shadows.neumorphicInset})` }}
+                        style={{ filter: 'none' }}
                       />
                       <path
                         d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"

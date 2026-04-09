@@ -3,45 +3,47 @@ import React from 'react';
 import { useTheme } from '../../context/ThemeContext';
 import { borderRadius } from '../../theme';
 
-const StatsCard = ({ icon, label, value, subtitle, trend, color, customContent = null }) => {
+const StatsCard = ({ icon, label, value, subtitle, trend, color, customContent = null, progress = null }) => {
   const { theme } = useTheme();
 
   const styles = {
     card: {
-      backgroundColor: theme.bgMain, // Blends with background
+      backgroundColor: theme.bgCard,
       borderRadius: borderRadius.lg,
       padding: '24px',
-      boxShadow: theme.shadows.card, // Neomorphic shadow
-      border: `1px solid ${theme.border}`,
-      transition: 'all 0.3s ease',
+      boxShadow: theme.shadows.sm,
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
+      transition: 'all 150ms ease',
       cursor: 'pointer',
       position: 'relative',
       overflow: 'hidden',
+      minHeight: '176px',
     },
     header: {
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: '16px',
+      marginBottom: '18px',
     },
     iconChip: {
-      width: '34px',
-      height: '34px',
-      borderRadius: '10px',
-      backgroundColor: theme.bgMain,
-      boxShadow: theme.shadows.neumorphic,
+      width: '28px',
+      height: '28px',
+      borderRadius: '6px',
+      backgroundColor: theme.bgElevated,
+      border: `1px solid ${theme.border}`,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       color: color || theme.primary,
-      fontSize: '16px',
+      fontSize: '14px',
     },
     label: {
-      fontSize: '14px',
-      fontWeight: '600',
+      fontSize: '11px',
+      fontWeight: '700',
       color: theme.textSecondary,
-      letterSpacing: '0.5px',
+      letterSpacing: '0.08em',
       textTransform: 'uppercase',
+      fontFamily: '"Fraunces", serif',
     },
     valueContainer: {
       display: 'flex',
@@ -50,40 +52,51 @@ const StatsCard = ({ icon, label, value, subtitle, trend, color, customContent =
       marginBottom: '8px',
     },
     value: {
-      fontSize: '36px',
-      fontWeight: '800',
+      fontFamily: '"Fraunces", serif',
+      fontSize: '52px',
+      fontWeight: '600',
+      lineHeight: 1,
       color: theme.textPrimary,
       margin: 0,
-      textShadow: theme.type === 'dark' ? '2px 2px 4px rgba(0,0,0,0.3)' : 'none',
+      letterSpacing: '-0.02em',
     },
     trend: {
       fontSize: '20px',
     },
     subtitle: {
-      fontSize: '13px',
+      fontSize: '12px',
       color: theme.textMuted,
       margin: '0 0 16px 0',
+      fontFamily: '"Fraunces", serif',
     },
-    progressContainer: {
-      padding: '2px', // Inner padding for inset effect
-      borderRadius: '4px',
-      backgroundColor: theme.bgMain,
-      boxShadow: theme.shadows.neumorphicInset, // Inset shadow for track
+    progressWrap: {
+      marginTop: '14px',
     },
-    progressBar: {
-      height: '6px',
-      borderRadius: '3px',
+    progressTrack: {
+      width: '100%',
+      height: '10px',
+      borderRadius: '999px',
+      backgroundColor: theme.bgElevated,
+      border: `1px solid ${theme.border}`,
       overflow: 'hidden',
-      position: 'relative',
     },
-    progress: {
+    progressFill: {
       height: '100%',
-      borderRadius: '3px',
-      transition: 'width 1s cubic-bezier(0.4, 0, 0.2, 1)',
-      boxShadow: '0 0 8px rgba(0,0,0,0.3)', // Glow effect
+      borderRadius: 'inherit',
+      boxShadow: '0 0 10px rgba(0,0,0,0.12)',
+    },
+    progressMeta: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginTop: '8px',
+      fontSize: '12px',
+      color: theme.textMuted,
+      fontFamily: '"Fraunces", serif',
     },
     customContent: {
       marginTop: '4px',
+      fontFamily: '"Fraunces", serif',
     },
   };
 
@@ -91,8 +104,9 @@ const StatsCard = ({ icon, label, value, subtitle, trend, color, customContent =
     <div style={styles.card} className="stats-card">
       <style>{`
         .stats-card:hover {
-          transform: translateY(-4px);
-          box-shadow: ${theme.type === 'dark' ? '12px 12px 24px #16191c, -12px -12px 24px #2c3136' : '12px 12px 24px #d1d5db, -12px -12px 24px #ffffff'} !important;
+          transform: translateY(-2px);
+          box-shadow: ${theme.shadows.float} !important;
+          border-color: ${theme.primary}33 !important;
         }
       `}</style>
       <div style={styles.header}>
@@ -115,11 +129,23 @@ const StatsCard = ({ icon, label, value, subtitle, trend, color, customContent =
 
           {subtitle && <p style={styles.subtitle}>{subtitle}</p>}
 
-          <div style={styles.progressContainer}>
-            <div style={{ ...styles.progressBar, backgroundColor: color + '20' }}>
-              <div style={{ ...styles.progress, backgroundColor: color, width: `${Math.min(value, 100)}%` }} />
+          {progress && (
+            <div style={styles.progressWrap}>
+              <div style={styles.progressTrack} aria-hidden="true">
+                <div
+                  style={{
+                    ...styles.progressFill,
+                    width: `${Math.min(100, Math.max(0, progress.total > 0 ? (progress.current / progress.total) * 100 : 0))}%`,
+                    backgroundColor: progress.color || color || theme.primary,
+                  }}
+                />
+              </div>
+              <div style={styles.progressMeta}>
+                <span>{progress.labelLeft || ''}</span>
+                <span>{progress.labelRight || ''}</span>
+              </div>
             </div>
-          </div>
+          )}
         </>
       )}
     </div>

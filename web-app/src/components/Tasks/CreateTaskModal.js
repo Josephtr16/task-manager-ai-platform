@@ -1,6 +1,6 @@
 // src/components/Tasks/CreateTaskModal.js
 import React, { useState, useRef, useEffect } from 'react';
-import { FaTimes, FaCalendarAlt, FaTag, FaFlag, FaPlus, FaPaperclip, FaCheckCircle, FaTrash, FaClock } from 'react-icons/fa';
+import { FaTimes, FaCalendarAlt, FaTag, FaFlag, FaPlus, FaPaperclip, FaCheckCircle, FaTrash, FaClock, FaRobot } from 'react-icons/fa';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 import { useTheme } from '../../context/ThemeContext';
@@ -244,44 +244,44 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
       left: 0,
       right: 0,
       bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.6)',
+      backgroundColor: 'rgba(0, 0, 0, 0.75)',
+      backdropFilter: 'blur(6px)',
       display: 'flex',
       justifyContent: 'center',
       alignItems: 'center',
       zIndex: 1000,
-      // Removed backdropFilter as requested
     },
     modal: {
-      backgroundColor: theme.bgMain, // Dynamic background
-      borderRadius: borderRadius.xl,
+      backgroundColor: theme.bgCard,
+      borderRadius: '16px',
       padding: '32px',
       width: '90%',
-      maxWidth: '600px',
+      maxWidth: '560px',
       maxHeight: '90vh',
       overflowY: 'auto',
-      boxShadow: '0 20px 50px rgba(0,0,0,0.3)', // Stronger shadow for modal pop
+      boxShadow: theme.shadows.float,
       border: `1px solid ${theme.border}`,
       position: 'relative',
       color: theme.textPrimary, // Dynamic text color
+      animation: 'slideUp 200ms ease',
     },
     header: {
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: '24px',
-      borderBottom: `2px solid ${theme.bgMain}`,
+      marginBottom: '20px',
+      borderBottom: `1px solid ${theme.border}`,
       paddingBottom: '16px',
-      boxShadow: `0 1px 0 ${theme.border}40`,
     },
     title: {
-      fontSize: '24px',
-      fontWeight: '800',
+      fontFamily: '"Fraunces", serif',
+      fontSize: '20px',
+      fontWeight: '600',
       color: theme.textPrimary,
-      textShadow: theme.type === 'dark' ? '2px 2px 4px rgba(0,0,0,0.3)' : 'none',
     },
     notification: {
       marginBottom: '16px',
-      borderRadius: borderRadius.md,
+      borderRadius: '8px',
       padding: '10px 12px',
       display: 'flex',
       alignItems: 'center',
@@ -290,7 +290,7 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
       fontSize: '13px',
       fontWeight: '600',
       border: `1px solid ${theme.border}`,
-      boxShadow: theme.shadows.neumorphic,
+      boxShadow: 'none',
       animation: 'fadeSlideIn 0.28s ease-out',
     },
     notificationText: {
@@ -313,12 +313,14 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
       color: theme.textSecondary,
       fontSize: '20px',
       cursor: 'pointer',
-      padding: '8px',
+      padding: '0',
       borderRadius: '50%',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      transition: 'all 0.2s',
+      width: '32px',
+      height: '32px',
+      transition: 'all 150ms ease',
     },
     formGroup: {
       marginBottom: '20px',
@@ -327,35 +329,35 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
       display: 'flex',
       alignItems: 'center',
       gap: '8px',
-      fontSize: '14px',
+      fontSize: '11px',
       fontWeight: '600',
       color: theme.textSecondary,
-      marginBottom: '8px',
+      marginBottom: '6px',
+      textTransform: 'uppercase',
+      letterSpacing: '0.06em',
     },
     input: {
       width: '100%',
-      padding: '12px 16px',
+      padding: '11px 14px',
       fontSize: '15px',
-      backgroundColor: theme.bgMain,
-      border: 'none',
-      borderRadius: borderRadius.md,
+      backgroundColor: theme.bgRaised,
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
+      borderRadius: '8px',
       color: theme.textPrimary,
-      boxShadow: theme.shadows.neumorphicInset, // Dynamic inset shadow
       outline: 'none',
-      transition: 'box-shadow 0.2s',
+      transition: 'all 150ms ease',
     },
     textarea: {
       width: '100%',
-      padding: '12px 16px',
+      padding: '11px 14px',
       fontSize: '15px',
-      backgroundColor: theme.bgMain,
-      border: 'none',
-      borderRadius: borderRadius.md,
+      backgroundColor: theme.bgRaised,
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
+      borderRadius: '8px',
       color: theme.textPrimary,
-      boxShadow: theme.shadows.neumorphicInset,
       outline: 'none',
       resize: 'vertical',
-      minHeight: '100px',
+      minHeight: '90px',
     },
     row: {
       display: 'flex',
@@ -366,23 +368,26 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
       flex: 1,
     },
     priorityWrapper: {
-      display: 'flex',
-      gap: '12px',
+      display: 'inline-flex',
+      gap: '0',
+      padding: '3px',
+      backgroundColor: theme.bgRaised,
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
+      borderRadius: '8px',
     },
     priorityBtn: (option) => ({
       flex: 1,
-      padding: '10px',
-      borderRadius: borderRadius.md,
-      border: 'none',
-      backgroundColor: formData.priority === option.value ? option.color : theme.bgMain,
-      color: formData.priority === option.value ? '#fff' : theme.textSecondary,
-      fontSize: '14px',
+      padding: '0 12px',
+      height: '34px',
+      borderRadius: '6px',
+      border: `1px solid ${formData.priority === option.value ? theme.borderMedium : 'transparent'}`,
+      backgroundColor: formData.priority === option.value ? theme.bgOverlay : 'transparent',
+      color: formData.priority === option.value ? option.color : theme.textMuted,
+      fontSize: '13px',
       fontWeight: '600',
       cursor: 'pointer',
-      boxShadow: formData.priority === option.value
-        ? `inset 3px 3px 6px rgba(0,0,0,0.2)`
-        : theme.shadows.neumorphic,
-      transition: 'all 0.2s',
+      boxShadow: formData.priority === option.value ? theme.shadows.xs : 'none',
+      transition: 'all 150ms ease',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -395,16 +400,16 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
       marginTop: '12px',
     },
     tag: {
-      backgroundColor: theme.bgMain,
+      backgroundColor: theme.bgRaised,
       color: theme.primary,
-      padding: '6px 12px',
-      borderRadius: '20px',
-      fontSize: '13px',
+      padding: '4px 8px',
+      borderRadius: '6px',
+      fontSize: '11px',
       fontWeight: '600',
       display: 'flex',
       alignItems: 'center',
       gap: '6px',
-      boxShadow: theme.shadows.neumorphic,
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
     },
     removeTag: {
       cursor: 'pointer',
@@ -424,9 +429,9 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
       alignItems: 'center',
       gap: '8px',
       padding: '8px 12px',
-      backgroundColor: theme.bgMain,
-      borderRadius: borderRadius.sm,
-      boxShadow: theme.shadows.neumorphic,
+      backgroundColor: theme.bgElevated,
+      borderRadius: '8px',
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
     },
     subtaskText: {
       flex: 1,
@@ -444,21 +449,20 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
     },
     addSubtaskBtn: {
       padding: '0 16px',
-      backgroundColor: theme.bgMain,
+      backgroundColor: theme.bgCard,
       color: theme.textSecondary,
-      border: 'none',
+      border: `1px solid ${theme.border}`,
       borderRadius: borderRadius.md,
       cursor: 'pointer',
-      boxShadow: theme.shadows.neumorphic,
       display: 'flex',
       alignItems: 'center',
     },
     recurringCard: {
-      backgroundColor: theme.bgMain,
-      borderRadius: borderRadius.lg,
-      boxShadow: theme.shadows.neumorphic,
+      backgroundColor: theme.bgRaised,
+      borderRadius: '8px',
+      boxShadow: 'none',
       padding: '14px',
-      border: `1px solid ${theme.border}`,
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
     },
     recurringToggleRow: {
       display: 'flex',
@@ -484,27 +488,27 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
     },
     switch: {
       position: 'relative',
-      width: '46px',
+      width: '48px',
       height: '26px',
       borderRadius: '999px',
-      border: 'none',
+      border: `1px solid ${formData.recurrenceEnabled ? theme.borderMedium : theme.borderSubtle || theme.border}`,
       cursor: 'pointer',
-      backgroundColor: formData.recurrenceEnabled ? theme.primary : theme.border,
-      boxShadow: theme.shadows.neumorphicInset,
-      transition: 'all 0.2s ease',
+      backgroundColor: formData.recurrenceEnabled ? theme.accent : theme.bgOverlay,
+      boxShadow: 'none',
+      transition: 'all 180ms ease',
       flexShrink: 0,
       padding: 0,
     },
     switchKnob: {
       position: 'absolute',
       top: '3px',
-      left: formData.recurrenceEnabled ? '23px' : '3px',
+      left: formData.recurrenceEnabled ? '25px' : '3px',
       width: '20px',
       height: '20px',
       borderRadius: '50%',
-      backgroundColor: '#fff',
+      backgroundColor: theme.bgCard,
       boxShadow: '0 2px 6px rgba(0,0,0,0.25)',
-      transition: 'left 0.2s ease',
+      transition: 'left 180ms ease',
     },
     frequencyLabel: {
       marginTop: '12px',
@@ -521,35 +525,35 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
       flexWrap: 'wrap',
     },
     frequencyPill: (option) => ({
-      border: 'none',
-      borderRadius: '999px',
-      padding: '8px 14px',
+      border: `1px solid ${formData.recurrenceFrequency === option.value ? theme.borderMedium : theme.borderSubtle || theme.border}`,
+      borderRadius: '6px',
+      padding: '0 12px',
+      height: '34px',
       cursor: 'pointer',
       fontSize: '13px',
-      fontWeight: '700',
-      boxShadow: formData.recurrenceFrequency === option.value
-        ? `inset 2px 2px 6px rgba(0,0,0,0.18)`
-        : theme.shadows.neumorphic,
-      color: formData.recurrenceFrequency === option.value ? '#fff' : theme.textSecondary,
-      backgroundColor: formData.recurrenceFrequency === option.value ? theme.primary : theme.bgMain,
-      transition: 'all 0.2s ease',
+      fontWeight: '600',
+      boxShadow: formData.recurrenceFrequency === option.value ? theme.shadows.xs : 'none',
+      color: formData.recurrenceFrequency === option.value ? theme.textPrimary : theme.textMuted,
+      backgroundColor: formData.recurrenceFrequency === option.value ? theme.bgOverlay : 'transparent',
+      transition: 'all 180ms ease',
     }),
     aiAssistButton: {
       marginTop: '10px',
-      padding: '10px 14px',
-      borderRadius: borderRadius.md,
-      border: 'none',
-      backgroundColor: theme.bgMain,
-      color: theme.primary,
-      fontSize: '14px',
-      fontWeight: '700',
+      padding: '0 14px',
+      height: '40px',
+      borderRadius: '8px',
+      border: `1px solid ${theme.borderMedium || theme.border}`,
+      backgroundColor: theme.bgRaised,
+      color: theme.accent,
+      fontSize: '13px',
+      fontWeight: '600',
       cursor: isAssistingWrite || formData.title.trim().length < 3 ? 'not-allowed' : 'pointer',
-      boxShadow: theme.shadows.neumorphic,
+      boxShadow: 'none',
       opacity: isAssistingWrite || formData.title.trim().length < 3 ? 0.6 : 1,
       display: 'inline-flex',
       alignItems: 'center',
       gap: '8px',
-      transition: 'all 0.2s',
+      transition: 'all 180ms ease',
     },
     spinner: {
       width: '14px',
@@ -566,40 +570,42 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
       gap: '16px',
     },
     cancelButton: {
-      padding: '12px 24px',
-      borderRadius: borderRadius.lg,
-      border: 'none',
-      backgroundColor: theme.bgMain,
+      padding: '0 20px',
+      height: '40px',
+      borderRadius: '8px',
+      border: `1px solid ${theme.borderMedium || theme.border}`,
+      backgroundColor: 'transparent',
       color: theme.textSecondary,
-      fontSize: '15px',
+      fontSize: '13px',
       fontWeight: '600',
       cursor: 'pointer',
-      boxShadow: theme.shadows.neumorphic,
-      transition: 'all 0.2s',
+      boxShadow: 'none',
+      transition: 'all 150ms ease',
     },
     createButton: {
-      padding: '12px 32px',
-      borderRadius: borderRadius.lg,
+      padding: '0 20px',
+      height: '40px',
+      borderRadius: '8px',
       border: 'none',
       backgroundColor: theme.primary,
-      color: '#fff',
-      fontSize: '15px',
-      fontWeight: '700',
+      color: '#0A0908',
+      fontSize: '13px',
+      fontWeight: '600',
       cursor: 'pointer',
-      boxShadow: theme.shadows.neumorphic,
+      boxShadow: '0 1px 3px rgba(0,0,0,0.4), 0 0 0 1px rgba(201,146,74,0.3) inset',
       display: 'flex',
       alignItems: 'center',
       gap: '8px',
-      transition: 'all 0.2s',
+      transition: 'all 150ms ease',
     },
   };
 
   return (
     <div style={styles.overlay} onClick={onClose}>
       <style>{`
-        .close-btn:hover {
+                .close-btn:hover {
           color: ${theme.error} !important;
-          box-shadow: ${theme.shadows.neumorphic} !important;
+          background-color: ${theme.bgElevated} !important;
         }
         .cancel-btn:hover {
           color: ${theme.textPrimary} !important;
@@ -607,7 +613,7 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
         }
         .create-btn:hover {
           transform: translateY(-1px);
-          box-shadow: 0 6px 16px ${theme.primary}66 !important;
+          box-shadow: ${theme.shadows.float} !important;
         }
         @keyframes spin {
           0% { transform: rotate(0deg); }
@@ -636,62 +642,103 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
         ::-webkit-scrollbar-thumb:hover {
           background: ${theme.textSecondary}; 
         }
-        /* Custom DatePicker Styles */
-        .react-datepicker {
-          background-color: ${theme.bgMain} !important;
-          border: 1px solid ${theme.border} !important;
-          border-radius: 12px !important;
-          font-family: 'Inter', sans-serif !important;
-          box-shadow: ${theme.shadows.neumorphic} !important;
+        .unified-datepicker-wrapper {
+          width: 100%;
+          display: block;
+        }
+
+        .unified-datepicker-wrapper .react-datepicker__input-container input {
+          width: 100%;
+          background-color: ${theme.bgRaised};
+          border: 1px solid ${theme.borderSubtle || theme.border};
+          border-radius: 8px;
+          padding: 11px 14px;
+          font-size: 14px;
+          color: ${theme.textPrimary};
+          outline: none;
+          box-shadow: none;
+        }
+
+        .unified-datepicker {
+          background-color: ${theme.bgCard};
+          border: 1px solid ${theme.borderSubtle || theme.border};
+          border-radius: 10px;
+          box-shadow: ${theme.shadows.md};
+          color: ${theme.textPrimary};
+          font-family: 'Geist', sans-serif;
+        }
+
+        .unified-datepicker .react-datepicker__header {
+          background-color: ${theme.bgCard};
+          border-bottom: 1px solid ${theme.borderSubtle || theme.border};
+        }
+
+        .unified-datepicker .react-datepicker__current-month,
+        .unified-datepicker .react-datepicker-time__header,
+        .unified-datepicker .react-datepicker__day-name,
+        .unified-datepicker .react-datepicker__time-name {
+          color: ${theme.textSecondary};
+        }
+
+        .unified-datepicker .react-datepicker__day,
+        .unified-datepicker .react-datepicker__time-list-item {
           color: ${theme.textPrimary} !important;
+          background-color: transparent !important;
+          border-radius: 6px !important;
         }
-        .react-datepicker__header {
-          background-color: ${theme.bgMain} !important;
-          border-bottom: 1px solid ${theme.border} !important;
-          border-top-left-radius: 12px !important;
-          border-top-right-radius: 12px !important;
+
+        .unified-datepicker .react-datepicker__day--outside-month {
+          color: ${theme.textMuted} !important;
+          opacity: 0.55;
         }
-        .react-datepicker__current-month,
-        .react-datepicker-time__header,
-        .react-datepicker-year-header {
-          color: ${theme.textPrimary} !important;
-          font-weight: 600 !important;
-        }
-        .react-datepicker__day-name {
-          color: ${theme.textSecondary} !important;
-        }
-        .react-datepicker__day {
-          color: ${theme.textPrimary} !important;
-          border-radius: 50% !important;
-        }
-        .react-datepicker__day:hover {
+
+        .unified-datepicker .react-datepicker__day:hover,
+        .unified-datepicker .react-datepicker__time-list-item:hover {
           background-color: ${theme.bgElevated} !important;
         }
-        .react-datepicker__day--selected,
-        .react-datepicker__day--keyboard-selected {
+
+        .unified-datepicker .react-datepicker__day--selected,
+        .unified-datepicker .react-datepicker__day--keyboard-selected,
+        .unified-datepicker .react-datepicker__time-list-item--selected {
           background-color: ${theme.primary} !important;
-          color: #fff !important;
-          box-shadow: 0 0 10px ${theme.primary}66 !important;
+          color: #0A0908 !important;
         }
-        .react-datepicker__input-container input {
-          width: 100%;
-          background-color: ${theme.bgMain};
-          border: none;
-          border-radius: 12px;
-          padding: 12px 16px;
-          color: ${theme.textPrimary};
-          box-shadow: ${theme.shadows.neumorphicInset};
-          outline: none;
+
+        .unified-datepicker .react-datepicker__day--selected:hover,
+        .unified-datepicker .react-datepicker__day--keyboard-selected:hover,
+        .unified-datepicker .react-datepicker__time-list-item--selected:hover {
+          background-color: ${theme.primaryDark || theme.primary} !important;
+          color: #0A0908 !important;
         }
-        .react-datepicker__triangle {
-          display: none;
-        }
-        .react-datepicker__navigation-icon::before {
+
+        .unified-datepicker .react-datepicker__navigation-icon::before {
           border-color: ${theme.textSecondary} !important;
         }
-        .react-datepicker__navigation:hover *::before {
+
+        .unified-datepicker .react-datepicker__navigation:hover .react-datepicker__navigation-icon::before {
           border-color: ${theme.textPrimary} !important;
-        } `}</style>
+        }
+
+        .unified-datepicker-wrapper .react-datepicker__close-icon::after {
+          background-color: ${theme.primary} !important;
+          color: #0A0908 !important;
+          font-weight: 700;
+        }
+
+        .unified-datepicker .react-datepicker__time-container,
+        .unified-datepicker .react-datepicker__time,
+        .unified-datepicker .react-datepicker__time-box,
+        .unified-datepicker .react-datepicker__time-list {
+          background-color: ${theme.bgCard} !important;
+          border-left: 1px solid ${theme.borderSubtle || theme.border} !important;
+        }
+
+        .unified-datepicker .react-datepicker__time-list-item--selected,
+        .unified-datepicker .react-datepicker__time-list-item--selected:hover {
+          background-color: ${theme.primary} !important;
+          color: #0A0908 !important;
+        }
+      `}</style>
       <div style={styles.modal} onClick={e => e.stopPropagation()}>
         <div style={styles.header}>
           <h2 style={styles.title}>Create New Task</h2>
@@ -749,7 +796,7 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
                 style={styles.aiAssistButton}
                 disabled={isAssistingWrite || !(formData.title.trim().length >= 3 || formData.description.trim().length >= 10)}
               >
-                {isAssistingWrite ? <span style={styles.spinner} /> : '✨'}
+                  {isAssistingWrite ? <span style={styles.spinner} /> : <FaRobot size={12} />}
                 {isAssistingWrite ? 'Generating...' : 'AI Writing Assistant'}
               </button>
           </div>
@@ -774,6 +821,9 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
                 minDate={new Date()}
                 dateFormat="MM/dd/yyyy"
                 placeholderText="mm/dd/yyyy"
+                wrapperClassName="unified-datepicker-wrapper"
+                calendarClassName="unified-datepicker"
+                isClearable
                 className="custom-datepicker-input"
               />
             </div>

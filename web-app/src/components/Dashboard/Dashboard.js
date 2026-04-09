@@ -10,7 +10,7 @@ import QuickStats from './QuickStats';
 import CreateTaskModal from '../Tasks/CreateTaskModal';
 import TaskDetailModal from '../Tasks/TaskDetailModal';
 import { StatsCardSkeleton } from '../common/SkeletonLoader';
-import { FaChartLine, FaCheckCircle, FaCalendarAlt, FaChartPie } from 'react-icons/fa';
+import { FaChartLine, FaCheckCircle, FaCalendarAlt, FaChartPie, FaPlus } from 'react-icons/fa';
 
 const DASHBOARD_CACHE_KEY = 'taskflow_dashboard_cache';
 
@@ -199,7 +199,7 @@ const Dashboard = () => {
       height: '40px',
       border: `4px solid ${theme.bgMain}`,
       borderTop: `4px solid ${theme.primary}`,
-      boxShadow: theme.shadows.neumorphic,
+      boxShadow: 'none',
       borderRadius: '50%',
       animation: 'spin 1s linear infinite',
       marginBottom: '16px',
@@ -208,28 +208,37 @@ const Dashboard = () => {
       marginBottom: '32px',
     },
     greetingTitle: {
-      fontSize: '36px',
-      fontWeight: '800',
+      fontFamily: '"Fraunces", serif',
+      fontSize: '40px',
+      fontWeight: '600',
       color: theme.textPrimary,
       margin: '0 0 8px 0',
-      letterSpacing: '-0.5px',
-      textShadow: theme.type === 'dark' ? '2px 2px 4px rgba(0,0,0,0.3)' : 'none',
+      letterSpacing: '-0.02em',
+    },
+    greetingItalic: {
+      fontStyle: 'italic',
+      fontWeight: '300',
+      color: theme.textSecondary,
+    },
+    greetingName: {
+      fontWeight: '600',
+      color: theme.textPrimary,
     },
     greetingSubtitle: {
-      fontSize: '16px',
+      fontSize: '14px',
       color: theme.textSecondary,
       margin: 0,
       fontWeight: '500',
     },
     statsGrid: {
       display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+      gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
       gap: '24px',
       marginBottom: '32px',
     },
     mainContent: {
       display: 'grid',
-      gridTemplateColumns: '1fr 360px',
+      gridTemplateColumns: 'minmax(0, 2fr) minmax(320px, 1fr)',
       gap: '24px',
     },
     leftContent: {
@@ -241,22 +250,21 @@ const Dashboard = () => {
       gap: '24px',
     },
     fab: {
-      position: 'fixed',
-      bottom: '40px',
-      right: '40px',
-      width: '64px',
-      height: '64px',
-      borderRadius: '50%',
+      height: '40px',
+      padding: '0 20px',
+      borderRadius: '8px',
       backgroundColor: theme.primary,
-      color: '#fff',
+      color: '#0A0908',
       border: 'none',
       cursor: 'pointer',
-      boxShadow: theme.type === 'dark' ? '8px 8px 16px rgba(0,0,0,0.4), -8px -8px 16px rgba(255,255,255,0.05)' : '8px 8px 16px rgba(0,0,0,0.2), -8px -8px 16px rgba(255,255,255,0.5)',
+      boxShadow: theme.shadows.float,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      transition: 'all 0.3s ease',
+      transition: 'all 150ms ease',
       zIndex: 50,
+      fontSize: '13px',
+      fontWeight: '600',
     },
   };
 
@@ -292,13 +300,22 @@ const Dashboard = () => {
         }
         
         .fab:hover {
-            transform: scale(1.1) rotate(90deg);
-            box-shadow: 0 0 20px ${theme.primary}80 !important;
+          transform: translateY(-1px);
+          box-shadow: ${theme.shadows.glow} !important;
         }
 
-        @media (max-width: 1024px) {
+        @media (max-width: 1200px) {
             .dashboard-main-content {
             grid-template-columns: 1fr !important;
+            }
+            .dashboard-stats-grid {
+              grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            }
+        }
+
+        @media (max-width: 720px) {
+            .dashboard-stats-grid {
+              grid-template-columns: 1fr !important;
             }
         }
       `}</style>
@@ -306,26 +323,51 @@ const Dashboard = () => {
         {/* Greeting */}
         <div style={styles.greeting}>
           <h1 style={styles.greetingTitle}>
-            {getGreeting()}, <span style={{ color: theme.primary }}>{user?.name?.split(' ')[0]}</span>!
+            <span style={styles.greetingItalic}>{getGreeting()},</span>{' '}
+            <span style={styles.greetingName}>{user?.name?.split(' ')[0]}</span>
           </h1>
           <p style={styles.greetingSubtitle}>
             You have <strong style={{ color: theme.textPrimary }}>{stats?.dueToday || 0}</strong> tasks due today and {stats?.dueTomorrow || 0} tomorrow.
           </p>
         </div>
 
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }}>
+          <button
+            style={styles.fab}
+            onClick={() => setShowCreateModal(true)}
+            className="fab"
+          >
+            <FaPlus style={{ marginRight: '8px', fontSize: '12px' }} /> New Task
+          </button>
+        </div>
+
         {/* Stats Cards */}
-        <div style={styles.statsGrid}>
+        <div style={styles.statsGrid} className="dashboard-stats-grid">
           <StatsCard
             icon={<FaChartLine />}
             label="Productivity Score"
             value={stats?.productivityScore || 0}
             color={theme.info}
+            progress={{
+              current: stats?.productivityScore || 0,
+              total: 100,
+              color: theme.info,
+              labelLeft: 'Progress',
+              labelRight: `${stats?.productivityScore || 0}%`,
+            }}
           />
           <StatsCard
             icon={<FaCheckCircle />}
             label="Tasks Completed"
             value={`${stats?.completed || 0}/${stats?.total || 0}`}
             color={theme.success}
+            progress={{
+              current: stats?.completed || 0,
+              total: stats?.total || 0,
+              color: theme.success,
+              labelLeft: 'Completed',
+              labelRight: `${stats?.completed || 0}/${stats?.total || 0}`,
+            }}
           />
           <StatsCard
             icon={<FaCalendarAlt />}
@@ -335,11 +377,11 @@ const Dashboard = () => {
               <>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '8px' }}>
                   <h2 style={{
-                    fontSize: '36px',
+                    fontFamily: 'Fraunces, serif',
+                    fontSize: '40px',
                     fontWeight: '800',
                     color: theme.textPrimary,
                     margin: 0,
-                    textShadow: theme.type === 'dark' ? '2px 2px 4px rgba(0,0,0,0.3)' : 'none',
                   }}>
                     {busiestDayData.busiestLabel}
                   </h2>
@@ -392,11 +434,11 @@ const Dashboard = () => {
               <>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '8px' }}>
                   <h2 style={{
-                    fontSize: '36px',
+                    fontFamily: 'Fraunces, serif',
+                    fontSize: '40px',
                     fontWeight: '800',
                     color: theme.textPrimary,
                     margin: 0,
-                    textShadow: theme.type === 'dark' ? '2px 2px 4px rgba(0,0,0,0.3)' : 'none',
                   }}>
                     {categoryBreakdownData.total}
                   </h2>
@@ -406,9 +448,9 @@ const Dashboard = () => {
                 </div>
                 <div style={{
                   padding: '2px',
-                  borderRadius: '4px',
-                  backgroundColor: theme.bgMain,
-                  boxShadow: theme.shadows.neumorphicInset,
+                  borderRadius: '999px',
+                  backgroundColor: theme.bgElevated,
+                  border: `1px solid ${theme.border}`,
                   marginBottom: '10px',
                 }}>
                   <div style={{
@@ -465,7 +507,7 @@ const Dashboard = () => {
         </div>
 
         {/* Main Content */}
-        <div style={styles.mainContent}>
+        <div style={styles.mainContent} className="dashboard-main-content">
           <div style={styles.leftContent}>
             <AIRecommends
               tasks={tasks}
@@ -483,15 +525,6 @@ const Dashboard = () => {
             <QuickStats stats={stats} />
           </div>
         </div>
-
-        {/* FAB */}
-        <button
-          style={styles.fab}
-          onClick={() => setShowCreateModal(true)}
-          className="fab"
-        >
-          <span style={{ fontSize: '28px', fontWeight: '300' }}>+</span>
-        </button>
 
         {/* Modals */}
         <CreateTaskModal

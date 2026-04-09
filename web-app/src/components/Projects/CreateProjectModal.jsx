@@ -72,7 +72,7 @@ const CreateProjectModal = ({ isOpen, onClose, onProjectCreated }) => {
                         ? result.estimated_hours
                         : prev.estimatedTotalHours
                 }));
-                setNotificationMessage('✨ Project enhanced by AI');
+                setNotificationMessage('Project enhanced by AI');
                 setTimeout(() => setNotificationMessage(''), 3000);
             }
         } catch (error) {
@@ -385,6 +385,103 @@ const CreateProjectModal = ({ isOpen, onClose, onProjectCreated }) => {
                 .react-datepicker__navigation:hover *::before {
                     border-color: ${theme.textPrimary} !important;
                 }
+
+                .unified-datepicker-wrapper {
+                    width: 100%;
+                    display: block;
+                }
+
+                .unified-datepicker-wrapper .react-datepicker__input-container input {
+                    width: 100%;
+                    background-color: ${theme.bgRaised};
+                    border: 1px solid ${theme.borderSubtle || theme.border};
+                    border-radius: 8px;
+                    padding: 11px 14px;
+                    font-size: 14px;
+                    color: ${theme.textPrimary};
+                    outline: none;
+                    box-shadow: none;
+                }
+
+                .unified-datepicker {
+                    background-color: ${theme.bgCard};
+                    border: 1px solid ${theme.borderSubtle || theme.border};
+                    border-radius: 10px;
+                    box-shadow: ${theme.shadows.md};
+                    color: ${theme.textPrimary};
+                    font-family: 'Geist', sans-serif;
+                }
+
+                .unified-datepicker .react-datepicker__header {
+                    background-color: ${theme.bgCard};
+                    border-bottom: 1px solid ${theme.borderSubtle || theme.border};
+                }
+
+                .unified-datepicker .react-datepicker__current-month,
+                .unified-datepicker .react-datepicker-time__header,
+                .unified-datepicker .react-datepicker__day-name,
+                .unified-datepicker .react-datepicker__time-name {
+                    color: ${theme.textSecondary};
+                }
+
+                .unified-datepicker .react-datepicker__day,
+                .unified-datepicker .react-datepicker__time-list-item {
+                    color: ${theme.textPrimary} !important;
+                    background-color: transparent !important;
+                    border-radius: 6px !important;
+                }
+
+                .unified-datepicker .react-datepicker__day--outside-month {
+                    color: ${theme.textMuted} !important;
+                    opacity: 0.55;
+                }
+
+                .unified-datepicker .react-datepicker__day:hover,
+                .unified-datepicker .react-datepicker__time-list-item:hover {
+                    background-color: ${theme.bgElevated} !important;
+                }
+
+                .unified-datepicker .react-datepicker__day--selected,
+                .unified-datepicker .react-datepicker__day--keyboard-selected,
+                .unified-datepicker .react-datepicker__time-list-item--selected {
+                    background-color: ${theme.primary} !important;
+                    color: #0A0908 !important;
+                }
+
+                .unified-datepicker .react-datepicker__day--selected:hover,
+                .unified-datepicker .react-datepicker__day--keyboard-selected:hover,
+                .unified-datepicker .react-datepicker__time-list-item--selected:hover {
+                    background-color: ${theme.primaryDark || theme.primary} !important;
+                    color: #0A0908 !important;
+                }
+
+                .unified-datepicker .react-datepicker__navigation-icon::before {
+                    border-color: ${theme.textSecondary} !important;
+                }
+
+                .unified-datepicker .react-datepicker__navigation:hover .react-datepicker__navigation-icon::before {
+                    border-color: ${theme.textPrimary} !important;
+                }
+
+                .unified-datepicker-wrapper .react-datepicker__close-icon::after {
+                    background-color: ${theme.primary} !important;
+                    color: #0A0908 !important;
+                    font-weight: 700;
+                }
+
+                .unified-datepicker .react-datepicker__time-container,
+                .unified-datepicker .react-datepicker__time,
+                .unified-datepicker .react-datepicker__time-box,
+                .unified-datepicker .react-datepicker__time-list {
+                    background-color: ${theme.bgCard} !important;
+                    border-left: 1px solid ${theme.borderSubtle || theme.border} !important;
+                }
+
+                .unified-datepicker .react-datepicker__time-list-item--selected,
+                .unified-datepicker .react-datepicker__time-list-item--selected:hover {
+                    background-color: ${theme.primary} !important;
+                    color: #0A0908 !important;
+                }
             `}</style>
             <div style={styles.modal} onClick={e => e.stopPropagation()}>
                 <div style={styles.header}>
@@ -438,7 +535,7 @@ const CreateProjectModal = ({ isOpen, onClose, onProjectCreated }) => {
                                     <span style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}>⟳</span> Enhancing...
                                 </>
                             ) : (
-                                <>✨ AI Enhance Project</>
+                                <>AI Enhance Project</>
                             )}
                         </button>
                     </div>
@@ -460,8 +557,12 @@ const CreateProjectModal = ({ isOpen, onClose, onProjectCreated }) => {
                             <DatePicker
                                 selected={formData.dueDate ? new Date(formData.dueDate) : null}
                                 onChange={date => setFormData(prev => ({ ...prev, dueDate: date ? date.toISOString() : '' }))}
+                                minDate={new Date()}
                                 dateFormat="MM/dd/yyyy"
                                 placeholderText="mm/dd/yyyy"
+                                wrapperClassName="unified-datepicker-wrapper"
+                                calendarClassName="unified-datepicker"
+                                isClearable
                                 className="custom-datepicker-input"
                             />
                         </div>

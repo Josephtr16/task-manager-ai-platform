@@ -35,6 +35,10 @@ const AuthLayout = ({ children }) => {
 
                 {/* Right Column - Feature Panel */}
                 <div style={styles.featureColumn} className="feature-column">
+                    <div style={styles.shapeOne} />
+                    <div style={styles.shapeTwo} />
+                    <div style={styles.shapeThree} />
+                    <div style={styles.shapeFour} />
                     <div style={styles.featureContent}>
                         <h2 style={styles.featureTitle}>Plan smarter.<br />Finish faster.</h2>
                         <p style={styles.featureDescription}>
@@ -44,7 +48,7 @@ const AuthLayout = ({ children }) => {
 
                         <div style={styles.featureList}>
                             <div style={styles.featureItem}>
-                                <span style={styles.featureIcon}>✨</span>
+                                <span style={styles.featureIcon}>TF</span>
                                 <span style={styles.featureItemText}>AI priority suggestions</span>
                             </div>
                             <div style={styles.featureItem}>
@@ -110,9 +114,9 @@ const AuthLayout = ({ children }) => {
               display: none !important;
             }
             .form-column {
-              padding: 1rem !important;
-              background: transparent !important;
-              flex: 1 !important;
+                            padding: 1rem !important;
+                            background: transparent !important;
+                            flex: 1 !important;
             }
         }
         // Dynamic Autofill Styling
@@ -139,19 +143,19 @@ const getStyles = (theme, isDarkMode) => ({
         display: 'flex',
         minHeight: '100vh',
         width: '100%',
-        background: theme.bgMain, // Matches Dashboard #212529
+        background: theme.bgMain,
         position: 'relative',
         overflow: 'hidden',
-        fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        fontFamily: '"DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
         color: theme.textPrimary,
-        transition: 'background 0.3s ease, color 0.3s ease',
+        transition: 'background 150ms ease, color 150ms ease',
     },
     themeToggle: {
         position: 'absolute',
         top: '24px',
         right: '24px',
         zIndex: 50,
-        background: 'transparent',
+        background: theme.bgElevated,
         border: `1px solid ${theme.border}`,
         borderRadius: '50%',
         width: '40px', // Slightly smaller
@@ -161,16 +165,17 @@ const getStyles = (theme, isDarkMode) => ({
         justifyContent: 'center',
         cursor: 'pointer',
         color: theme.textSecondary,
-        transition: 'all 0.2s ease',
+        transition: 'all 150ms ease',
         outline: 'none',
-        '&:hover': {
-            background: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-            color: theme.textPrimary,
-        }
     },
     // Grid removed/invisible
     gridPattern: {
-        display: 'none',
+        position: 'absolute',
+        inset: 0,
+        pointerEvents: 'none',
+        backgroundImage: `linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)`,
+        backgroundSize: '48px 48px',
+        maskImage: 'linear-gradient(180deg, rgba(0,0,0,0.8), transparent 80%)',
     },
     contentWrapper: {
         display: 'flex',
@@ -180,13 +185,14 @@ const getStyles = (theme, isDarkMode) => ({
         flexWrap: 'wrap',
     },
     formColumn: {
-        flex: '1.5',
-        minWidth: '400px',
+        flex: '0 0 45%',
+        minWidth: '360px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         padding: '2rem',
         position: 'relative',
+        background: 'transparent',
     },
     glowContainer: {
         position: 'relative',
@@ -204,17 +210,16 @@ const getStyles = (theme, isDarkMode) => ({
         padding: '4rem',
         position: 'relative',
         flexDirection: 'column',
+        backgroundColor: theme.bgCard,
+        overflow: 'hidden',
     },
     formCard: {
         width: '100%',
-        maxWidth: '480px', // Slightly narrower for cleaner look
-        background: theme.bgCard,
-        borderRadius: '24px', // Reduced radius
-        padding: '48px', // Reduced padding
-        // Soft UI Hybrid: Subtle inner highlight + Deep shadow
-        boxShadow: isDarkMode
-            ? 'inset 0 1px 0 0 rgba(255, 255, 255, 0.05), 0 0 0 1px rgba(255, 255, 255, 0.02), 0 24px 60px -12px rgba(0, 0, 0, 0.5)'
-            : theme.shadows.card,
+        maxWidth: '480px',
+        background: 'transparent',
+        borderRadius: '0',
+        padding: '16px 0',
+        boxShadow: 'none',
         border: 'none',
         animation: 'fadeUp 0.6s ease-out',
         position: 'relative',
@@ -231,19 +236,19 @@ const getStyles = (theme, isDarkMode) => ({
         flexDirection: 'column',
     },
     featureTitle: {
-        fontSize: '36px', // Slightly smaller
+        fontFamily: '"Syne", sans-serif',
+        fontSize: '44px',
         fontWeight: '800',
         marginBottom: '16px',
         lineHeight: '1.1',
         color: theme.textPrimary,
-        letterSpacing: '-0.03em',
+        letterSpacing: '-0.04em',
     },
     featureDescription: {
         fontSize: '16px',
         lineHeight: '1.6',
         marginBottom: '32px',
-        // Brighter contrast for readability
-        color: isDarkMode ? '#D1D5DB' : theme.textSecondary,
+        color: theme.textSecondary,
     },
     featureList: {
         display: 'flex',
@@ -256,37 +261,27 @@ const getStyles = (theme, isDarkMode) => ({
         alignItems: 'center',
         gap: '16px',
         padding: '16px 20px',
-        background: theme.bgCard,
+        background: theme.bgElevated,
         borderRadius: '16px',
-        // Soft Hybrid UI: Top Highlight + Soft Drop + Border
-        boxShadow: isDarkMode
-            ? 'inset 0 1px 0 0 rgba(255, 255, 255, 0.05), 0 4px 20px -2px rgba(0, 0, 0, 0.2)'
-            : '0 4px 12px -2px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.02)',
-        border: isDarkMode ? '1px solid rgba(255, 255, 255, 0.02)' : `1px solid ${theme.border}`,
+        boxShadow: 'none',
+        border: `1px solid ${theme.border}`,
         cursor: 'default',
         width: '100%',
         maxWidth: '360px',
-        transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-        '&:hover': {
-            transform: 'translateY(-2px)',
-            boxShadow: isDarkMode
-                ? 'inset 0 1px 0 0 rgba(255, 255, 255, 0.05), 0 12px 24px -4px rgba(0, 0, 0, 0.3)'
-                : '0 12px 24px -4px rgba(0, 0, 0, 0.08)',
-        }
+        transition: 'all 150ms ease',
     },
     featureIcon: {
         width: '40px',
         height: '40px',
         borderRadius: '10px',
-        background: isDarkMode ? 'rgba(99, 102, 241, 0.1)' : '#EEF2FF',
+        background: `${theme.primary}15`,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         color: theme.primary,
         fontSize: '18px',
         flexShrink: 0,
-        // icon inner glow
-        boxShadow: isDarkMode ? 'inset 0 0 12px rgba(99, 102, 241, 0.15)' : 'none',
+        border: `1px solid ${theme.primary}22`,
     },
     featureItemText: {
         fontSize: '15px',
@@ -308,15 +303,12 @@ const getStyles = (theme, isDarkMode) => ({
         opacity: 0.9,
     },
     mockupCard: {
-        background: isDarkMode ? '#1A1D21' : '#ffffff',
+        background: theme.bgCard,
         borderRadius: '12px',
         padding: '16px',
-        // Hybrid Soft Shadow
-        boxShadow: isDarkMode
-            ? 'inset 0 1px 0 0 rgba(255, 255, 255, 0.05), 0 20px 40px -8px rgba(0,0,0,0.4)'
-            : '0 8px 24px -6px rgba(0, 0, 0, 0.12)',
+        boxShadow: theme.shadows.float,
         transform: 'rotateX(5deg) rotateY(-5deg) rotateZ(2deg)',
-        border: isDarkMode ? '1px solid rgba(255,255,255,0.02)' : 'none',
+        border: `1px solid ${theme.border}`,
         width: '260px',
         display: 'flex',
         flexDirection: 'column',
@@ -349,7 +341,7 @@ const getStyles = (theme, isDarkMode) => ({
         fontSize: '10px',
         fontWeight: '600',
         color: theme.primary,
-        background: isDarkMode ? 'rgba(99, 102, 241, 0.15)' : '#EEF2FF',
+        background: `${theme.primary}15`,
         padding: '2px 8px',
         borderRadius: '4px',
         display: 'inline-block',
@@ -366,7 +358,7 @@ const getStyles = (theme, isDarkMode) => ({
     mockupProgressBg: {
         width: '100%',
         height: '4px',
-        background: isDarkMode ? 'rgba(255,255,255,0.1)' : '#F1F5F9',
+        background: theme.bgElevated,
         borderRadius: '2px',
         overflow: 'hidden',
     },
@@ -375,6 +367,46 @@ const getStyles = (theme, isDarkMode) => ({
         height: '100%',
         background: theme.primary,
         borderRadius: '2px',
+    },
+
+    shapeOne: {
+        position: 'absolute',
+        top: '8%',
+        right: '8%',
+        width: '140px',
+        height: '140px',
+        borderRadius: '50%',
+        background: `${theme.primary}14`,
+        filter: 'blur(2px)',
+    },
+    shapeTwo: {
+        position: 'absolute',
+        top: '18%',
+        right: '18%',
+        width: '180px',
+        height: '18px',
+        borderRadius: '999px',
+        background: `${theme.accentWarm}22`,
+        transform: 'rotate(-22deg)',
+    },
+    shapeThree: {
+        position: 'absolute',
+        bottom: '20%',
+        right: '12%',
+        width: '92px',
+        height: '92px',
+        borderRadius: '24px',
+        background: `${theme.success}16`,
+        transform: 'rotate(14deg)',
+    },
+    shapeFour: {
+        position: 'absolute',
+        bottom: '10%',
+        left: '8%',
+        width: '72px',
+        height: '72px',
+        borderRadius: '50%',
+        background: `${theme.warning}18`,
     },
 });
 

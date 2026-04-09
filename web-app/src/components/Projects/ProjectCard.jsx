@@ -35,13 +35,13 @@ const ProjectCard = ({ project }) => {
 
     const styles = {
         card: {
-            backgroundColor: theme.bgMain,
-            borderRadius: borderRadius.lg,
+                backgroundColor: theme.bgCard,
+                borderRadius: borderRadius.lg,
             padding: '24px',
-            boxShadow: theme.shadows.neumorphic,
+                boxShadow: theme.shadows.sm,
             cursor: 'pointer',
-            border: `1px solid ${theme.border}`,
-            transition: 'all 0.3s ease',
+                border: `1px solid ${theme.borderSubtle || theme.border}`,
+                transition: 'all 180ms ease',
             display: 'flex',
             flexDirection: 'column',
             gap: '16px',
@@ -53,13 +53,14 @@ const ProjectCard = ({ project }) => {
             alignItems: 'flex-start',
         },
         title: {
-            fontSize: '18px',
-            fontWeight: '700',
+            fontSize: '15px',
+            fontWeight: '500',
+            fontFamily: '"Geist", sans-serif',
             color: theme.textPrimary,
             margin: '0 0 8px 0',
         },
         description: {
-            fontSize: '14px',
+            fontSize: '13px',
             color: theme.textSecondary,
             margin: 0,
             display: '-webkit-box',
@@ -73,13 +74,15 @@ const ProjectCard = ({ project }) => {
             flexWrap: 'wrap',
         },
         badge: {
-            fontSize: '12px',
+            fontSize: '10px',
             fontWeight: '600',
-            padding: '4px 8px',
+            padding: '2px 6px',
             borderRadius: '6px',
             display: 'flex',
             alignItems: 'center',
             gap: '4px',
+            textTransform: 'uppercase',
+            letterSpacing: '0.06em',
         },
         progressSection: {
             marginTop: 'auto',
@@ -96,10 +99,11 @@ const ProjectCard = ({ project }) => {
         },
         progressBarBackground: {
             height: '8px',
-            backgroundColor: theme.bgElevated || theme.border,
+            backgroundColor: theme.bgElevated,
             borderRadius: '4px',
             overflow: 'hidden',
-            boxShadow: theme.shadows.neumorphicInset,
+            boxShadow: 'none',
+            border: `1px solid ${theme.borderSubtle || theme.border}`,
         },
         progressBarFill: {
             height: '100%',
@@ -113,7 +117,7 @@ const ProjectCard = ({ project }) => {
             justifyContent: 'space-between',
             alignItems: 'center',
             paddingTop: '16px',
-            borderTop: `1px solid ${theme.border}`,
+            borderTop: `1px solid ${theme.borderSubtle || theme.border}`,
         },
         footerText: {
             fontSize: '12px',
@@ -132,9 +136,9 @@ const ProjectCard = ({ project }) => {
         >
             <style>{`
                 .project-card:hover {
-                    transform: translateY(-4px);
-                    box-shadow: ${theme.shadows?.neumorphic || '0 10px 20px rgba(0,0,0,0.1)'} !important;
-                    border-color: ${theme.primary}40 !important;
+                    transform: translateY(-1px);
+                    box-shadow: ${theme.shadows.md} !important;
+                    border-color: ${theme.borderMedium || theme.border} !important;
                 }
             `}</style>
             <div style={styles.header}>
@@ -156,8 +160,8 @@ const ProjectCard = ({ project }) => {
                 </span>
                 <span style={{
                     ...styles.badge,
-                    backgroundColor: theme.primary + '20',
-                    color: theme.primary
+                    backgroundColor: theme.accentDim || `${theme.accent}15`,
+                    color: theme.accent
                 }}>
                     <FaTag size={10} /> {project.category}
                 </span>

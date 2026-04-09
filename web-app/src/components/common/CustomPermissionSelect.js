@@ -31,8 +31,8 @@ const CustomPermissionSelect = ({ value, onChange, options = ['view', 'complete'
       width: '100%',
     },
     button: {
-      backgroundColor: theme.bgElevated || theme.bgMain,
-      border: `1.5px solid ${theme.border}`,
+      backgroundColor: theme.bgCard,
+      border: `1px solid ${theme.border}`,
       borderRadius: borderRadius.lg,
       color: theme.textPrimary,
       fontSize: '14px',
@@ -40,10 +40,8 @@ const CustomPermissionSelect = ({ value, onChange, options = ['view', 'complete'
       padding: '10px 14px',
       cursor: 'pointer',
       outline: 'none',
-      transition: 'all 0.2s ease',
-      boxShadow: theme.type === 'dark' 
-        ? '0 2px 4px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.05)' 
-        : '0 2px 4px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.5)',
+      transition: 'all 150ms ease',
+      boxShadow: 'none',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',
@@ -52,48 +50,45 @@ const CustomPermissionSelect = ({ value, onChange, options = ['view', 'complete'
     },
     buttonOpen: {
       borderColor: theme.primary,
+      boxShadow: `0 0 0 3px ${theme.primary}22`,
       borderBottomLeftRadius: 0,
       borderBottomRightRadius: 0,
-      boxShadow: `0 0 0 3px ${theme.primary}25, inset 0 1px 0 rgba(255,255,255,0.05)`,
     },
     dropdown: {
       position: 'absolute',
       top: '100%',
       left: 0,
       right: 0,
-      backgroundColor: theme.bgElevated || theme.bgMain,
-      border: `1.5px solid ${theme.primary}`,
+      backgroundColor: theme.bgElevated,
+      border: `1px solid ${theme.border}`,
       borderTop: 'none',
       borderBottomLeftRadius: borderRadius.lg,
       borderBottomRightRadius: borderRadius.lg,
-      boxShadow: theme.type === 'dark' 
-        ? '0 8px 16px rgba(0,0,0,0.3)' 
-        : '0 8px 16px rgba(0,0,0,0.15)',
+      boxShadow: theme.shadows.float,
       zIndex: 1000,
       overflow: 'hidden',
-      animation: 'slideDown 0.2s ease',
+      animation: 'slideUp 150ms ease',
     },
     option: {
       padding: '12px 16px',
       cursor: 'pointer',
-      transition: 'all 0.15s ease',
+      transition: 'all 150ms ease',
       fontSize: '14px',
       fontWeight: '600',
       color: theme.textPrimary,
-      borderBottom: `1px solid ${theme.border}25`,
+      borderBottom: `1px solid ${theme.border}`,
       userSelect: 'none',
     },
     optionHover: {
-      backgroundColor: theme.primary,
-      color: '#fff',
-      paddingLeft: '20px',
+      backgroundColor: theme.bgCard,
+      color: theme.primary,
     },
     optionSelected: {
-      backgroundColor: theme.primary,
-      color: '#fff',
+      backgroundColor: `${theme.primary}20`,
+      color: theme.primary,
     },
     chevron: {
-      transition: 'transform 0.2s ease',
+      transition: 'transform 150ms ease',
       transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
     },
   };
@@ -101,7 +96,7 @@ const CustomPermissionSelect = ({ value, onChange, options = ['view', 'complete'
   return (
     <div style={styles.container} ref={containerRef}>
       <style>{`
-        @keyframes slideDown {
+        @keyframes slideUp {
           from {
             opacity: 0;
             transform: translateY(-8px);
@@ -112,15 +107,15 @@ const CustomPermissionSelect = ({ value, onChange, options = ['view', 'complete'
           }
         }
       `}</style>
-      
+
       <button
         style={{
           ...styles.button,
           ...(isOpen ? styles.buttonOpen : {}),
         }}
         onClick={() => setIsOpen(!isOpen)}
-        onMouseEnter={(e) => !isOpen && (e.target.style.borderColor = theme.primary + '60')}
-        onMouseLeave={(e) => !isOpen && (e.target.style.borderColor = theme.border)}
+        onMouseEnter={(e) => !isOpen && (e.currentTarget.style.borderColor = `${theme.primary}60`)}
+        onMouseLeave={(e) => !isOpen && (e.currentTarget.style.borderColor = theme.border)}
       >
         <span>{value.charAt(0).toUpperCase() + value.slice(1)}</span>
         <FaChevronDown size={12} style={styles.chevron} />
@@ -137,14 +132,13 @@ const CustomPermissionSelect = ({ value, onChange, options = ['view', 'complete'
               }}
               onMouseEnter={(e) => {
                 if (value !== option) {
-                  Object.assign(e.target.style, styles.optionHover);
+                  Object.assign(e.currentTarget.style, styles.optionHover);
                 }
               }}
               onMouseLeave={(e) => {
                 if (value !== option) {
-                  e.target.style.backgroundColor = 'transparent';
-                  e.target.style.color = theme.textPrimary;
-                  e.target.style.paddingLeft = '16px';
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.color = theme.textPrimary;
                 }
               }}
               onClick={() => handleSelect(option)}

@@ -34,7 +34,7 @@ const ProtectedRoute = ({ children }) => {
         color: '#fff',
         fontSize: '18px',
       }}>
-        ✨ Loading...
+        Loading...
       </div>
     );
   }

@@ -204,7 +204,7 @@ const CalendarPage = () => {
     container: {
       padding: '32px',
       minHeight: '100vh',
-      backgroundColor: theme.bgMain, // Neomorphic background
+      backgroundColor: theme.bgMain,
     },
     loading: {
       display: 'flex',
@@ -220,7 +220,7 @@ const CalendarPage = () => {
       height: '40px',
       border: `4px solid ${theme.bgMain}`,
       borderTop: `4px solid ${theme.primary}`,
-      boxShadow: theme.shadows.neumorphic,
+      boxShadow: theme.shadows.float,
       borderRadius: '50%',
       animation: 'spin 1s linear infinite',
     },
@@ -233,11 +233,11 @@ const CalendarPage = () => {
       gap: '16px',
     },
     title: {
+      fontFamily: '"Syne", sans-serif',
       fontSize: '32px',
       fontWeight: '800',
       color: theme.textPrimary,
       margin: '0 0 4px 0',
-      textShadow: theme.type === 'dark' ? '2px 2px 4px rgba(0,0,0,0.3)' : 'none',
       display: 'flex',
       alignItems: 'center',
     },
@@ -254,10 +254,11 @@ const CalendarPage = () => {
     },
     viewToggle: {
       display: 'flex',
-      backgroundColor: theme.bgMain,
-      borderRadius: '12px',
+      backgroundColor: theme.bgCard,
+      borderRadius: '999px',
       padding: '6px',
-      boxShadow: theme.shadows.neumorphicInset, // Inset toggle container
+      boxShadow: 'none',
+      border: `1px solid ${theme.border}`,
     },
     toggleButton: {
       backgroundColor: 'transparent',
@@ -268,12 +269,12 @@ const CalendarPage = () => {
       fontWeight: '500',
       color: theme.textSecondary,
       cursor: 'pointer',
-      transition: 'all 0.2s',
+      transition: 'all 120ms ease',
     },
     toggleButtonActive: {
-      backgroundColor: theme.bgMain,
-      color: theme.primary,
-      boxShadow: theme.shadows.neumorphic, // Pop out active toggle
+      backgroundColor: theme.bgOverlay,
+      color: theme.textPrimary,
+      boxShadow: theme.shadows.sm,
       fontWeight: '700',
     },
     navigation: {
@@ -282,8 +283,8 @@ const CalendarPage = () => {
       alignItems: 'center',
     },
     navButton: {
-      backgroundColor: theme.bgMain,
-      border: 'none',
+      backgroundColor: theme.bgRaised,
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
       borderRadius: '50%',
       width: '36px',
       height: '36px',
@@ -292,36 +293,39 @@ const CalendarPage = () => {
       justifyContent: 'center',
       color: theme.textPrimary,
       cursor: 'pointer',
-      boxShadow: theme.shadows.neumorphic, // Round neomorphic buttons
+      boxShadow: 'none',
     },
     todayButton: {
-      backgroundColor: theme.bgMain,
-      border: 'none',
-      borderRadius: borderRadius.md,
-      padding: '8px 16px',
-      fontSize: '14px',
+      backgroundColor: theme.bgRaised,
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
+      borderRadius: '8px',
+      padding: '0 16px',
+      height: '36px',
+      fontSize: '13px',
       fontWeight: '600',
       color: theme.textPrimary,
       cursor: 'pointer',
-      boxShadow: theme.shadows.neumorphic,
+      boxShadow: 'none',
     },
     createButton: {
       backgroundColor: theme.primary,
-      color: '#fff',
+      color: '#0A0908',
       border: 'none',
-      borderRadius: borderRadius.lg,
-      padding: '10px 20px',
-      fontSize: '14px',
+      borderRadius: '8px',
+      padding: '0 20px',
+      height: '40px',
+      fontSize: '13px',
       fontWeight: '600',
       cursor: 'pointer',
       display: 'flex',
       alignItems: 'center',
-      boxShadow: theme.shadows.neumorphic,
+      boxShadow: '0 1px 3px rgba(0,0,0,0.4), 0 0 0 1px rgba(201,146,74,0.3) inset',
     },
     calendarContainer: {
-      backgroundColor: theme.bgMain,
+      backgroundColor: theme.bgCard,
       borderRadius: borderRadius.lg,
-      boxShadow: theme.shadows.neumorphic, // Neomorphic container
+      boxShadow: theme.shadows.sm,
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
       overflow: 'hidden',
       marginBottom: '24px',
       padding: '8px', // Visual padding
@@ -342,24 +346,25 @@ const CalendarPage = () => {
     monthGrid: {
       display: 'grid',
       gridTemplateColumns: 'repeat(7, 1fr)',
-      gap: '4px', // Gap for neomorphic feel
+      gap: '4px',
     },
     monthDay: {
       minHeight: '120px',
       padding: '8px',
-      borderRadius: '12px',
-      backgroundColor: theme.bgMain,
+      borderRadius: '8px',
+      backgroundColor: theme.bgSurface,
       cursor: 'pointer',
-      transition: 'all 0.2s',
+      transition: 'all 120ms ease',
       position: 'relative',
-      border: `1px solid transparent`,
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
     },
     monthDayOtherMonth: {
       opacity: 0.4,
     },
     monthDayToday: {
-      boxShadow: theme.shadows.neumorphicInset, // Inset for today
-      border: `1px solid ${theme.primary}20`,
+      boxShadow: 'none',
+      border: `1px solid ${theme.borderMedium || theme.border}`,
+      backgroundColor: theme.bgRaised,
     },
     monthDayPast: {
       backgroundColor: theme.bgElevated,
@@ -435,14 +440,16 @@ const CalendarPage = () => {
       minHeight: '500px',
     },
     weekDay: {
-      borderRadius: '12px',
+      borderRadius: '8px',
       display: 'flex',
       flexDirection: 'column',
       cursor: 'pointer',
-      backgroundColor: theme.bgMain,
+      backgroundColor: theme.bgCard,
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
     },
     weekDayToday: {
-      boxShadow: theme.shadows.neumorphicInset,
+      boxShadow: 'none',
+      borderColor: theme.borderMedium || theme.border,
     },
     weekDayPast: {
       backgroundColor: theme.bgElevated,
@@ -490,8 +497,9 @@ const CalendarPage = () => {
       borderRadius: '8px',
       padding: '10px',
       cursor: 'pointer',
-      boxShadow: theme.shadows.card, // Pop out tasks in week view
-      backgroundColor: theme.bgMain,
+      boxShadow: theme.shadows.sm,
+      backgroundColor: theme.bgRaised,
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
     },
     weekTaskTitle: {
       fontSize: '12px',
@@ -533,7 +541,7 @@ const CalendarPage = () => {
     },
     weekAddButton: {
       backgroundColor: 'transparent',
-      border: `1px dashed ${theme.border}`,
+      border: `1px dashed ${theme.borderMedium || theme.border}`,
       borderRadius: '6px',
       padding: '6px',
       fontSize: '11px',
@@ -598,7 +606,7 @@ const CalendarPage = () => {
           }
            .calendar-day:hover {
              background-color: ${theme.bgElevated} !important;
-             box-shadow: ${theme.shadows.neumorphic} !important;
+             box-shadow: ${theme.shadows.sm} !important;
              z-index: 5;
            }
            .calendar-day.disabled-day:hover {

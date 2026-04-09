@@ -9,10 +9,11 @@ const QuickStats = ({ stats }) => {
 
   const styles = {
     container: {
-      backgroundColor: theme.bgMain,
+      backgroundColor: theme.bgCard,
       borderRadius: borderRadius.lg,
       padding: '24px',
-      boxShadow: theme.shadows.neumorphic, // Pop out
+      boxShadow: theme.shadows.sm,
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
     },
     header: {
       display: 'flex',
@@ -24,19 +25,20 @@ const QuickStats = ({ stats }) => {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      width: '34px',
-      height: '34px',
-      borderRadius: '10px',
-      backgroundColor: theme.bgMain,
-      boxShadow: theme.shadows.neumorphic,
+      width: '28px',
+      height: '28px',
+      borderRadius: '6px',
+      backgroundColor: theme.bgElevated,
       color: theme.primary,
-      fontSize: '15px',
+      border: `1px solid ${theme.border}`,
+      fontSize: '13px',
     },
     title: {
-      fontSize: '18px',
-      fontWeight: '700',
+      fontSize: '22px',
+      fontWeight: '600',
       color: theme.textPrimary,
       margin: 0,
+      fontFamily: '"Fraunces", serif',
     },
     list: {
       display: 'flex',
@@ -47,23 +49,24 @@ const QuickStats = ({ stats }) => {
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'center',
-      padding: '8px 4px',
+      padding: '8px 0',
     },
     label: {
-      fontSize: '15px',
+      fontSize: '13px',
       fontWeight: '500',
       color: theme.textSecondary,
     },
     valueWrapper: {
-      backgroundColor: theme.bgMain,
-      boxShadow: theme.shadows.neumorphicInset, // Inset for values
-      borderRadius: '8px',
-      padding: '4px 12px',
-      minWidth: '40px',
+      backgroundColor: theme.bgElevated,
+      border: `1px solid ${theme.border}`,
+      borderRadius: '6px',
+      padding: '4px 8px',
+      minWidth: '32px',
       textAlign: 'center',
     },
     value: {
-      fontSize: '18px',
+      fontFamily: '"Geist Mono", monospace',
+      fontSize: '13px',
       fontWeight: '800',
     },
   };

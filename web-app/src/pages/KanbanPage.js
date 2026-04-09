@@ -194,7 +194,7 @@ const KanbanPage = () => {
       height: '40px',
       border: `4px solid ${theme.bgMain}`,
       borderTop: `4px solid ${theme.primary}`,
-      boxShadow: theme.shadows.neumorphic,
+      boxShadow: theme.shadows.float,
       borderRadius: '50%',
       animation: 'spin 1s linear infinite',
     },
@@ -205,11 +205,11 @@ const KanbanPage = () => {
       marginBottom: '32px',
     },
     title: {
+      fontFamily: '"Syne", sans-serif',
       fontSize: '32px',
       fontWeight: '800',
       color: theme.textPrimary,
       margin: '0 0 4px 0',
-      textShadow: theme.type === 'dark' ? '2px 2px 4px rgba(0,0,0,0.3)' : 'none',
     },
     subtitle: {
       fontSize: '14px',
@@ -220,15 +220,15 @@ const KanbanPage = () => {
       backgroundColor: theme.primary,
       color: '#fff',
       border: 'none',
-      borderRadius: borderRadius.lg,
+      borderRadius: '999px',
       padding: '12px 24px',
       fontSize: '14px',
       fontWeight: '600',
       cursor: 'pointer',
-      boxShadow: theme.shadows.neumorphic,
+      boxShadow: theme.shadows.float,
       display: 'flex',
       alignItems: 'center',
-      transition: 'transform 0.2s',
+      transition: 'all 150ms ease',
     },
     board: {
       display: 'grid',
@@ -237,16 +237,17 @@ const KanbanPage = () => {
       alignItems: 'start',
     },
     column: {
-      backgroundColor: theme.bgMain,
+      backgroundColor: theme.bgCard,
       borderRadius: borderRadius.lg,
       padding: '20px',
-      boxShadow: theme.shadows.neumorphic,
+      boxShadow: theme.shadows.card,
+      border: `1px solid ${theme.border}`,
       minHeight: '500px',
-      transition: 'all 0.2s',
+      transition: 'all 150ms ease',
     },
     columnDragOver: {
-      border: `2px solid ${theme.primary}`,
-      boxShadow: theme.shadows.neumorphicInset,
+      border: `1px solid ${theme.primary}`,
+      boxShadow: theme.shadows.float,
     },
     columnHeader: {
       marginBottom: '20px',
@@ -267,9 +268,9 @@ const KanbanPage = () => {
       fontSize: '12px',
       fontWeight: '700',
       padding: '2px 8px',
-      borderRadius: '12px',
-      backgroundColor: theme.bgMain,
-      boxShadow: theme.shadows.neumorphicInset,
+      borderRadius: '4px',
+      backgroundColor: theme.bgOverlay,
+      boxShadow: 'none',
     },
     columnBar: {
       height: '4px',
@@ -287,13 +288,13 @@ const KanbanPage = () => {
       alignItems: 'center',
       justifyContent: 'center',
       minHeight: '150px',
-      border: `2px dashed ${theme.border}`,
+      border: `1px dashed ${theme.borderMedium || theme.border}`,
       borderRadius: borderRadius.md,
-      transition: 'all 0.2s',
+      transition: 'all 120ms ease',
     },
     emptyColumnDragOver: {
-      borderColor: theme.primary,
-      backgroundColor: theme.primary + '10',
+      borderColor: theme.borderMedium || theme.border,
+      backgroundColor: theme.bgRaised,
     },
     emptyColumnText: {
       fontSize: '14px',
@@ -305,40 +306,39 @@ const KanbanPage = () => {
       alignItems: 'center',
       justifyContent: 'center',
       height: '60px',
-      border: `2px dashed ${theme.primary}`,
+      border: `1px dashed ${theme.borderStrong || theme.border}`,
       borderRadius: borderRadius.md,
-      color: theme.primary,
+      color: theme.textSecondary,
       fontSize: '14px',
       fontWeight: '500',
     },
     fab: {
-      position: 'fixed',
-      bottom: '40px',
-      right: '40px',
-      width: '64px',
-      height: '64px',
-      borderRadius: '50%',
+      height: '40px',
+      padding: '0 20px',
+      borderRadius: '8px',
       backgroundColor: theme.primary,
-      color: '#fff',
+      color: '#0A0908',
       border: 'none',
       cursor: 'pointer',
-      fontSize: '24px',
-      boxShadow: theme.type === 'dark' ? '8px 8px 16px rgba(0,0,0,0.4), -8px -8px 16px rgba(255,255,255,0.05)' : '8px 8px 16px rgba(0,0,0,0.2), -8px -8px 16px rgba(255,255,255,0.5)',
+      fontSize: '13px',
+      fontWeight: '600',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.4), 0 0 0 1px rgba(201,146,74,0.3) inset',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       zIndex: 50,
-      transition: 'all 0.3s ease',
+      transition: 'all 180ms ease',
     },
     // Card Styles
     card: {
-      backgroundColor: theme.bgMain,
-      borderRadius: borderRadius.md,
-      padding: '16px',
+      backgroundColor: theme.bgRaised,
+      borderRadius: '8px',
+      padding: '14px',
       cursor: 'grab',
-      transition: 'all 0.2s',
-      boxShadow: theme.shadows.card,
+      transition: 'all 180ms ease',
+      boxShadow: theme.shadows.sm,
       position: 'relative',
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
     },
     cardHeader: {
       display: 'flex',
@@ -347,8 +347,8 @@ const KanbanPage = () => {
       marginBottom: '8px',
     },
     cardTitle: {
-      fontSize: '14px',
-      fontWeight: '600',
+      fontSize: '13px',
+      fontWeight: '500',
       color: theme.textPrimary,
       margin: 0,
       lineHeight: '1.4',
@@ -377,8 +377,8 @@ const KanbanPage = () => {
       fontSize: '10px',
       padding: '2px 6px',
       borderRadius: '4px',
-      backgroundColor: theme.bgMain,
-      border: `1px solid ${theme.border}`,
+      backgroundColor: theme.bgElevated,
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
       color: theme.textMuted,
     },
     subtaskProgress: {
@@ -390,10 +390,10 @@ const KanbanPage = () => {
     subtaskProgressBar: {
       flex: 1,
       height: '6px',
-      backgroundColor: theme.bgMain,
+      backgroundColor: theme.bgElevated,
       borderRadius: '3px',
       overflow: 'hidden',
-      boxShadow: theme.shadows.neumorphicInset,
+      boxShadow: 'none',
     },
     subtaskProgressFill: {
       height: '100%',
@@ -438,8 +438,8 @@ const KanbanPage = () => {
       fontSize: '11px',
       padding: '2px 6px',
       borderRadius: '4px',
-      backgroundColor: theme.bgMain,
-      boxShadow: theme.shadows.neumorphicInset,
+      backgroundColor: theme.bgElevated,
+      boxShadow: 'none',
       color: theme.textSecondary,
       display: 'flex',
       alignItems: 'center',
@@ -490,13 +490,13 @@ const KanbanPage = () => {
           }
           
           .fab:hover {
-            transform: scale(1.1) rotate(90deg);
-            box-shadow: 0 0 20px ${theme.primary}80 !important;
+            transform: translateY(-1px);
+            box-shadow: ${theme.shadows.glow} !important;
           }
           
           .kanban-card:hover {
-            transform: translateY(-2px);
-            box-shadow: ${theme.shadows.neumorphic} !important;
+            transform: translateY(-1px);
+            box-shadow: ${theme.shadows.md} !important;
           }
         `}</style>
 

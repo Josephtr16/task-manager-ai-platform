@@ -18,9 +18,10 @@ const ProjectList = ({ projects, searchQuery, emptyMessage }) => {
             alignItems: 'center',
             justifyContent: 'center',
             padding: '64px',
-            backgroundColor: theme.bgMain,
+            backgroundColor: theme.bgCard,
             borderRadius: borderRadius.lg,
-            boxShadow: theme.shadows.neumorphicInset,
+            boxShadow: 'none',
+            border: `1px solid ${theme.borderSubtle || theme.border}`,
         },
         emptyText: {
             fontSize: '16px',

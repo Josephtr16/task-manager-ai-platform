@@ -30,11 +30,11 @@ const UpcomingTasks = ({ tasks, onTaskClick }) => {
 
   const styles = {
     container: {
-      backgroundColor: theme.bgMain,
+      backgroundColor: theme.bgCard,
       borderRadius: borderRadius.lg,
       padding: '24px',
-      boxShadow: theme.shadows.neumorphic,
-      border: `1px solid transparent`,
+      boxShadow: theme.shadows.sm,
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
     },
     header: {
       display: 'flex',
@@ -46,30 +46,36 @@ const UpcomingTasks = ({ tasks, onTaskClick }) => {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      width: '36px',
-      height: '36px',
-      borderRadius: '10px',
-      backgroundColor: theme.bgMain,
+      width: '28px',
+      height: '28px',
+      borderRadius: '6px',
+      backgroundColor: theme.bgElevated,
       color: theme.primary,
-      boxShadow: theme.shadows.neumorphic,
-      fontSize: '16px',
+      border: `1px solid ${theme.border}`,
+      fontSize: '13px',
     },
     title: {
-      fontSize: '20px',
-      fontWeight: '700',
+      fontSize: '22px',
+      fontWeight: '600',
       color: theme.textPrimary,
       margin: 0,
       flex: 1,
-      textShadow: theme.type === 'dark' ? '2px 2px 4px rgba(0,0,0,0.3)' : 'none',
+      fontFamily: '"Fraunces", serif',
     },
     count: {
-      backgroundColor: theme.bgMain,
-      boxShadow: theme.shadows.neumorphicInset,
+      backgroundColor: theme.bgElevated,
+      boxShadow: 'none',
       color: theme.primary,
-      fontSize: '13px',
-      fontWeight: '700',
-      padding: '4px 10px',
-      borderRadius: '12px',
+      fontSize: '10px',
+      fontWeight: '600',
+      padding: '0',
+      borderRadius: '50%',
+      width: '20px',
+      height: '20px',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontFamily: '"Geist Mono", monospace',
     },
     list: {
       display: 'flex',
@@ -80,13 +86,13 @@ const UpcomingTasks = ({ tasks, onTaskClick }) => {
       display: 'flex',
       alignItems: 'center',
       gap: '16px',
-      padding: '16px',
-      backgroundColor: theme.bgMain,
+      padding: '14px 16px',
+      backgroundColor: theme.bgCard,
       borderRadius: borderRadius.lg,
       cursor: 'pointer',
-      transition: 'all 0.3s ease',
-      boxShadow: theme.shadows.neumorphic, // Neomorphic items
-      border: `1px solid transparent`,
+      transition: 'all 150ms ease',
+      boxShadow: 'none',
+      borderBottom: `1px solid ${theme.borderSubtle || theme.border}`,
     },
     itemContent: {
       display: 'flex',
@@ -96,8 +102,8 @@ const UpcomingTasks = ({ tasks, onTaskClick }) => {
       minWidth: 0,
     },
     itemTitle: {
-      fontSize: '15px',
-      fontWeight: '600',
+      fontSize: '13px',
+      fontWeight: '500',
       color: theme.textPrimary,
       margin: 0,
       whiteSpace: 'nowrap',
@@ -110,17 +116,19 @@ const UpcomingTasks = ({ tasks, onTaskClick }) => {
       alignItems: 'center',
     },
     itemDate: {
-      fontSize: '12px',
+      fontSize: '11px',
       color: theme.textSecondary,
       fontWeight: '500',
       display: 'flex',
       alignItems: 'center',
+      fontFamily: '"Geist Mono", monospace',
     },
     subtaskCount: {
-      fontSize: '12px',
+      fontSize: '11px',
       color: theme.textMuted,
       display: 'flex',
       alignItems: 'center',
+      fontFamily: '"Geist Mono", monospace',
     },
     badges: {
       display: 'flex',
@@ -128,19 +136,20 @@ const UpcomingTasks = ({ tasks, onTaskClick }) => {
     },
     priorityBadge: {
       fontSize: '10px',
-      fontWeight: '700',
+      fontWeight: '600',
       padding: '2px 6px',
-      borderRadius: '4px',
+      borderRadius: '6px',
       textTransform: 'uppercase',
       display: 'inline-flex',
       alignItems: 'center',
+      letterSpacing: '0.06em',
     },
     categoryBadge: {
       fontSize: '10px',
       fontWeight: '600',
       padding: '2px 6px',
       borderRadius: '4px',
-      backgroundColor: theme.bgMain,
+      backgroundColor: theme.bgElevated,
       color: theme.textMuted,
       border: `1px solid ${theme.border}50`,
       display: 'inline-flex',
@@ -165,7 +174,7 @@ const UpcomingTasks = ({ tasks, onTaskClick }) => {
       gap: '6px',
     },
     arrow: {
-      fontSize: '16px',
+      fontSize: '14px',
       color: theme.textMuted,
       flexShrink: 0,
       display: 'flex',
@@ -176,9 +185,9 @@ const UpcomingTasks = ({ tasks, onTaskClick }) => {
       textAlign: 'center',
       padding: '24px 0',
       margin: 0,
-      backgroundColor: theme.bgMain,
+      backgroundColor: theme.bgElevated,
       borderRadius: borderRadius.lg,
-      boxShadow: theme.shadows.neumorphicInset,
+      boxShadow: 'none',
     },
   };
 
@@ -186,8 +195,9 @@ const UpcomingTasks = ({ tasks, onTaskClick }) => {
     <div style={styles.container}>
       <style>{`
         .upcoming-item:hover {
-          transform: translateX(4px);
-          box-shadow: ${theme.shadows.neumorphicHover} !important;
+          transform: translateX(2px);
+          background-color: ${theme.bgRaised} !important;
+          border-color: ${theme.borderMedium || theme.border} !important;
         }
       `}</style>
       <div style={styles.header}>
@@ -205,6 +215,7 @@ const UpcomingTasks = ({ tasks, onTaskClick }) => {
               onClick={() => onTaskClick && onTaskClick(task)}
               className="upcoming-item"
             >
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: getPriorityColor(task.priority), flexShrink: 0 }} />
               <div style={styles.itemContent}>
                 <h4 style={{ ...styles.itemTitle, margin: 0 }}>{task.title}</h4>
                 
@@ -212,8 +223,8 @@ const UpcomingTasks = ({ tasks, onTaskClick }) => {
                   <span style={{
                     ...styles.priorityBadge,
                     color: getPriorityColor(task.priority),
-                    backgroundColor: `${getPriorityColor(task.priority)}15`,
-                    border: `1px solid ${getPriorityColor(task.priority)}30`,
+                    backgroundColor: `${getPriorityColor(task.priority)}12`,
+                    border: `1px solid ${getPriorityColor(task.priority)}22`,
                   }}>
                     {task.priority.toUpperCase()}
                   </span>

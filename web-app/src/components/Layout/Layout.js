@@ -22,7 +22,7 @@ const Layout = ({ children }) => {
     });
   };
 
-  const sidebarWidth = isSidebarCollapsed ? 88 : 260;
+  const sidebarWidth = isSidebarCollapsed ? 64 : 232;
 
   const styles = {
     container: {
@@ -35,8 +35,8 @@ const Layout = ({ children }) => {
       marginLeft: `${sidebarWidth}px`,
       minHeight: '100vh',
       overflowX: 'hidden',
-      backgroundColor: theme.bgMain, // Ensure background consistency
-      transition: 'margin-left 0.28s cubic-bezier(0.22, 1, 0.36, 1)',
+      backgroundColor: theme.bgMain,
+      transition: 'margin-left 200ms ease',
     },
   };
 

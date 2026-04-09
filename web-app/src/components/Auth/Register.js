@@ -62,7 +62,7 @@ const Register = () => {
     <AuthLayout>
       <div style={styles.header}>
         <div style={styles.logoContainer}>
-          <div style={styles.logo}>✨</div>
+          <div style={styles.logo}>TF</div>
           <h1 style={styles.title}>TaskFlow AI</h1>
         </div>
         <p style={styles.subtitle}>Create your account</p>
@@ -70,7 +70,6 @@ const Register = () => {
 
       {error && (
         <div style={styles.error}>
-          <span>⚠️</span>
           <span>{error}</span>
         </div>
       )}
@@ -174,7 +173,7 @@ const Register = () => {
 const getStyles = (theme, isDarkMode) => ({
   // Container & Card styles removed (handled by AuthLayout)
   header: {
-    marginBottom: '32px',
+    marginBottom: '28px',
     textAlign: 'center',
   },
   logoContainer: {
@@ -185,13 +184,24 @@ const getStyles = (theme, isDarkMode) => ({
     marginBottom: '16px',
   },
   logo: {
-    fontSize: '32px',
+    width: '40px',
+    height: '40px',
+    borderRadius: '12px',
+    background: `linear-gradient(135deg, ${theme.primary}, ${theme.accentWarm})`,
+    color: '#fff',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '13px',
+    fontWeight: '800',
+    letterSpacing: '0.08em',
   },
   title: {
-    fontSize: '28px',
-    fontWeight: '700',
+    fontFamily: '"Syne", sans-serif',
+    fontSize: '30px',
+    fontWeight: '800',
     color: theme.textPrimary,
-    letterSpacing: '-0.02em',
+    letterSpacing: '-0.04em',
     margin: 0,
   },
   subtitle: {
@@ -200,15 +210,16 @@ const getStyles = (theme, isDarkMode) => ({
     margin: 0,
   },
   error: {
-    backgroundColor: '#FEF2F2',
-    border: '1px solid #EF4444',
-    borderRadius: '8px',
-    padding: '12px 16px',
+    backgroundColor: `${theme.error}14`,
+    border: `1px solid ${theme.error}30`,
+    borderLeft: `3px solid ${theme.error}`,
+    borderRadius: '14px',
+    padding: '14px 16px',
     marginBottom: '24px',
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
-    color: '#B91C1C',
+    color: theme.error,
     fontSize: '14px',
   },
   form: {
@@ -223,35 +234,34 @@ const getStyles = (theme, isDarkMode) => ({
   },
   label: {
     fontSize: '14px',
-    fontWeight: '500',
+    fontWeight: '600',
     color: theme.textSecondary,
     marginBottom: '2px',
+    letterSpacing: '0.01em',
   },
   input: {
     backgroundColor: theme.bgCard,
-    border: 'none',
-    borderRadius: '12px',
-    padding: '14px 18px',
+    border: `1px solid ${theme.border}`,
+    borderRadius: '14px',
+    padding: '14px 16px',
     fontSize: '15px',
     color: theme.textPrimary,
     outline: 'none',
-    transition: 'all 0.3s ease',
-    boxShadow: theme.shadows.neumorphicInset,
+    transition: 'all 150ms ease',
+    boxShadow: 'none',
   },
   button: {
     backgroundColor: theme.primary,
     color: '#FFFFFF',
     border: 'none',
-    borderRadius: '10px',
-    padding: '14px',
+    borderRadius: '999px',
+    padding: '14px 18px',
     fontSize: '15px',
     fontWeight: '600',
     cursor: 'pointer',
     marginTop: '12px',
-    transition: 'all 0.2s',
-    boxShadow: isDarkMode
-      ? '0 4px 12px rgba(99, 102, 241, 0.3)'
-      : '0 4px 12px rgba(99, 102, 241, 0.2)',
+    transition: 'all 150ms ease',
+    boxShadow: theme.shadows.float,
   },
   buttonDisabled: {
     opacity: 0.6,

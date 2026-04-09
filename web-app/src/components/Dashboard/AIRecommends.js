@@ -90,11 +90,11 @@ const AIRecommends = ({ tasks, onTaskClick, onToggleTask, onTaskDeleted, onTaskU
 
   const styles = {
     container: {
-      backgroundColor: theme.bgMain,
+          backgroundColor: theme.bgCard,
       borderRadius: borderRadius.lg,
-      padding: '28px',
-      boxShadow: theme.shadows.neumorphic, // Neomorphic Container
-      border: `1px solid transparent`,
+          padding: '24px',
+          boxShadow: theme.shadows.sm,
+          border: `1px solid ${theme.borderSubtle || theme.border}`,
     },
     header: {
       display: 'flex',
@@ -111,39 +111,39 @@ const AIRecommends = ({ tasks, onTaskClick, onToggleTask, onTaskDeleted, onTaskU
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      width: '40px',
-      height: '40px',
-      borderRadius: '12px',
-      backgroundColor: theme.bgMain,
-      color: theme.aiPurple,
-      boxShadow: theme.shadows.neumorphic,
-      fontSize: '20px',
+      width: '28px',
+      height: '28px',
+      borderRadius: '6px',
+      backgroundColor: theme.bgElevated,
+      color: theme.accent,
+      border: `1px solid ${theme.border}`,
+      fontSize: '14px',
     },
     title: {
       fontSize: '22px',
-      fontWeight: '700',
+      fontWeight: '600',
+      fontFamily: '"Fraunces", serif',
       color: theme.textPrimary,
       margin: 0,
-      textShadow: theme.type === 'dark' ? '2px 2px 4px rgba(0,0,0,0.3)' : 'none',
     },
     viewAllButton: {
-      background: theme.bgMain,
-      border: 'none',
-      color: theme.primary,
+      background: theme.bgRaised,
+      border: `1px solid ${theme.borderMedium || theme.border}`,
+      color: theme.textSecondary,
       fontSize: '12px',
-      fontWeight: '700',
+      fontWeight: '600',
       cursor: 'pointer',
-      padding: '8px 16px',
+      padding: '8px 14px',
       borderRadius: '8px',
-      boxShadow: theme.shadows.neumorphic, // Neomorphic button
+      boxShadow: 'none',
       display: 'flex',
       alignItems: 'center',
-      transition: 'all 0.2s',
+      transition: 'all 150ms ease',
     },
     subtitle: {
-      fontSize: '15px',
+        fontSize: '13px',
       color: theme.textSecondary,
-      marginBottom: '24px',
+        marginBottom: '20px',
       marginLeft: '52px', // Align with title text
     },
     tasksList: {
@@ -152,13 +152,13 @@ const AIRecommends = ({ tasks, onTaskClick, onToggleTask, onTaskDeleted, onTaskU
       gap: '20px',
     },
     taskCard: {
-      backgroundColor: theme.bgMain,
+      backgroundColor: theme.bgCard,
       borderRadius: borderRadius.lg,
       padding: '20px',
-      boxShadow: theme.shadows.neumorphic,
+      boxShadow: theme.shadows.sm,
       cursor: 'pointer',
-      transition: 'all 0.3s ease',
-      border: `1px solid transparent`,
+      transition: 'all 180ms ease',
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
       position: 'relative',
       overflow: 'hidden',
       display: 'flex',
@@ -173,20 +173,20 @@ const AIRecommends = ({ tasks, onTaskClick, onToggleTask, onTaskDeleted, onTaskU
     checkboxWrapper: {
       width: '24px',
       height: '24px',
-      borderRadius: '50%',
-      backgroundColor: theme.bgMain,
-      boxShadow: theme.shadows.neumorphic,
+        borderRadius: '6px',
+        backgroundColor: theme.bgRaised,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       cursor: 'pointer',
       marginTop: '2px', // Align with title
-      border: `2px solid transparent`,
-      transition: 'all 0.2s ease',
+        border: `1.5px solid ${theme.borderStrong || theme.border}`,
+        transition: 'all 180ms ease',
     },
     checkboxChecked: {
-      boxShadow: theme.shadows.neumorphicInset,
-      color: theme.success,
+      backgroundColor: theme.sage,
+      borderColor: theme.sage,
+      color: '#fff',
     },
     // Custom Checkbox Styles are injected via style tag below
     taskInfo: {
@@ -196,16 +196,16 @@ const AIRecommends = ({ tasks, onTaskClick, onToggleTask, onTaskDeleted, onTaskU
       gap: '8px',
     },
     taskTitle: {
-      fontSize: '17px',
-      fontWeight: '700',
+        fontSize: '15px',
+        fontWeight: '500',
       color: theme.textPrimary,
       margin: 0,
     },
     taskDescription: {
-      fontSize: '14px',
+      fontSize: '13px',
       color: theme.textSecondary,
       margin: 0,
-      lineHeight: '1.5',
+      lineHeight: '1.6',
     },
     badges: {
       display: 'flex',
@@ -215,32 +215,34 @@ const AIRecommends = ({ tasks, onTaskClick, onToggleTask, onTaskDeleted, onTaskU
       marginLeft: '40px', // Indent to align with text
     },
     badge: {
-      fontSize: '11px',
-      fontWeight: '600',
-      padding: '6px 12px',
+        fontSize: '10px',
+        fontWeight: '600',
+        padding: '2px 6px',
       borderRadius: '6px',
-      backgroundColor: theme.bgMain,
+        backgroundColor: theme.bgRaised,
       display: 'flex',
       alignItems: 'center',
       gap: '6px',
+        letterSpacing: '0.06em',
+        textTransform: 'uppercase',
     },
     badgeSecondary: {
-      fontSize: '11px',
+      fontSize: '10px',
       fontWeight: '600',
-      padding: '6px 12px',
+      padding: '2px 6px',
       borderRadius: '6px',
-      backgroundColor: theme.bgMain,
+      backgroundColor: theme.bgRaised,
       color: theme.textSecondary,
-      boxShadow: theme.shadows.neumorphicInset,
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
     },
     projectBadge: {
       fontSize: '10px',
       fontWeight: '600',
-      padding: '2px 8px',
+        padding: '2px 6px',
       borderRadius: '6px',
-      backgroundColor: theme.primary + '15',
-      color: theme.primary,
-      border: `1px solid ${theme.primary}30`,
+        backgroundColor: theme.accentDim || `${theme.accent}15`,
+        color: theme.accent,
+        border: `1px solid ${theme.borderMedium || theme.border}`,
       display: 'inline-flex',
       alignItems: 'center',
       gap: '4px',
@@ -254,7 +256,7 @@ const AIRecommends = ({ tasks, onTaskClick, onToggleTask, onTaskDeleted, onTaskU
       display: 'flex',
       flexWrap: 'wrap',
       gap: '12px',
-      fontSize: '13px',
+        fontSize: '12px',
       color: theme.textMuted,
       marginLeft: '40px',
     },
@@ -275,31 +277,31 @@ const AIRecommends = ({ tasks, onTaskClick, onToggleTask, onTaskDeleted, onTaskU
       position: 'relative',
     },
     statusButton: {
-      backgroundColor: theme.bgMain,
+      backgroundColor: theme.bgRaised,
       color: theme.textPrimary,
       border: 'none',
-      borderRadius: '12px',
-      padding: '8px 16px',
+      borderRadius: '8px',
+      padding: '8px 14px',
       fontSize: '13px',
       fontWeight: '600',
       cursor: 'pointer',
       display: 'flex',
       alignItems: 'center',
       gap: '6px',
-      boxShadow: theme.shadows.neumorphic,
-      transition: 'all 0.2s ease',
+        boxShadow: theme.shadows.sm,
+        transition: 'all 180ms ease',
       minWidth: '110px',
     },
     statusButtonActive: {
       backgroundColor: theme.success,
       color: '#fff',
-      boxShadow: `${theme.shadows.neumorphic}, 0 4px 12px ${theme.success}40`,
+        boxShadow: theme.shadows.sm,
     },
     deleteButton: {
-      backgroundColor: theme.bgMain,
+      backgroundColor: theme.bgRaised,
       color: theme.error,
-      border: `2px solid ${theme.error}`,
-      borderRadius: '12px',
+      border: `1px solid ${theme.borderMedium || theme.border}`,
+      borderRadius: '8px',
       padding: '6px 14px',
       fontSize: '13px',
       fontWeight: '600',
@@ -307,21 +309,21 @@ const AIRecommends = ({ tasks, onTaskClick, onToggleTask, onTaskDeleted, onTaskU
       display: 'flex',
       alignItems: 'center',
       gap: '4px',
-      boxShadow: theme.shadows.neumorphic,
-      transition: 'all 0.2s ease',
+      boxShadow: theme.shadows.sm,
+      transition: 'all 180ms ease',
     },
     dropdown: {
       position: 'absolute',
       top: '100%',
       left: 0,
       marginTop: '8px',
-      backgroundColor: theme.bgMain,
-      borderRadius: '12px',
-      boxShadow: `${theme.shadows.neumorphic}, 0 8px 24px ${theme.textPrimary}15`,
+        backgroundColor: theme.bgCard,
+        borderRadius: '8px',
+        boxShadow: theme.shadows.md,
       zIndex: 1000,
       minWidth: '160px',
       overflow: 'hidden',
-      border: `1px solid ${theme.border}`,
+        border: `1px solid ${theme.borderSubtle || theme.border}`,
     },
     menuItem: {
       padding: '10px 16px',
@@ -332,8 +334,8 @@ const AIRecommends = ({ tasks, onTaskClick, onToggleTask, onTaskDeleted, onTaskU
       fontSize: '13px',
       fontWeight: '500',
       color: theme.textPrimary,
-      transition: 'all 0.15s ease',
-      borderBottom: `1px solid ${theme.border}30`,
+      transition: 'all 120ms ease',
+      borderBottom: `1px solid ${theme.borderSubtle || theme.border}`,
     },
     menuItemHover: {
       backgroundColor: theme.primary + '10',
@@ -345,19 +347,21 @@ const AIRecommends = ({ tasks, onTaskClick, onToggleTask, onTaskDeleted, onTaskU
     },
     aiInsight: {
       marginLeft: '38px',
-      backgroundColor: theme.bgMain,
-      boxShadow: theme.shadows.neumorphicInset, // Inset for insight box
-      borderRadius: '12px',
+      backgroundColor: theme.bgRaised,
+      boxShadow: 'none',
+      borderRadius: '8px',
       padding: '12px 16px',
       display: 'flex',
       gap: '10px',
       alignItems: 'start',
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
     },
     aiInsightText: {
-      fontSize: '13px',
-      color: theme.aiPurple,
+      fontSize: '12px',
+      color: theme.textSecondary,
       lineHeight: '1.5',
-      fontWeight: '500',
+      fontWeight: '400',
+      fontStyle: 'italic',
     },
     emptyState: {
       textAlign: 'center',
@@ -365,9 +369,10 @@ const AIRecommends = ({ tasks, onTaskClick, onToggleTask, onTaskDeleted, onTaskU
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
-      backgroundColor: theme.bgMain,
+      backgroundColor: theme.bgCard,
       borderRadius: borderRadius.lg,
-      boxShadow: theme.shadows.neumorphicInset,
+      boxShadow: 'none',
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
     },
     emptyText: {
       fontSize: '15px',
@@ -380,37 +385,36 @@ const AIRecommends = ({ tasks, onTaskClick, onToggleTask, onTaskDeleted, onTaskU
     <div style={styles.container}>
       <style>{`
         .task-card:hover {
-          transform: translateY(-4px);
-          box-shadow: ${theme.shadows.neumorphicHover} !important;
+          transform: translateY(-1px);
+          box-shadow: ${theme.shadows.md} !important;
+          border-color: ${theme.borderMedium || theme.border} !important;
         }
         .custom-checkbox {
           width: 24px;
           height: 24px;
-          background-color: ${theme.bgMain};
-          border-radius: 50%;
+          background-color: ${theme.bgRaised};
+          border-radius: 6px;
           display: flex;
           align-items: center;
           justify-content: center;
           cursor: pointer;
-          box-shadow: ${theme.shadows.neumorphic};
-          transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-          border: 2px solid transparent;
+          box-shadow: none;
+          transition: all 180ms ease;
+          border: 1.5px solid ${theme.borderStrong || theme.border};
         }
         .custom-checkbox:hover {
-          box-shadow: ${theme.shadows.neumorphicInset};
-          color: ${theme.success};
+          border-color: ${theme.accent};
         }
         .custom-checkbox.checked {
-          background-color: ${theme.bgMain};
-          box-shadow: ${theme.shadows.neumorphicInset};
-          border-color: ${theme.success};
+          background-color: ${theme.sage};
+          border-color: ${theme.sage};
         }
         .custom-checkbox.checkmark {
           font-size: 12px;
-          color: ${theme.success};
+          color: #fff;
           opacity: 0;
           transform: scale(0.5);
-          transition: all 0.2s ease;
+          transition: all 0.18s ease;
         }
         .custom-checkbox.checked.checkmark {
           opacity: 1;
@@ -474,9 +478,9 @@ const AIRecommends = ({ tasks, onTaskClick, onToggleTask, onTaskDeleted, onTaskU
                     {task.aiPriorityScore && (
                       <span style={{
                         ...styles.badge,
-                        color: theme.aiPurple,
-                        backgroundColor: `${theme.aiPurple}15`,
-                        border: `1px solid ${theme.aiPurple}30`
+                        color: theme.accent,
+                        backgroundColor: theme.accentDim || `${theme.accent}15`,
+                        border: `1px solid ${theme.borderMedium || theme.border}`
                       }}>
                         <FaRobot style={{ fontSize: '10px' }} /> AI {task.aiPriorityScore}%
                       </span>
@@ -508,7 +512,7 @@ const AIRecommends = ({ tasks, onTaskClick, onToggleTask, onTaskDeleted, onTaskU
 
               {task.aiInsight && (
                 <div style={styles.aiInsight}>
-                  <FaRegLightbulb style={{ fontSize: '16px', color: theme.aiPurple }} />
+                  <FaRegLightbulb style={{ fontSize: '14px', color: theme.accent }} />
                   <span style={styles.aiInsightText}>{task.aiInsight}</span>
                 </div>
               )}
@@ -516,7 +520,7 @@ const AIRecommends = ({ tasks, onTaskClick, onToggleTask, onTaskDeleted, onTaskU
           ))
         ) : (
           <div style={styles.emptyState}>
-            <FaRobot style={{ fontSize: '48px', marginBottom: '16px', color: theme.aiPurple }} />
+            <FaRobot style={{ fontSize: '42px', marginBottom: '16px', color: theme.accent }} />
             <p style={styles.emptyText}>
               No tasks yet. Create your first task to get AI recommendations!
             </p>

@@ -8,7 +8,7 @@ import { formatTaskDuration } from '../utils/formatTaskDuration';
 import CreateTaskModal from '../components/Tasks/CreateTaskModal';
 import TaskDetailModal from '../components/Tasks/TaskDetailModal';
 import {
-  FaSearch, FaPlus, FaCalendarAlt, FaClock, FaCheck, FaFlag, FaTag, FaTimes, FaClipboardList
+  FaSearch, FaPlus, FaCalendarAlt, FaClock, FaCheck, FaFlag, FaTag, FaTimes, FaClipboardList, FaRobot, FaExclamationTriangle
 } from 'react-icons/fa';
 import CustomSelect from '../components/common/CustomSelect';
 import { TaskCardSkeleton } from '../components/common/SkeletonLoader';
@@ -57,6 +57,7 @@ const TasksPage = () => {
   const [riskSummary, setRiskSummary] = useState('');
   const [notification, setNotification] = useState(null);
   const notificationTimerRef = useRef(null);
+  const debounceTimerRef = useRef(null);
   const lastFilterKeyRef = useRef('');
   const [hasCache, setHasCache] = useState(Boolean(cachedTasksState));
 
@@ -96,6 +97,9 @@ const TasksPage = () => {
     return () => {
       if (notificationTimerRef.current) {
         clearTimeout(notificationTimerRef.current);
+      }
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
       }
     };
   }, []);
@@ -178,9 +182,137 @@ const TasksPage = () => {
     }
   };
 
-  const handleTaskCreated = (newTask) => {
-    setTasks([newTask, ...tasks]);
-    loadTasks();
+  const sortTasksByPriorityScore = (taskList, scoreMap) => {
+    return [...taskList].sort((a, b) => {
+      const scoreA = scoreMap[String(a._id || a.id)] ?? -1;
+      const scoreB = scoreMap[String(b._id || b.id)] ?? -1;
+
+      if (scoreA === scoreB) {
+        const deadlineA = a.deadline ? new Date(a.deadline).getTime() : Number.POSITIVE_INFINITY;
+        const deadlineB = b.deadline ? new Date(b.deadline).getTime() : Number.POSITIVE_INFINITY;
+        return deadlineA - deadlineB;
+      }
+
+      return scoreB - scoreA;
+    });
+  };
+
+  const getPrioritizationSnapshot = async () => {
+    const params = {
+      page: currentPage,
+      sortBy,
+      sortOrder: sortBy === 'deadline' || sortBy === 'title' ? 'asc' : 'desc',
+    };
+
+    if (searchQuery.trim()) {
+      params.search = searchQuery.trim();
+    }
+
+    if (statusFilter !== 'all') {
+      params.status = statusFilter;
+    }
+
+    if (priorityFilter !== 'all') {
+      params.priority = priorityFilter;
+    }
+
+    if (categoryFilter !== 'all') {
+      params.category = categoryFilter;
+    }
+
+    if (projectFilter === 'standalone') {
+      params.projectId = 'none';
+    }
+
+    const response = await tasksAPI.getTasks(params);
+    const responseTasks = response.data.tasks || [];
+    const displayedTasks = projectFilter === 'project'
+      ? responseTasks.filter(task => !!task.projectId)
+      : responseTasks;
+
+    const shouldPushCompletedToBottom = statusFilter === 'all' && (sortBy === 'createdAt' || sortBy === 'deadline');
+
+    return shouldPushCompletedToBottom
+      ? [
+          ...displayedTasks.filter(task => task.status !== 'done'),
+          ...displayedTasks.filter(task => task.status === 'done'),
+        ]
+      : displayedTasks;
+  };
+
+  const autoReprioritize = async () => {
+    const activeVisibleTasks = filteredTasks.filter(task => task.status !== 'done');
+    if (activeVisibleTasks.length === 0) {
+      return;
+    }
+
+    const snapshotTasks = await getPrioritizationSnapshot();
+    const nonDoneTasks = snapshotTasks.filter(task => task.status !== 'done');
+
+    if (nonDoneTasks.length === 0) {
+      return;
+    }
+
+    const tasksToPrioritize = snapshotTasks.filter(task => ['pending', 'todo', 'in-progress'].includes(task.status));
+
+    if (tasksToPrioritize.length === 0) {
+      return;
+    }
+
+    try {
+      const payloadTasks = tasksToPrioritize.map(task => ({
+        id: String(task._id || task.id),
+        title: task.title,
+        priority: task.priority,
+        status: task.status,
+        deadline: task.deadline,
+        estimated_minutes: task.estimatedDuration,
+        category: task.category,
+      }));
+
+      const result = await aiService.prioritize(payloadTasks);
+      const rankedTasks = Array.isArray(result?.tasks) ? result.tasks : [];
+
+      const refreshedTasks = await getPrioritizationSnapshot();
+      const scoreMap = refreshedTasks.reduce((acc, task) => {
+        const taskId = String(task._id || task.id);
+        const persistedScore = typeof task.aiPriorityScore === 'number' ? task.aiPriorityScore : null;
+        if (persistedScore !== null) {
+          acc[taskId] = persistedScore;
+        }
+        return acc;
+      }, rankedTasks.reduce((acc, item) => {
+        acc[String(item.id)] = item.score;
+        return acc;
+      }, {}));
+
+      setAiPriorityScores(scoreMap);
+      const sortedTasks = sortTasksByPriorityScore(refreshedTasks, scoreMap);
+      setFilteredTasks(sortedTasks);
+      writeTasksCache({
+        tasks: refreshedTasks,
+        filteredTasks: sortedTasks,
+        totalPages,
+      });
+    } catch (error) {
+      console.warn('Auto AI prioritization failed:', error);
+    }
+  };
+
+  const triggerAutoReprioritize = () => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    debounceTimerRef.current = setTimeout(() => {
+      autoReprioritize();
+    }, 1500);
+  };
+
+  const handleTaskCreated = async (newTask) => {
+    setTasks(prev => [newTask, ...prev]);
+    await loadTasks();
+    triggerAutoReprioritize();
   };
 
   const handleTaskClick = (task) => {
@@ -188,21 +320,23 @@ const TasksPage = () => {
     setShowDetailModal(true);
   };
 
-  const handleTaskUpdated = (updatedTask) => {
-    setTasks(tasks.map(t => t._id === updatedTask._id ? updatedTask : t));
+  const handleTaskUpdated = async (updatedTask) => {
+    setTasks(prev => prev.map(t => t._id === updatedTask._id ? updatedTask : t));
     setSelectedTask(updatedTask);
-    loadTasks();
+    await loadTasks();
+    triggerAutoReprioritize();
   };
 
-  const handleTaskDeleted = (taskId) => {
-    setTasks(tasks.filter(t => t._id !== taskId));
+  const handleTaskDeleted = async (taskId) => {
+    setTasks(prev => prev.filter(t => t._id !== taskId));
     setShowDetailModal(false);
     setSelectedTask(null);
-    loadTasks();
+    await loadTasks();
+    triggerAutoReprioritize();
   };
 
   const handleAIPrioritize = async () => {
-    const tasksToPrioritize = filteredTasks.filter(task => ['pending', 'todo', 'in-progress'].includes(task.status));
+    const tasksToPrioritize = tasks.filter(task => ['pending', 'todo', 'in-progress'].includes(task.status));
 
     if (tasksToPrioritize.length === 0) {
       showNotification('No pending or in-progress tasks available for AI prioritization.', 'warning');
@@ -231,14 +365,7 @@ const TasksPage = () => {
       }, {});
 
       setAiPriorityScores(scoreMap);
-
-      const sortedByScore = [...filteredTasks].sort((a, b) => {
-        const scoreA = scoreMap[String(a._id || a.id)] ?? -1;
-        const scoreB = scoreMap[String(b._id || b.id)] ?? -1;
-        return scoreB - scoreA;
-      });
-
-      setFilteredTasks(sortedByScore);
+      setFilteredTasks(sortTasksByPriorityScore(filteredTasks, scoreMap));
     } catch (error) {
       showNotification(error.response?.data?.message || 'Failed to prioritize tasks with AI. Please try again.', 'error');
     } finally {
@@ -349,7 +476,7 @@ const TasksPage = () => {
     container: {
       padding: '32px',
       minHeight: '100vh',
-      backgroundColor: theme.bgMain, // Neomorphic background
+      backgroundColor: theme.bgMain,
     },
     loading: {
       display: 'flex',
@@ -365,7 +492,7 @@ const TasksPage = () => {
       height: '40px',
       border: `4px solid ${theme.bgMain}`,
       borderTop: `4px solid ${theme.primary}`,
-      boxShadow: theme.shadows.neumorphic,
+      boxShadow: 'none',
       borderRadius: '50%',
       animation: 'spin 1s linear infinite',
     },
@@ -376,11 +503,11 @@ const TasksPage = () => {
       marginBottom: '32px',
     },
     title: {
+      fontFamily: 'Syne, sans-serif',
       fontSize: '32px',
       fontWeight: '800',
       color: theme.textPrimary,
       margin: '0 0 4px 0',
-      textShadow: theme.type === 'dark' ? '2px 2px 4px rgba(0,0,0,0.3)' : 'none',
     },
     subtitle: {
       fontSize: '14px',
@@ -392,12 +519,13 @@ const TasksPage = () => {
       alignItems: 'center',
       justifyContent: 'space-between',
       gap: '12px',
-      backgroundColor: theme.bgMain,
+      backgroundColor: theme.bgCard,
       borderRadius: borderRadius.md,
       padding: '12px 14px',
-      boxShadow: theme.shadows.neumorphic,
+      boxShadow: theme.shadows.card,
       marginBottom: '18px',
       borderLeft: `4px solid ${theme.info}`,
+      border: `1px solid ${theme.border}`,
     },
     notificationText: {
       margin: 0,
@@ -414,40 +542,40 @@ const TasksPage = () => {
       fontSize: '14px',
       fontWeight: '600',
       cursor: 'pointer',
-      boxShadow: theme.shadows.neumorphic,
+      boxShadow: theme.shadows.card,
       display: 'flex',
       alignItems: 'center',
-      transition: 'all 0.2s',
+      transition: 'all 150ms ease',
     },
     aiPrioritizeButton: {
-      backgroundColor: theme.bgMain,
+      backgroundColor: theme.bgCard,
       color: theme.primary,
-      border: 'none',
+      border: `1px solid ${theme.border}`,
       borderRadius: borderRadius.lg,
       padding: '12px 18px',
       fontSize: '14px',
       fontWeight: '700',
       cursor: isAIPrioritizing ? 'not-allowed' : 'pointer',
-      boxShadow: theme.shadows.neumorphic,
+      boxShadow: theme.shadows.card,
       display: 'flex',
       alignItems: 'center',
-      transition: 'all 0.2s',
+      transition: 'all 150ms ease',
       opacity: isAIPrioritizing ? 0.7 : 1,
       marginRight: '12px',
     },
     riskDetectButton: {
-      backgroundColor: theme.bgMain,
+      backgroundColor: theme.bgCard,
       color: theme.warning,
-      border: 'none',
+      border: `1px solid ${theme.border}`,
       borderRadius: borderRadius.lg,
       padding: '12px 18px',
       fontSize: '14px',
       fontWeight: '700',
       cursor: isDetectingRisks ? 'not-allowed' : 'pointer',
-      boxShadow: theme.shadows.neumorphic,
+      boxShadow: theme.shadows.card,
       display: 'flex',
       alignItems: 'center',
-      transition: 'all 0.2s',
+      transition: 'all 150ms ease',
       opacity: isDetectingRisks ? 0.7 : 1,
       marginRight: '12px',
     },
@@ -461,14 +589,15 @@ const TasksPage = () => {
       marginRight: '8px',
     },
     filtersContainer: {
-      backgroundColor: theme.bgMain,
+      backgroundColor: theme.bgCard,
       borderRadius: borderRadius.lg,
       padding: '24px',
-      boxShadow: theme.shadows.neumorphic, // Neomorphic container
+      boxShadow: theme.shadows.card,
       marginBottom: '32px',
       display: 'flex',
       flexDirection: 'column',
       gap: '20px',
+      border: `1px solid ${theme.border}`,
     },
     searchContainer: {
       position: 'relative',
@@ -485,14 +614,14 @@ const TasksPage = () => {
     },
     searchInput: {
       width: '100%',
-      backgroundColor: theme.bgMain,
-      border: 'none',
-      borderRadius: borderRadius.md,
-      padding: '12px 16px 12px 48px',
+      backgroundColor: theme.bgRaised,
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
+      borderRadius: '8px',
+      padding: '11px 14px 11px 44px',
       fontSize: '14px',
       color: theme.textPrimary,
       outline: 'none',
-      boxShadow: theme.shadows.neumorphicInset, // Inset shadow for input
+      boxShadow: 'none',
     },
     clearSearch: {
       position: 'absolute',
@@ -512,20 +641,21 @@ const TasksPage = () => {
     },
     clearButton: {
       backgroundColor: 'transparent',
-      border: `1px solid ${theme.error}`,
-      borderRadius: borderRadius.md,
-      padding: '10px 16px',
+      border: `1px solid ${theme.borderMedium || theme.border}`,
+      borderRadius: '8px',
+      padding: '0 16px',
+      height: '40px',
       fontSize: '13px',
-      color: theme.error,
+      color: theme.textSecondary,
       cursor: 'pointer',
     },
     riskPanel: {
-      backgroundColor: theme.bgMain,
+      backgroundColor: theme.bgCard,
       borderRadius: borderRadius.lg,
       padding: '20px',
       marginBottom: '24px',
-      boxShadow: theme.shadows.neumorphic,
-      borderLeft: `4px solid ${theme.warning}`,
+      boxShadow: theme.shadows.card,
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
     },
     riskStatusBanner: {
       display: 'flex',
@@ -539,19 +669,10 @@ const TasksPage = () => {
       gap: '12px',
     },
     alertItem: {
-      backgroundColor: theme.type === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+      backgroundColor: theme.bgCard,
       borderRadius: borderRadius.md,
-      padding: '12px',
-      border: `1px solid ${theme.textMuted}20`,
-    },
-    dismissButton: {
-      background: 'none',
-      border: 'none',
-      color: theme.textMuted,
-      cursor: 'pointer',
-      fontSize: '16px',
-      padding: '4px',
-      transition: 'color 0.2s',
+      boxShadow: 'none',
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
     },
     taskList: {
       display: 'flex',
@@ -569,9 +690,10 @@ const TasksPage = () => {
       alignItems: 'center',
       justifyContent: 'center',
       padding: '64px',
-      backgroundColor: theme.bgMain,
+      backgroundColor: theme.bgCard,
       borderRadius: borderRadius.lg,
-      boxShadow: theme.shadows.neumorphicInset,
+      boxShadow: 'none',
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
     },
     emptyText: {
       fontSize: '16px',
@@ -586,16 +708,16 @@ const TasksPage = () => {
       height: '64px',
       borderRadius: '50%',
       backgroundColor: theme.primary,
-      color: '#fff',
+      color: '#0A0908',
       border: 'none',
       cursor: 'pointer',
       fontSize: '24px',
-      boxShadow: theme.type === 'dark' ? '8px 8px 16px rgba(0,0,0,0.4), -8px -8px 16px rgba(255,255,255,0.05)' : '8px 8px 16px rgba(0,0,0,0.2), -8px -8px 16px rgba(255,255,255,0.5)',
+      boxShadow: theme.shadows.float,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       zIndex: 50,
-      transition: 'all 0.3s ease',
+      transition: 'all 150ms ease',
     },
   };
 
@@ -637,18 +759,22 @@ const TasksPage = () => {
 
         .ai-prioritize-btn:hover {
           transform: translateY(-1px);
-          box-shadow: ${theme.shadows.neumorphicInset} !important;
+          box-shadow: ${theme.shadows.card} !important;
         }
 
         .risk-detect-btn:hover {
           transform: translateY(-1px);
-          box-shadow: ${theme.shadows.neumorphicInset} !important;
+          box-shadow: ${theme.shadows.card} !important;
         }
 
         .task-card:hover {
-            transform: translateY(-4px);
-            box-shadow: ${theme.shadows.neumorphic} !important;
-            border-color: ${theme.primary}40 !important; // Subtle glow on hover
+            transform: translateY(-2px);
+            box-shadow: ${theme.shadows.float} !important;
+            border-color: ${theme.primary}33 !important;
+        }
+
+        .task-card:hover .task-card-checkbox {
+            opacity: 1;
         }
       `}</style>
       <div style={styles.container} className="tasks-page-container">
@@ -690,7 +816,8 @@ const TasksPage = () => {
               className="ai-prioritize-btn"
             >
               {isAIPrioritizing && <span style={styles.buttonSpinner} />}
-              {isAIPrioritizing ? 'Prioritizing...' : '🤖 AI Prioritize'}
+              <FaRobot style={{ marginRight: '8px', fontSize: '12px' }} />
+              {isAIPrioritizing ? 'Prioritizing...' : 'AI Prioritize'}
             </button>
             <button
               type="button"
@@ -700,13 +827,14 @@ const TasksPage = () => {
               className="risk-detect-btn"
             >
               {isDetectingRisks && <span style={styles.buttonSpinner} />}
-              {isDetectingRisks ? 'Detecting...' : '⚠️ Detect Risks'}
+              <FaExclamationTriangle style={{ marginRight: '8px', fontSize: '12px' }} />
+              {isDetectingRisks ? 'Detecting...' : 'Detect Risks'}
             </button>
             <button
               style={styles.createButton}
               onClick={() => setShowCreateModal(true)}
             >
-              <FaPlus style={{ marginRight: '8px' }} /> New Task
+              <FaPlus style={{ marginRight: '8px', fontSize: '12px' }} /> New Task
             </button>
           </div>
         </div>
@@ -954,14 +1082,6 @@ const TasksPage = () => {
         onTaskDeleted={handleTaskDeleted}
       />
 
-      {/* FAB */}
-      <button
-        style={styles.fab}
-        onClick={() => setShowCreateModal(true)}
-        className="fab"
-      >
-        <FaPlus />
-      </button>
     </>
   );
 };
@@ -973,17 +1093,18 @@ const TaskCard = ({ task, aiPriorityScore, onClick, getPriorityColor, getStatusC
 
   const styles = {
     taskCard: {
-      backgroundColor: theme.bgMain,
-      borderRadius: borderRadius.lg,
-      padding: '20px',
-      boxShadow: theme.shadows.neumorphic,
+      backgroundColor: theme.bgCard,
+      borderRadius: '12px',
+      padding: '16px',
+      boxShadow: theme.shadows.xs,
       cursor: 'pointer',
-      transition: 'all 0.3s ease',
+      transition: 'all 180ms ease',
       display: 'flex',
       flexDirection: 'column',
       gap: '16px',
       position: 'relative',
       overflow: 'hidden',
+      height: '280px',
     },
     taskCardTop: {
       display: 'flex',
@@ -993,26 +1114,27 @@ const TaskCard = ({ task, aiPriorityScore, onClick, getPriorityColor, getStatusC
     },
     taskCardLeft: {
       display: 'flex',
-      gap: '12px',
+      gap: '8px',
       flex: 1,
     },
     checkboxContainer: {
-      width: '24px',
-      height: '24px',
-      borderRadius: '8px',
-      border: `2px solid ${theme.border}`,
+      width: '20px',
+      height: '20px',
+      borderRadius: '6px',
+      border: `1.5px solid ${theme.borderStrong || theme.border}`,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       cursor: 'pointer',
-      transition: 'all 0.2s',
-      backgroundColor: theme.bgMain,
-      boxShadow: theme.shadows.neumorphicInset,
+      transition: 'all 150ms ease',
+      backgroundColor: theme.bgRaised,
+      boxShadow: 'none',
+      opacity: 0.35,
     },
     checkboxChecked: {
-      backgroundColor: theme.success,
+      backgroundColor: theme.sage,
       boxShadow: 'none',
-      borderColor: theme.success,
+      borderColor: theme.sage,
     },
     checkboxInner: {
       transition: 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
@@ -1024,29 +1146,49 @@ const TaskCard = ({ task, aiPriorityScore, onClick, getPriorityColor, getStatusC
     },
     taskTitle: {
       fontSize: '16px',
-      fontWeight: '700',
+      fontWeight: '500',
       margin: '0',
       lineHeight: '1.4',
+      color: theme.textPrimary,
+      display: '-webkit-box',
+      WebkitLineClamp: 2,
+      WebkitBoxOrient: 'vertical',
+      overflow: 'hidden',
+      minHeight: '44px',
+    },
+    taskTitleMeta: {
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'flex-start',
+      gap: '8px',
     },
     aiScoreBadge: {
       fontSize: '11px',
-      fontWeight: '800',
-      padding: '2px 8px',
-      borderRadius: '999px',
-      backgroundColor: theme.success + '20',
-      color: theme.success,
-      border: `1px solid ${theme.success}40`,
+      fontWeight: '700',
+      padding: '4px 9px',
+      borderRadius: '7px',
+      backgroundColor: theme.accentDim || `${theme.accent}15`,
+      color: theme.accent,
+      border: `1px solid ${theme.borderMedium || theme.border}`,
       display: 'inline-flex',
       alignItems: 'center',
-      marginLeft: '8px',
+      lineHeight: 1,
+      letterSpacing: '0.06em',
+      fontFamily: '"Geist Mono", monospace',
     },
     taskDescription: {
       fontSize: '14px',
       color: theme.textSecondary,
       margin: 0,
       display: '-webkit-box',
-      WebkitLineClamp: 2,
+      WebkitLineClamp: 3,
       WebkitBoxOrient: 'vertical',
+      overflow: 'hidden',
+      lineHeight: '1.45',
+    },
+    taskDescriptionBlock: {
+      minHeight: '60px',
+      maxHeight: '60px',
       overflow: 'hidden',
     },
     taskCardRight: {
@@ -1055,62 +1197,84 @@ const TaskCard = ({ task, aiPriorityScore, onClick, getPriorityColor, getStatusC
       alignItems: 'flex-end',
       gap: '8px',
     },
+    taskContentRail: {
+      marginLeft: '22px',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '14px',
+      flex: 1,
+      minHeight: 0,
+    },
+    badgesRow: {
+      display: 'flex',
+      flexWrap: 'wrap',
+      gap: '6px',
+    },
     deadlineBadge: {
-      fontSize: '12px',
+      fontSize: '11px',
       fontWeight: '600',
       display: 'flex',
       alignItems: 'center',
+      fontFamily: '"Geist Mono", monospace',
     },
     priorityBadge: {
-      fontSize: '12px',
-      fontWeight: '700',
-      padding: '4px 8px',
-      borderRadius: '8px',
+      fontSize: '10px',
+      fontWeight: '600',
+      padding: '2px 6px',
+      borderRadius: '6px',
       display: 'flex',
       alignItems: 'center',
       gap: '4px',
+      letterSpacing: '0.06em',
+      textTransform: 'uppercase',
     },
     projectBadge: {
       fontSize: '10px',
       fontWeight: '600',
-      padding: '2px 8px',
+      padding: '2px 6px',
       borderRadius: '6px',
-      backgroundColor: theme.primary + '15',
-      color: theme.primary,
-      border: `1px solid ${theme.primary}30`,
+      backgroundColor: theme.bgRaised,
+      color: theme.textSecondary,
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
       display: 'inline-flex',
       alignItems: 'center',
       gap: '4px',
       marginTop: '4px',
     },
     categoryBadge: {
-      fontSize: '12px',
+      fontSize: '10px',
       fontWeight: '600',
-      padding: '4px 8px',
+      padding: '2px 6px',
       borderRadius: '6px',
+      backgroundColor: theme.bgRaised,
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
     },
     tagBadge: {
-      fontSize: '11px',
+      fontSize: '10px',
       color: theme.textSecondary,
-      backgroundColor: theme.bgElevated, // Assuming bgElevated might be missing unless defined in theme
-      // fallback to bgMain or a slight variation if bgElevated is not in theme
-      // Let's use theme.bgMain with inset shadow or just slightly different styling?
-      // Actually, let's just use bgMain for now or add a custom style.
-      padding: '2px 8px',
-      borderRadius: '12px',
+      backgroundColor: theme.bgRaised,
+      padding: '2px 6px',
+      borderRadius: '6px',
       display: 'flex',
       alignItems: 'center',
-      border: `1px solid ${theme.border}`,
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
     },
     metaContainer: {
       display: 'flex',
       gap: '12px',
+      minHeight: '16px',
+    },
+    taskCardBottom: {
+      marginTop: 'auto',
+      borderTop: `1px solid ${theme.borderSubtle || theme.border}`,
+      paddingTop: '14px',
     },
     metaItem: {
       fontSize: '12px',
       color: theme.textMuted,
       display: 'flex',
       alignItems: 'center',
+      fontFamily: '"Geist Mono", monospace',
     },
   }
 
@@ -1135,23 +1299,25 @@ const TaskCard = ({ task, aiPriorityScore, onClick, getPriorityColor, getStatusC
       style={{
         ...styles.taskCard,
         opacity: completed ? 0.7 : 1,
-        border: `1px solid ${theme.border}`, // Consistent border
+        border: `1px solid ${theme.borderSubtle || theme.border}`,
+        boxShadow: `${theme.shadows.xs}, inset 4px 0 0 ${getPriorityColor(task.priority)}`,
       }}
       onClick={onClick}
       className="task-card"
     >
       {/* Title Row */}
-      <div style={{ ...styles.taskCardTop, marginBottom: '8px' }}>
+      <div style={styles.taskCardTop}>
         <div style={styles.taskCardLeft}>
           <div
             onClick={(e) => {
               e.stopPropagation();
               onClick();
             }}
+            className="task-card-checkbox"
           >
             <Checkbox checked={task.status === 'done'} />
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={styles.taskTitleMeta}>
             <h3 style={{
               ...styles.taskTitle,
               textDecoration: completed ? 'line-through' : 'none',
@@ -1174,22 +1340,23 @@ const TaskCard = ({ task, aiPriorityScore, onClick, getPriorityColor, getStatusC
         </div>
       </div>
 
+      <div style={styles.taskContentRail}>
       {/* Context Row (Badges) */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', padding: '0 12px', marginLeft: '32px', marginBottom: '10px' }}>
+      <div style={styles.badgesRow}>
           <span style={{
             ...styles.priorityBadge,
-            backgroundColor: getPriorityColor(task.priority) + '15',
+            backgroundColor: getPriorityColor(task.priority) + '12',
             color: getPriorityColor(task.priority),
-            border: `1px solid ${getPriorityColor(task.priority)}30`,
+            border: `1px solid ${getPriorityColor(task.priority)}22`,
           }}>
             <FaFlag size={10} style={{ marginRight: '4px' }} />
             {task.priority.toUpperCase()}
           </span>
           <span style={{
             ...styles.categoryBadge,
-            backgroundColor: theme.primary + '05',
+            backgroundColor: theme.bgRaised,
             color: theme.textSecondary,
-            border: `1px solid ${theme.border}50`,
+            border: `1px solid ${theme.borderSubtle || theme.border}`,
           }}>
             {task.category}
           </span>
@@ -1208,12 +1375,12 @@ const TaskCard = ({ task, aiPriorityScore, onClick, getPriorityColor, getStatusC
       </div>
 
       {/* Description */}
-      {task.description && (
-        <p style={{ ...styles.taskDescription, padding: '0 12px', marginLeft: '32px', marginBottom: '8px' }}>{task.description}</p>
-      )}
+      <div style={styles.taskDescriptionBlock}>
+        <p style={styles.taskDescription}>{task.description || 'No description provided.'}</p>
+      </div>
 
       {/* Metadata Row (Footer) */}
-      <div style={{ ...styles.taskCardBottom, borderTop: `1px solid ${theme.border}30`, paddingTop: '8px' }}>
+      <div style={styles.taskCardBottom}>
         <div style={styles.metaContainer}>
           {task.estimatedDuration && (
             <span style={styles.metaItem}>
@@ -1227,7 +1394,11 @@ const TaskCard = ({ task, aiPriorityScore, onClick, getPriorityColor, getStatusC
               {task.subtasks.filter(s => s.completed).length}/{task.subtasks.length}
             </span>
           )}
+          {!task.estimatedDuration && !(task.subtasks?.length > 0) && (
+            <span style={styles.metaItem}>No estimates</span>
+          )}
         </div>
+      </div>
       </div>
     </div>
   );

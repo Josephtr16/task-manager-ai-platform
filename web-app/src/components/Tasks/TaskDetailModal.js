@@ -2,6 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../../context/ThemeContext';
 import { tasksAPI, timeTrackingAPI, subtasksAPI } from '../../services/api';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import {
   FaEdit, FaTrash, FaTimes, FaSave,
   FaStopwatch, FaPaperclip, FaComment, FaShare,
@@ -46,25 +48,25 @@ const TaskDetailModal = ({
       left: 0,
       right: 0,
       bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      backgroundColor: 'rgba(0, 0, 0, 0.75)',
+      backdropFilter: 'blur(6px)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       zIndex: 1000,
       padding: '20px',
-      // Removed backdropFilter
     },
     modal: {
-      backgroundColor: theme.bgMain,
+      backgroundColor: theme.bgCard,
       borderRadius: '16px',
       width: '100%',
       maxWidth: '700px',
       maxHeight: '90vh',
       overflow: 'auto',
       padding: '32px',
-      boxShadow: '0 20px 50px rgba(0,0,0,0.3)', // Stronger shadow
+      boxShadow: theme.shadows.float,
       color: theme.textPrimary,
-      border: `1px solid ${theme.border}40`,
+      border: `1px solid ${theme.borderMedium || theme.border}`,
     },
     header: {
       display: 'flex',
@@ -72,6 +74,8 @@ const TaskDetailModal = ({
       alignItems: 'flex-start',
       marginBottom: '20px',
       gap: '16px',
+      paddingBottom: '16px',
+      borderBottom: `1px solid ${theme.borderSubtle || theme.border}`,
     },
     headerLeft: {
       display: 'flex',
@@ -87,37 +91,39 @@ const TaskDetailModal = ({
     },
     title: {
       margin: 0,
-      fontSize: '24px',
-      fontWeight: '700',
+      fontFamily: '"Fraunces", serif',
+      fontSize: '20px',
+      fontWeight: '600',
       color: theme.textPrimary,
     },
     titleInput: {
-      fontSize: '24px',
-      fontWeight: '700',
-      backgroundColor: theme.bgMain,
+      fontFamily: '"Fraunces", serif',
+      fontSize: '20px',
+      fontWeight: '600',
+      backgroundColor: theme.bgRaised,
       color: theme.textPrimary,
-      border: 'none',
-      borderBottom: `2px solid ${theme.primary}`,
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
+      borderRadius: '8px',
       outline: 'none',
       width: '100%',
+      padding: '11px 14px',
     },
     checkboxContainer: {
       width: '24px',
       height: '24px',
-      borderRadius: '8px',
-      backgroundColor: theme.bgMain,
-      boxShadow: theme.shadows.neumorphicInset,
+      borderRadius: '6px',
+      backgroundColor: theme.bgRaised,
+      boxShadow: 'none',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       cursor: 'pointer',
-      border: `1px solid transparent`,
-      transition: 'all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+      border: `1px solid ${theme.borderStrong || theme.border}`,
+      transition: 'all 150ms ease',
       flexShrink: 0,
     },
     checkboxChecked: {
       backgroundColor: theme.success,
-      boxShadow: `0 0 10px ${theme.success}60`,
       border: `1px solid ${theme.success}`,
     },
     checkboxInner: {
@@ -128,96 +134,103 @@ const TaskDetailModal = ({
     },
     editButton: {
       backgroundColor: theme.primary,
-      color: '#fff',
+      color: '#0A0908',
       border: 'none',
-      borderRadius: '12px',
-      padding: '8px 20px',
-      fontSize: '14px',
+      borderRadius: '8px',
+      padding: '0 16px',
+      height: '40px',
+      fontSize: '13px',
       fontWeight: '600',
       cursor: 'pointer',
       whiteSpace: 'nowrap',
       display: 'flex',
       alignItems: 'center',
       gap: '8px',
-      boxShadow: theme.shadows.neumorphic,
-      transition: 'all 0.2s',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.4), 0 0 0 1px rgba(201,146,74,0.3) inset',
+      transition: 'all 150ms ease',
     },
     deleteButton: {
-      backgroundColor: theme.error,
-      color: '#fff',
+      backgroundColor: `${theme.error}14`,
+      color: theme.error,
       border: 'none',
-      borderRadius: '12px',
-      padding: '8px 20px',
-      fontSize: '14px',
+      borderRadius: '8px',
+      padding: '0 16px',
+      height: '40px',
+      fontSize: '13px',
       fontWeight: '600',
       cursor: 'pointer',
       whiteSpace: 'nowrap',
       display: 'flex',
       alignItems: 'center',
       gap: '8px',
-      boxShadow: theme.shadows.neumorphic,
-      transition: 'all 0.2s',
+      boxShadow: 'none',
+      transition: 'all 150ms ease',
     },
     saveButton: {
       backgroundColor: theme.success,
-      color: '#fff',
+      color: '#0A0908',
       border: 'none',
-      borderRadius: '12px',
-      padding: '8px 20px',
-      fontSize: '14px',
+      borderRadius: '8px',
+      padding: '0 16px',
+      height: '40px',
+      fontSize: '13px',
       fontWeight: '600',
       cursor: 'pointer',
       display: 'flex',
       alignItems: 'center',
       gap: '8px',
-      boxShadow: theme.shadows.neumorphic,
-      transition: 'all 0.2s',
+      boxShadow: 'none',
+      transition: 'all 150ms ease',
     },
     sendButton: {
       backgroundColor: theme.primary,
-      color: '#fff',
+      color: '#0A0908',
       border: 'none',
-      borderRadius: '12px',
-      padding: '0 24px',
-      fontSize: '14px',
+      borderRadius: '8px',
+      padding: '0 20px',
+      height: '40px',
+      fontSize: '13px',
       fontWeight: '600',
       cursor: 'pointer',
-      boxShadow: theme.shadows.neumorphic,
+      boxShadow: '0 1px 3px rgba(0,0,0,0.4), 0 0 0 1px rgba(201,146,74,0.3) inset',
       display: 'flex',
       alignItems: 'center',
       gap: '8px',
-      transition: 'all 0.2s',
+      transition: 'all 150ms ease',
     },
     cancelEditButton: {
-      backgroundColor: theme.bgMain,
+      backgroundColor: theme.bgRaised,
       color: theme.textSecondary,
       border: 'none',
       borderRadius: '8px',
-      padding: '8px 12px',
+      padding: '0 12px',
+      height: '40px',
       fontSize: '18px',
       cursor: 'pointer',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      boxShadow: theme.shadows.neumorphic,
+      boxShadow: 'none',
     },
     closeButton: {
-      background: 'none',
-      border: 'none',
+      backgroundColor: theme.bgRaised,
+      border: `1px solid ${theme.borderMedium || theme.border}`,
       color: theme.textSecondary,
-      fontSize: '20px',
+      fontSize: '16px',
       cursor: 'pointer',
-      padding: '8px',
+      width: '32px',
+      height: '32px',
+      padding: '0',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      borderRadius: '50%',
-      transition: 'color 0.2s',
+      borderRadius: '8px',
+      transition: 'all 150ms ease',
     },
     notification: {
       marginBottom: '16px',
       padding: '12px 14px',
-      borderRadius: '10px',
+      borderRadius: '8px',
       fontSize: '14px',
       fontWeight: '600',
     },
@@ -227,7 +240,8 @@ const TaskDetailModal = ({
       left: 0,
       right: 0,
       bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.55)',
+      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      backdropFilter: 'blur(8px)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -237,10 +251,10 @@ const TaskDetailModal = ({
     confirmDialog: {
       width: '100%',
       maxWidth: '420px',
-      backgroundColor: theme.bgMain,
-      borderRadius: '14px',
-      border: `1px solid ${theme.border}`,
-      boxShadow: '0 18px 40px rgba(0,0,0,0.35)',
+      backgroundColor: theme.bgCard,
+      borderRadius: '16px',
+      border: `1px solid ${theme.borderMedium || theme.border}`,
+      boxShadow: theme.shadows.float,
       padding: '20px',
     },
     confirmTitle: {
@@ -261,23 +275,25 @@ const TaskDetailModal = ({
       gap: '10px',
     },
     confirmCancelBtn: {
-      border: `1px solid ${theme.border}`,
-      backgroundColor: theme.bgMain,
+      border: `1px solid ${theme.borderMedium || theme.border}`,
+      backgroundColor: 'transparent',
       color: theme.textPrimary,
-      borderRadius: '10px',
-      padding: '8px 14px',
+      borderRadius: '8px',
+      padding: '0 14px',
+      height: '40px',
       cursor: 'pointer',
       fontWeight: '600',
     },
     confirmDeleteBtn: {
       border: 'none',
       backgroundColor: theme.error,
-      color: '#fff',
-      borderRadius: '10px',
-      padding: '8px 14px',
+      color: '#0A0908',
+      borderRadius: '8px',
+      padding: '0 14px',
+      height: '40px',
       cursor: 'pointer',
       fontWeight: '700',
-      boxShadow: theme.shadows.neumorphic,
+      boxShadow: 'none',
     },
     badges: {
       display: 'flex',
@@ -286,20 +302,20 @@ const TaskDetailModal = ({
       marginBottom: '24px',
     },
     badge: {
-      fontSize: '12px',
+      fontSize: '10px',
       fontWeight: '600',
-      padding: '6px 12px',
+      padding: '2px 6px',
       borderRadius: '6px',
     },
     badgeSecondary: {
-      fontSize: '12px',
+      fontSize: '10px',
       fontWeight: '500',
-      padding: '6px 12px',
+      padding: '2px 6px',
       borderRadius: '6px',
-      backgroundColor: theme.bgMain,
+      backgroundColor: theme.bgRaised,
       color: theme.textSecondary,
       textTransform: 'capitalize',
-      boxShadow: theme.shadows.neumorphic,
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
     },
     section: {
       marginBottom: '24px',
@@ -307,6 +323,7 @@ const TaskDetailModal = ({
     sectionTitle: {
       fontSize: '16px',
       fontWeight: '600',
+      fontFamily: '"Fraunces", serif',
       color: theme.textPrimary,
       marginBottom: '12px',
       display: 'flex',
@@ -321,44 +338,54 @@ const TaskDetailModal = ({
     },
     textarea: {
       width: '100%',
-      backgroundColor: theme.bgMain,
-      border: `1px solid transparent`,
-      borderRadius: '12px',
-      padding: '12px',
+      backgroundColor: theme.bgRaised,
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
+      borderRadius: '8px',
+      padding: '11px 14px',
       fontSize: '14px',
       color: theme.textPrimary,
       resize: 'vertical',
-      fontFamily: 'inherit',
+      fontFamily: 'Geist, sans-serif',
       outline: 'none',
-      boxShadow: theme.shadows.neumorphicInset,
+      boxShadow: 'none',
     },
     input: {
-      backgroundColor: theme.bgMain,
-      border: `1px solid transparent`,
-      borderRadius: '12px',
-      padding: '12px',
+      backgroundColor: theme.bgRaised,
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
+      borderRadius: '8px',
+      padding: '11px 14px',
       fontSize: '14px',
       color: theme.textPrimary,
       width: '100%',
       outline: 'none',
-      boxShadow: theme.shadows.neumorphicInset,
+      boxShadow: 'none',
+    },
+    clearDeadlineButton: {
+      backgroundColor: theme.bgRaised,
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
+      color: theme.textSecondary,
+      borderRadius: '8px',
+      padding: '6px 10px',
+      fontSize: '12px',
+      fontWeight: '600',
+      cursor: 'pointer',
     },
     timerButton: {
-      color: '#fff',
+      color: '#0A0908',
       border: 'none',
-      borderRadius: '16px',
-      padding: '16px 24px',
-      fontSize: '16px',
-      fontWeight: '700',
+      borderRadius: '8px',
+      padding: '0 20px',
+      height: '40px',
+      fontSize: '13px',
+      fontWeight: '600',
       cursor: 'pointer',
       width: '100%',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       gap: '10px',
-      boxShadow: '0 4px 15px rgba(0,0,0,0.3), inset 0 1px 1px rgba(255,255,255,0.2)',
-      transition: 'all 0.3s ease',
-      backgroundImage: `linear-gradient(135deg, ${theme.success}, #059669)`,
+      boxShadow: 'none',
+      transition: 'all 150ms ease',
     },
     trackingText: {
       fontSize: '14px',
@@ -375,10 +402,9 @@ const TaskDetailModal = ({
       fontSize: '12px',
       padding: '6px 12px',
       borderRadius: '6px',
-      backgroundColor: theme.bgMain,
+      backgroundColor: theme.bgElevated,
       color: theme.textSecondary,
       border: `1px solid ${theme.border}`,
-      boxShadow: theme.shadows.neumorphic,
     },
     subtasksList: {
       display: 'flex',
@@ -390,27 +416,27 @@ const TaskDetailModal = ({
       alignItems: 'center',
       gap: '12px',
       padding: '12px',
-      backgroundColor: theme.bgMain,
+      backgroundColor: theme.bgCard,
       borderRadius: '8px',
-      boxShadow: theme.shadows.neumorphic,
+      border: `1px solid ${theme.border}`,
     },
     subtaskText: {
       fontSize: '14px',
       color: theme.textPrimary,
     },
     aiInsight: {
-      backgroundColor: theme.bgMain,
-      border: `1px solid ${theme.aiPurple}40`,
-      borderRadius: '12px',
-      padding: '16px',
+      backgroundColor: theme.bgRaised,
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
+      borderRadius: '8px',
+      padding: '14px',
       display: 'flex',
       gap: '12px',
       marginBottom: '24px',
-      boxShadow: theme.shadows.neumorphic,
+      boxShadow: 'none',
     },
     aiInsightText: {
       fontSize: '14px',
-      color: theme.aiPurple,
+      color: theme.textSecondary,
       lineHeight: '1.6',
       margin: 0,
     },
@@ -438,9 +464,9 @@ const TaskDetailModal = ({
       fontSize: '14px',
       color: theme.textPrimary,
       padding: '8px',
-      backgroundColor: theme.bgMain,
+      backgroundColor: theme.bgRaised,
       borderRadius: '8px',
-      boxShadow: theme.shadows.neumorphic,
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
     },
     attachmentLink: {
       color: theme.textPrimary,
@@ -479,16 +505,17 @@ const TaskDetailModal = ({
       display: 'inline-flex',
       alignItems: 'center',
       gap: '8px',
-      padding: '10px 20px',
-      backgroundColor: theme.bgMain,
-      border: `1px dashed ${theme.primary}`,
-      color: theme.primary,
-      borderRadius: '12px',
+      padding: '0 20px',
+      height: '40px',
+      backgroundColor: theme.bgRaised,
+      border: `1px dashed ${theme.borderMedium || theme.border}`,
+      color: theme.accent,
+      borderRadius: '8px',
       cursor: 'pointer',
-      fontSize: '14px',
+      fontSize: '13px',
       fontWeight: '500',
-      transition: 'all 0.2s',
-      boxShadow: theme.shadows.neumorphic,
+      transition: 'all 180ms ease',
+      boxShadow: 'none',
     },
     commentsList: {
       maxHeight: '200px',
@@ -500,10 +527,10 @@ const TaskDetailModal = ({
       padding: '4px', // Add padding for shadow visibility
     },
     commentItem: {
-      backgroundColor: theme.bgMain,
+      backgroundColor: theme.bgRaised,
       padding: '12px',
       borderRadius: '8px',
-      boxShadow: theme.shadows.neumorphic,
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
     },
     commentText: {
       margin: '0 0 4px 0',
@@ -520,14 +547,14 @@ const TaskDetailModal = ({
     },
     commentInput: {
       flex: 1,
-      backgroundColor: theme.bgMain,
-      border: `1px solid transparent`,
-      borderRadius: '12px',
-      padding: '12px',
+      backgroundColor: theme.bgRaised,
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
+      borderRadius: '8px',
+      padding: '11px 14px',
       fontSize: '14px',
       color: theme.textPrimary,
       outline: 'none',
-      boxShadow: theme.shadows.neumorphicInset,
+      boxShadow: 'none',
     },
     shareInputContainer: {
       display: 'flex',
@@ -536,23 +563,24 @@ const TaskDetailModal = ({
     },
     shareInput: {
       flex: 1,
-      backgroundColor: theme.bgMain,
-      border: `1px solid transparent`,
-      borderRadius: '12px',
-      padding: '12px',
+      backgroundColor: theme.bgRaised,
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
+      borderRadius: '8px',
+      padding: '11px 14px',
       fontSize: '14px',
       color: theme.textPrimary,
       outline: 'none',
-      boxShadow: theme.shadows.neumorphicInset,
+      boxShadow: 'none',
     },
     shareButton: {
-      backgroundColor: theme.info || '#3b82f6', // Fallback defaults
-      color: '#fff',
+      backgroundColor: theme.primary,
+      color: '#0A0908',
       border: 'none',
-      borderRadius: '12px', // Consistency
-      padding: '12px 20px',
+      borderRadius: '8px',
+      padding: '0 20px',
+      height: '40px',
       cursor: 'pointer',
-      boxShadow: theme.shadows.neumorphic,
+      boxShadow: 'none',
       fontWeight: '600',
     },
     sharedInfo: {
@@ -582,9 +610,20 @@ const TaskDetailModal = ({
     </div>
   );
 
+  const toDateTimeLocalValue = (value) => {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    const tzOffsetMs = date.getTimezoneOffset() * 60 * 1000;
+    return new Date(date.getTime() - tzOffsetMs).toISOString().slice(0, 16);
+  };
+
   useEffect(() => {
     if (task) {
-      setFormData(task);
+      setFormData({
+        ...task,
+        deadline: toDateTimeLocalValue(task.deadline),
+      });
       setIsTracking(task?.timeTracking?.isTracking || false);
     }
   }, [task]);
@@ -605,14 +644,42 @@ const TaskDetailModal = ({
     }
     setLoading(true);
     try {
-      const response = await tasksAPI.updateTask(task._id, formData);
-      if (response.data.success) {
-        onTaskUpdated(response.data.task);
+      let normalizedDeadline = null;
+      if (formData.deadline) {
+        const parsedDeadline = new Date(formData.deadline);
+        if (Number.isNaN(parsedDeadline.getTime())) {
+          showNotification('error', 'Please enter a valid deadline date/time.');
+          setLoading(false);
+          return;
+        }
+        if (parsedDeadline.getTime() < Date.now()) {
+          showNotification('error', 'Deadline cannot be in the past.');
+          setLoading(false);
+          return;
+        }
+        normalizedDeadline = parsedDeadline.toISOString();
+      }
+
+      const updatePayload = {
+        title: formData.title,
+        description: formData.description,
+        estimatedDuration: Number(formData.estimatedDuration) || 60,
+        deadline: normalizedDeadline,
+      };
+
+      const response = await tasksAPI.updateTask(task._id, updatePayload);
+      const updatedTask = response?.data?.task || response?.data;
+
+      if (updatedTask && updatedTask._id) {
+        onTaskUpdated(updatedTask);
         setIsEditing(false);
+        showNotification('success', 'Task updated successfully.');
+      } else {
+        showNotification('error', 'Task update response was invalid.');
       }
     } catch (error) {
       console.error('Update error:', error);
-      showNotification('error', 'Failed to update task');
+      showNotification('error', error.response?.data?.message || 'Failed to update task');
     } finally {
       setLoading(false);
     }
@@ -839,6 +906,18 @@ const TaskDetailModal = ({
       ? task.subtasks
       : [];
 
+  const now = new Date();
+  const selectedDeadlineDate = formData.deadline ? new Date(formData.deadline) : null;
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date();
+  endOfDay.setHours(23, 59, 59, 999);
+  const isSameDayAsToday =
+    selectedDeadlineDate && !Number.isNaN(selectedDeadlineDate.getTime())
+      ? selectedDeadlineDate.toDateString() === now.toDateString()
+      : false;
+  const minSelectableTime = isSameDayAsToday ? now : startOfDay;
+
   return (
     <div style={styles.overlay} onClick={onClose}>
       <style>{`
@@ -854,6 +933,99 @@ const TaskDetailModal = ({
         }
         ::-webkit-scrollbar-thumb:hover {
           background: ${theme.textSecondary}; 
+        }
+
+        .task-detail-datepicker-wrapper {
+          width: 100%;
+          display: block;
+        }
+
+        .task-detail-datepicker-wrapper .react-datepicker__input-container input {
+          width: 100%;
+          background-color: ${theme.bgRaised};
+          border: 1px solid ${theme.borderSubtle || theme.border};
+          border-radius: 8px;
+          padding: 11px 14px;
+          font-size: 14px;
+          color: ${theme.textPrimary};
+          outline: none;
+          box-shadow: none;
+        }
+
+        .task-detail-datepicker {
+          background-color: ${theme.bgCard};
+          border: 1px solid ${theme.borderSubtle || theme.border};
+          border-radius: 10px;
+          box-shadow: ${theme.shadows.md};
+          color: ${theme.textPrimary};
+          font-family: 'Geist', sans-serif;
+        }
+
+        .task-detail-datepicker .react-datepicker__header {
+          background-color: ${theme.bgCard};
+          border-bottom: 1px solid ${theme.borderSubtle || theme.border};
+        }
+
+        .task-detail-datepicker .react-datepicker__current-month,
+        .task-detail-datepicker .react-datepicker-time__header,
+        .task-detail-datepicker .react-datepicker__day-name,
+        .task-detail-datepicker .react-datepicker__time-name {
+          color: ${theme.textSecondary};
+        }
+
+        .task-detail-datepicker .react-datepicker__day,
+        .task-detail-datepicker .react-datepicker__time-list-item {
+          color: ${theme.textPrimary};
+          border-radius: 6px;
+        }
+
+        .task-detail-datepicker .react-datepicker__day:hover,
+        .task-detail-datepicker .react-datepicker__time-list-item:hover {
+          background-color: ${theme.bgElevated};
+        }
+
+        .task-detail-datepicker .react-datepicker__day--selected,
+        .task-detail-datepicker .react-datepicker__day--keyboard-selected,
+        .task-detail-datepicker .react-datepicker__time-list-item--selected {
+          background-color: ${theme.primary} !important;
+          color: #0A0908 !important;
+        }
+
+        .task-detail-datepicker .react-datepicker__time-list-item--selected:hover,
+        .task-detail-datepicker .react-datepicker__day--selected:hover,
+        .task-detail-datepicker .react-datepicker__day--keyboard-selected:hover {
+          background-color: ${theme.primaryDark || theme.primary} !important;
+          color: #0A0908 !important;
+        }
+
+        .task-detail-datepicker .react-datepicker__navigation-icon::before {
+          border-color: ${theme.textSecondary} !important;
+        }
+
+        .task-detail-datepicker .react-datepicker__navigation:hover .react-datepicker__navigation-icon::before {
+          border-color: ${theme.textPrimary} !important;
+        }
+
+        .task-detail-datepicker .react-datepicker__time-container {
+          border-left: 1px solid ${theme.borderSubtle || theme.border};
+        }
+
+        .task-detail-datepicker .react-datepicker__time-container .react-datepicker__time,
+        .task-detail-datepicker .react-datepicker__time-container .react-datepicker__time-box,
+        .task-detail-datepicker .react-datepicker__time-container .react-datepicker__time-list {
+          background-color: ${theme.bgCard};
+        }
+
+        .task-detail-datepicker .react-datepicker__time-list-item--disabled {
+          color: ${theme.textMuted};
+          opacity: 0.55;
+          background-color: transparent;
+        }
+
+        .task-detail-datepicker-wrapper .react-datepicker__close-icon::after {
+          background-color: ${theme.primary} !important;
+          color: #0A0908 !important;
+          font-weight: 700;
         }
       `}</style>
       <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
@@ -969,10 +1141,10 @@ const TaskDetailModal = ({
           {task.aiPriorityScore && (
             <span style={{
               ...styles.badge,
-              backgroundColor: theme.aiPurple + '20',
-              color: theme.aiPurple
+              backgroundColor: theme.accentDim || `${theme.accent}15`,
+              color: theme.accent
             }}>
-              🤖 AI {task.aiPriorityScore}%
+              <FaRobot style={{ fontSize: '10px' }} /> AI {task.aiPriorityScore}%
             </span>
           )}
         </div>
@@ -992,6 +1164,45 @@ const TaskDetailModal = ({
             <p style={styles.description}>
               {formData.description || 'No description provided'}
             </p>
+          )}
+        </div>
+
+        {/* Estimated Duration */}
+        <div style={styles.section}>
+          <h3 style={styles.sectionTitle}><FaClock style={{ fontSize: '16px' }} /> Deadline</h3>
+          {isEditing ? (
+            <div>
+              <DatePicker
+                selected={formData.deadline ? new Date(formData.deadline) : null}
+                onChange={(selectedDate) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    deadline: selectedDate ? toDateTimeLocalValue(selectedDate) : '',
+                  }))
+                }
+                minDate={now}
+                minTime={minSelectableTime}
+                maxTime={endOfDay}
+                showTimeSelect
+                timeIntervals={15}
+                dateFormat="MM/dd/yyyy h:mm aa"
+                placeholderText="mm/dd/yyyy --:-- --"
+                wrapperClassName="task-detail-datepicker-wrapper"
+                calendarClassName="task-detail-datepicker"
+                popperPlacement="bottom-start"
+                isClearable
+                className="custom-datepicker-input"
+              />
+              <button
+                type="button"
+                onClick={() => setFormData((prev) => ({ ...prev, deadline: '' }))}
+                style={{ ...styles.clearDeadlineButton, marginTop: '10px' }}
+              >
+                Clear
+              </button>
+            </div>
+          ) : (
+            <p style={styles.description}>{formatDate(formData.deadline)}</p>
           )}
         </div>
 
@@ -1040,7 +1251,7 @@ const TaskDetailModal = ({
                 <p style={{
                   ...styles.trackingText,
                   color: theme.error
-                }}>⏱️ Timer is running...</p>
+                }}>Timer is running...</p>
               )}
             </>
           ) : (

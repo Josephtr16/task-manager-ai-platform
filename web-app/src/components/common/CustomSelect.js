@@ -6,9 +6,9 @@ const CustomSelect = ({
     options,
     value,
     onChange,
-    placeholder = "Select...",
+    placeholder = 'Select...',
     icon: Icon,
-    label
+    label,
 }) => {
     const { theme } = useTheme();
     const [isOpen, setIsOpen] = useState(false);
@@ -20,13 +20,14 @@ const CustomSelect = ({
                 setIsOpen(false);
             }
         }
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => {
-            document.removeEventListener("mousedown", handleClickOutside);
-        };
-    }, [wrapperRef]);
 
-    const selectedOption = options.find(opt => opt.value === value);
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
+
+    const selectedOption = options.find((opt) => opt.value === value);
 
     const styles = {
         container: {
@@ -38,24 +39,25 @@ const CustomSelect = ({
             display: 'block',
             fontSize: '14px',
             fontWeight: '500',
-            color: theme.textPrimary,
+            color: theme.textSecondary,
             marginBottom: '8px',
         },
         trigger: {
-            backgroundColor: theme.bgMain,
-            borderRadius: '12px',
+            backgroundColor: theme.bgCard,
+            borderRadius: '10px',
             padding: '12px 16px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             cursor: 'pointer',
-            boxShadow: theme.shadows.neumorphicInset,
-            border: '1px solid transparent',
-            transition: 'all 0.2s ease',
+            boxShadow: 'none',
+            border: `1px solid ${theme.border}`,
+            transition: 'all 150ms ease',
             minHeight: '45px',
         },
         triggerOpen: {
-            // border: `1px solid ${theme.primary}`,
+            borderColor: theme.primary,
+            boxShadow: `0 0 0 3px ${theme.primary}22`,
         },
         valueContainer: {
             display: 'flex',
@@ -77,9 +79,9 @@ const CustomSelect = ({
             left: 0,
             right: 0,
             marginTop: '8px',
-            backgroundColor: theme.bgMain,
+            backgroundColor: theme.bgElevated,
             borderRadius: '12px',
-            boxShadow: theme.shadows.neumorphic,
+            boxShadow: theme.shadows.float,
             zIndex: 100,
             overflow: 'hidden',
             padding: '8px',
@@ -93,12 +95,13 @@ const CustomSelect = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            transition: 'background-color 0.2s',
+            transition: 'all 150ms ease',
             color: theme.textPrimary,
         },
         optionHover: {
-            backgroundColor: theme.bgElevated,
-        }
+            backgroundColor: theme.bgCard,
+            color: theme.primary,
+        },
     };
 
     return (
@@ -108,29 +111,33 @@ const CustomSelect = ({
             <div
                 style={{
                     ...styles.trigger,
-                    ...(isOpen && styles.triggerOpen)
+                    ...(isOpen && styles.triggerOpen),
                 }}
                 onClick={() => setIsOpen(!isOpen)}
             >
                 <div style={styles.valueContainer}>
                     {Icon && <Icon style={styles.icon} />}
                     {selectedOption ? (
-                        <span style={{
-                            color: selectedOption.color || theme.textPrimary,
-                            fontWeight: selectedOption.color ? '600' : '400'
-                        }}>
+                        <span
+                            style={{
+                                color: selectedOption.color || theme.textPrimary,
+                                fontWeight: selectedOption.color ? '600' : '400',
+                            }}
+                        >
                             {selectedOption.label}
                         </span>
                     ) : (
                         <span style={styles.placeholder}>{placeholder}</span>
                     )}
                 </div>
-                <FaChevronDown style={{
-                    color: theme.textSecondary,
-                    transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                    transition: 'transform 0.2s ease',
-                    fontSize: '12px'
-                }} />
+                <FaChevronDown
+                    style={{
+                        color: theme.textSecondary,
+                        transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                        transition: 'transform 150ms ease',
+                        fontSize: '12px',
+                    }}
+                />
             </div>
 
             {isOpen && (
@@ -142,7 +149,7 @@ const CustomSelect = ({
                             style={{
                                 ...styles.option,
                                 backgroundColor: option.value === value ? `${theme.primary}20` : 'transparent',
-                                color: option.color || theme.textPrimary
+                                color: option.color || theme.textPrimary,
                             }}
                             onClick={() => {
                                 onChange(option.value);
@@ -157,7 +164,7 @@ const CustomSelect = ({
                     ))}
                     <style>{`
                         .custom-select-option:hover {
-                            background-color: ${theme.bgElevated} !important;
+                            background-color: ${theme.bgCard} !important;
                         }
                     `}</style>
                 </div>

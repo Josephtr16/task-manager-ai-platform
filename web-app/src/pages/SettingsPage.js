@@ -49,7 +49,6 @@ const SettingsPage = () => {
       taskReminders: user.preferences?.notifications?.taskReminders ?? prev.taskReminders,
       emailDigest: user.preferences?.notifications?.dailySummary ?? prev.emailDigest,
       aiSuggestions: user.preferences?.notifications?.aiSuggestions ?? prev.aiSuggestions,
-      theme: user.preferences?.theme || (isDarkMode ? 'dark' : 'light'),
     }));
   }, [user, isDarkMode]);
 
@@ -134,14 +133,14 @@ const SettingsPage = () => {
     container: {
       padding: '32px',
       minHeight: '100vh',
-      backgroundColor: theme.bgMain, // Neomorphic background
+      backgroundColor: theme.bgMain,
     },
     pageTitle: {
+      fontFamily: '"Syne", sans-serif',
       fontSize: '32px',
       fontWeight: '800',
       color: theme.textPrimary,
       marginBottom: '32px',
-      textShadow: theme.type === 'dark' ? '2px 2px 4px rgba(0,0,0,0.3)' : 'none',
     },
     contentWrapper: {
       display: 'flex',
@@ -154,10 +153,11 @@ const SettingsPage = () => {
       display: 'flex',
       flexDirection: 'column',
       gap: '16px',
-      backgroundColor: theme.bgMain,
+      backgroundColor: theme.bgCard,
       borderRadius: borderRadius.lg,
       padding: '16px',
-      boxShadow: theme.shadows.neumorphic, // Neomorphic card
+      boxShadow: theme.shadows.card,
+      border: `1px solid ${theme.border}`,
     },
     tabButton: {
       display: 'flex',
@@ -170,13 +170,13 @@ const SettingsPage = () => {
       fontWeight: '600',
       cursor: 'pointer',
       borderRadius: borderRadius.md,
-      transition: 'all 0.2s',
+      transition: 'all 150ms ease',
       textAlign: 'left',
     },
     tabButtonActive: {
       color: theme.primary,
-      backgroundColor: theme.bgMain,
-      boxShadow: theme.shadows.neumorphic, // Selected tab pops out
+      backgroundColor: theme.bgElevated,
+      boxShadow: 'none',
     },
     tabIcon: {
       marginRight: '12px',
@@ -192,10 +192,11 @@ const SettingsPage = () => {
       gap: '24px',
     },
     section: {
-      backgroundColor: theme.bgMain,
+      backgroundColor: theme.bgCard,
       borderRadius: borderRadius.lg,
       padding: '32px',
-      boxShadow: theme.shadows.neumorphic, // Neomorphic card
+      boxShadow: theme.shadows.card,
+      border: `1px solid ${theme.border}`,
     },
     sectionTitle: {
       fontSize: '24px',
@@ -220,23 +221,23 @@ const SettingsPage = () => {
       width: '100%',
       padding: '12px 16px',
       fontSize: '15px',
-      backgroundColor: theme.bgMain,
-      border: 'none',
+      backgroundColor: theme.bgElevated,
+      border: `1px solid ${theme.border}`,
       borderRadius: borderRadius.md,
       color: theme.textPrimary,
-      boxShadow: theme.shadows.neumorphicInset, // Inset input
+      boxShadow: 'none',
       outline: 'none',
-      transition: 'box-shadow 0.2s',
+      transition: 'all 150ms ease',
     },
     textarea: {
       width: '100%',
       padding: '12px 16px',
       fontSize: '15px',
-      backgroundColor: theme.bgMain,
-      border: 'none',
+      backgroundColor: theme.bgElevated,
+      border: `1px solid ${theme.border}`,
       borderRadius: borderRadius.md,
       color: theme.textPrimary,
-      boxShadow: theme.shadows.neumorphicInset,
+      boxShadow: 'none',
       outline: 'none',
       resize: 'vertical',
     },
@@ -266,10 +267,11 @@ const SettingsPage = () => {
     },
     themeToggle: {
       display: 'flex',
-      backgroundColor: theme.bgMain,
+      backgroundColor: theme.bgRaised,
       borderRadius: borderRadius.md,
       padding: '4px',
-      boxShadow: theme.shadows.neumorphicInset, // Inset toggle container
+      boxShadow: 'none',
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
     },
     themeBtn: {
       display: 'flex',
@@ -282,12 +284,12 @@ const SettingsPage = () => {
       fontWeight: '600',
       cursor: 'pointer',
       borderRadius: '6px',
-      transition: 'all 0.2s',
+      transition: 'all 120ms ease',
     },
     themeBtnActive: {
-      backgroundColor: theme.bgMain,
-      color: theme.primary,
-      boxShadow: theme.shadows.neumorphic, // Active state pops out
+      backgroundColor: theme.bgOverlay,
+      color: theme.textPrimary,
+      boxShadow: theme.shadows.sm,
     },
     toggleLabel: {
       position: 'relative',
@@ -307,18 +309,19 @@ const SettingsPage = () => {
       left: 0,
       right: 0,
       bottom: 0,
-      backgroundColor: theme.bgMain,
+      backgroundColor: theme.bgOverlay,
       borderRadius: '34px',
-      boxShadow: theme.shadows.neumorphicInset, // Inset track
-      transition: '0.4s',
+      boxShadow: 'none',
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
+      transition: 'all 180ms ease',
     },
     aiCard: {
       marginBottom: '16px',
       padding: '16px',
       borderRadius: borderRadius.lg,
-      backgroundColor: theme.bgMain,
-      boxShadow: theme.shadows.neumorphic, // Highlight AI section
-      border: `1px solid ${theme.aiPurple}20`,
+      backgroundColor: theme.bgCard,
+      boxShadow: theme.shadows.sm,
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
     },
     actions: {
       display: 'flex',
@@ -327,30 +330,31 @@ const SettingsPage = () => {
     },
     saveButton: {
       backgroundColor: theme.primary,
-      color: '#fff',
+      color: '#0A0908',
       border: 'none',
-      borderRadius: borderRadius.lg, // Fully rounded
-      padding: '12px 32px',
-      fontSize: '16px',
-      fontWeight: '700',
+      borderRadius: '8px',
+      padding: '0 20px',
+      height: '40px',
+      fontSize: '13px',
+      fontWeight: '600',
       cursor: 'pointer',
-      boxShadow: theme.shadows.neumorphic,
+      boxShadow: '0 1px 3px rgba(0,0,0,0.4), 0 0 0 1px rgba(201,146,74,0.3) inset',
       display: 'flex',
       alignItems: 'center',
-      transition: 'all 0.2s',
+      transition: 'all 120ms ease',
     },
     logoutButton: {
       marginTop: '24px',
-      backgroundColor: theme.bgMain,
+      backgroundColor: theme.bgRaised,
       color: theme.error,
-      border: `1px solid ${theme.error}40`,
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
       borderRadius: borderRadius.md,
       padding: '12px 24px',
       fontSize: '14px',
       fontWeight: '600',
       cursor: 'pointer',
       width: '100%',
-      boxShadow: theme.shadows.neumorphic,
+      boxShadow: 'none',
     },
   };
 
@@ -526,7 +530,7 @@ const SettingsPage = () => {
             <div style={styles.aiCard}>
               <div style={styles.settingItem}>
                 <div style={styles.settingInfo}>
-                  <span style={{ ...styles.settingLabel, color: theme.aiPurple }}>
+                  <span style={{ ...styles.settingLabel, color: theme.accent }}>
                     <FaRobot style={{ marginRight: '8px' }} /> Smart Suggestions
                   </span>
                   <span style={styles.settingDesc}>Get AI-powered task recommendations based on your habits</span>
@@ -546,7 +550,7 @@ const SettingsPage = () => {
             <div style={styles.aiCard}>
               <div style={styles.settingItem}>
                 <div style={styles.settingInfo}>
-                  <span style={{ ...styles.settingLabel, color: theme.aiPurple }}>
+                  <span style={{ ...styles.settingLabel, color: theme.accent }}>
                     <FaRobot style={{ marginRight: '8px' }} /> Auto-Prioritization
                   </span>
                   <span style={styles.settingDesc}>Let AI categorize and prioritize your incoming tasks</span>
@@ -596,18 +600,18 @@ const SettingsPage = () => {
 
   return (
     <>
-      <div style={styles.container}>
+      <div style={styles.container} id="settings-page">
         <style>{`
-          input:checked + span {
+          #settings-page input:checked + span {
             background-color: ${theme.bgMain}; 
           }
           
-          input:checked + span:before {
+          #settings-page input:checked + span:before {
             transform: translateX(22px);
             background-color: ${theme.success};
           }
           
-          span:before {
+          #settings-page span:before {
             position: absolute;
             content: "";
             height: 18px;
@@ -620,8 +624,8 @@ const SettingsPage = () => {
             box-shadow: 1px 1px 3px rgba(0,0,0,0.3);
           }
 
-          input:checked + span {
-            box-shadow: ${theme.shadows.neumorphicInset}; // Keep inset
+          #settings-page input:checked + span {
+            box-shadow: none;
           }
         `}</style>
         <h1 style={styles.pageTitle}>Settings</h1>

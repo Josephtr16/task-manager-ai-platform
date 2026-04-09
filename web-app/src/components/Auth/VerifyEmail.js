@@ -48,7 +48,7 @@ const VerifyEmail = () => {
         <AuthLayout>
             <div style={styles.header}>
                 <div style={styles.logoContainer}>
-                    <div style={styles.logo}>✨</div>
+                    <div style={styles.logo}>TF</div>
                     <h1 style={styles.title}>TaskFlow AI</h1>
                 </div>
                 <h2 style={styles.subtitle}>Email Verification</h2>
@@ -57,14 +57,14 @@ const VerifyEmail = () => {
             <div style={styles.content}>
                 {status === 'verifying' && (
                     <div style={styles.statusContainer}>
-                        <div style={styles.spinner}>⏳</div>
+                        <div style={styles.spinner}>...</div>
                         <p style={styles.statusText}>Verifying your email...</p>
                     </div>
                 )}
 
                 {status === 'success' && (
                     <div style={styles.statusContainer}>
-                        <div style={styles.successIcon}>✅</div>
+                        <div style={styles.successIcon}>OK</div>
                         <p style={styles.successText}>{message}</p>
                         <p style={styles.subText}>Redirecting to login...</p>
                     </div>
@@ -72,7 +72,7 @@ const VerifyEmail = () => {
 
                 {status === 'error' && (
                     <div style={styles.statusContainer}>
-                        <div style={styles.errorIcon}>❌</div>
+                        <div style={styles.errorIcon}>!</div>
                         <p style={styles.errorText}>{message}</p>
                         <Link to="/login" style={styles.button}>
                             Back to Login

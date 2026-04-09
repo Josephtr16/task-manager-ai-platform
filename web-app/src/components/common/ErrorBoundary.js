@@ -54,7 +54,7 @@ class ErrorBoundary extends Component {
             textAlign: 'center',
           }}
         >
-          <div style={{ fontSize: '32px', marginBottom: '12px' }}>⚠️</div>
+          <div style={{ fontSize: '32px', marginBottom: '12px' }}>Error</div>
           <h2 style={{ margin: '0 0 10px 0', color: '#1f2937' }}>Something went wrong in this section.</h2>
 
           {isDevelopment && error ? (

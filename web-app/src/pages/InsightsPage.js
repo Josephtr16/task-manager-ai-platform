@@ -383,9 +383,18 @@ const InsightsPage = () => {
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
+      const pointDate = payload[0]?.payload?.date;
+      const resolvedLabel = pointDate
+        ? new Date(pointDate).toLocaleDateString('en-US', {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+          })
+        : label;
+
       return (
         <div style={styles.tooltip}>
-          <p style={styles.tooltipLabel}>{label}</p>
+          <p style={styles.tooltipLabel}>{resolvedLabel}</p>
           {payload.map((entry, index) => (
             <p key={index} style={{ ...styles.tooltipValue, color: entry.color }}>
               {entry.name}: {entry.value}
@@ -493,9 +502,22 @@ const InsightsPage = () => {
                 <LineChart data={productivityTrend}>
                   <CartesianGrid strokeDasharray="3 3" stroke={theme.border} />
                   <XAxis
-                    dataKey="dayName"
+                    dataKey="date"
                     stroke={theme.textMuted}
                     tick={{ fontSize: 12 }}
+                    tickFormatter={(value) => {
+                      const date = new Date(value);
+
+                      if (Number.isNaN(date.getTime())) {
+                        return value;
+                      }
+
+                      if (trendDays >= 30) {
+                        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                      }
+
+                      return date.toLocaleDateString('en-US', { weekday: 'short' });
+                    }}
                   />
                   <YAxis stroke={theme.textMuted} tick={{ fontSize: 12 }} />
                   <Tooltip content={<CustomTooltip />} />

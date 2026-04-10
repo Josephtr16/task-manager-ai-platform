@@ -10,6 +10,20 @@ const UpcomingTasks = ({ tasks, onTaskClick }) => {
   const formatDate = (date) => {
     if (!date) return '';
     const d = new Date(date);
+
+    if (Number.isNaN(d.getTime())) {
+      return '';
+    }
+
+    const isDateOnlyDeadline = d.getHours() === 0 && d.getMinutes() === 0;
+
+    if (isDateOnlyDeadline) {
+      return d.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+      });
+    }
+
     return d.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',

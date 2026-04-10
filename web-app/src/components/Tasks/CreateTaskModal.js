@@ -9,29 +9,38 @@ import CustomSelect from '../common/CustomSelect';
 import aiService from '../../services/aiService';
 import { tasksAPI } from '../../services/api';
 
+const INITIAL_FORM_DATA = {
+  title: '',
+  description: '',
+  dueDate: '',
+  category: 'Work',
+  priority: 'medium',
+  estimatedDuration: 60,
+  recurrenceEnabled: false,
+  recurrenceFrequency: 'weekly',
+  tags: [],
+  subtasks: [],
+};
+
 const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
   const { theme } = useTheme();
-  const initialFormData = {
-    title: '',
-    description: '',
-    dueDate: '',
-    category: 'Work',
-    priority: 'medium',
-    estimatedDuration: 60,
-    recurrenceEnabled: false,
-    recurrenceFrequency: 'weekly',
-    tags: [],
-    subtasks: [],
-  };
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const TIME_DEFAULT = '09:00';
   const [formData, setFormData] = useState({
-    ...initialFormData,
+    ...INITIAL_FORM_DATA,
   });
+  const [isSpecificTimeEnabled, setIsSpecificTimeEnabled] = useState(false);
+  const [selectedDueTime, setSelectedDueTime] = useState(TIME_DEFAULT);
+  const [isTimePickerOpen, setIsTimePickerOpen] = useState(false);
+  const [typedDueTime, setTypedDueTime] = useState('09:00 AM');
   const [tagInput, setTagInput] = useState('');
   const [newSubtask, setNewSubtask] = useState('');
   const [isAssistingWrite, setIsAssistingWrite] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notification, setNotification] = useState(null);
   const notificationTimerRef = useRef(null);
+  const timePickerRef = useRef(null);
 
   useEffect(() => {
     return () => {
@@ -43,7 +52,11 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
 
   useEffect(() => {
     if (isOpen) {
-      setFormData(initialFormData);
+      setFormData(INITIAL_FORM_DATA);
+      setIsSpecificTimeEnabled(false);
+      setSelectedDueTime(TIME_DEFAULT);
+      setIsTimePickerOpen(false);
+      setTypedDueTime('09:00 AM');
       setTagInput('');
       setNewSubtask('');
       setNotification(null);
@@ -51,6 +64,38 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
       setIsSubmitting(false);
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    const handleClickOutsideTimePicker = (event) => {
+      if (timePickerRef.current && !timePickerRef.current.contains(event.target)) {
+        setIsTimePickerOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutsideTimePicker);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutsideTimePicker);
+    };
+  }, []);
+
+  useEffect(() => {
+    const [hourRaw = '09', minuteRaw = '00'] = String(selectedDueTime || TIME_DEFAULT).split(':');
+    let hour24 = Number.parseInt(hourRaw, 10);
+    const minute = Number.parseInt(minuteRaw, 10);
+
+    if (Number.isNaN(hour24)) {
+      hour24 = 9;
+    }
+
+    const period = hour24 >= 12 ? 'PM' : 'AM';
+    let hour12 = hour24 % 12;
+    if (hour12 === 0) {
+      hour12 = 12;
+    }
+
+    const safeMinute = Number.isNaN(minute) ? 0 : minute;
+    setTypedDueTime(`${String(hour12).padStart(2, '0')}:${String(safeMinute).padStart(2, '0')} ${period}`);
+  }, [selectedDueTime]);
 
   const showNotification = (message, type = 'info') => {
     setNotification({ message, type });
@@ -102,7 +147,11 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
       onClose();
 
       // Reset form
-      setFormData(initialFormData);
+      setFormData(INITIAL_FORM_DATA);
+      setIsSpecificTimeEnabled(false);
+      setSelectedDueTime(TIME_DEFAULT);
+      setIsTimePickerOpen(false);
+      setTypedDueTime('09:00 AM');
       setNewSubtask('');
       setTagInput('');
     } catch (error) {
@@ -213,6 +262,222 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
     } finally {
       setIsAssistingWrite(false);
     }
+  };
+
+  const buildSmartDeadlineISO = (selectedDate, useSpecificTime = isSpecificTimeEnabled, explicitTime = selectedDueTime) => {
+    if (!selectedDate) {
+      return '';
+    }
+
+    const picked = new Date(selectedDate);
+    if (Number.isNaN(picked.getTime())) {
+      return '';
+    }
+
+    if (useSpecificTime) {
+      const [hoursRaw, minutesRaw] = String(explicitTime || TIME_DEFAULT).split(':');
+      const hours = Number.parseInt(hoursRaw, 10);
+      const minutes = Number.parseInt(minutesRaw, 10);
+
+      if (!Number.isNaN(hours) && !Number.isNaN(minutes)) {
+        picked.setHours(hours, minutes, 0, 0);
+      } else {
+        picked.setHours(9, 0, 0, 0);
+      }
+    } else {
+      // Date-only mode defaults to end of day.
+      picked.setHours(23, 59, 0, 0);
+    }
+
+    return picked.toISOString();
+  };
+
+  const handleDueDateChange = (selectedDate) => {
+    setFormData(prev => ({
+      ...prev,
+      dueDate: buildSmartDeadlineISO(selectedDate),
+    }));
+  };
+
+  const handleSpecificTimeToggle = () => {
+    setIsSpecificTimeEnabled(prev => {
+      const nextEnabled = !prev;
+
+      if (!nextEnabled) {
+        setIsTimePickerOpen(false);
+      }
+
+      setFormData(current => {
+        if (!current.dueDate) {
+          return current;
+        }
+
+        const datePart = new Date(current.dueDate);
+        if (Number.isNaN(datePart.getTime())) {
+          return current;
+        }
+
+        return {
+          ...current,
+          dueDate: buildSmartDeadlineISO(datePart, nextEnabled, selectedDueTime),
+        };
+      });
+
+      return nextEnabled;
+    });
+  };
+
+  const handleSpecificTimeChange = (event) => {
+    const value = event;
+    setSelectedDueTime(value);
+
+    setFormData(prev => {
+      if (!prev.dueDate) {
+        return prev;
+      }
+
+      const datePart = new Date(prev.dueDate);
+      if (Number.isNaN(datePart.getTime())) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        dueDate: buildSmartDeadlineISO(datePart, true, value),
+      };
+    });
+  };
+
+  const parseDueTimeParts = (timeValue) => {
+    const [hourRaw = '09', minuteRaw = '00'] = String(timeValue || TIME_DEFAULT).split(':');
+    let hour24 = Number.parseInt(hourRaw, 10);
+    const minute = Number.parseInt(minuteRaw, 10);
+
+    if (Number.isNaN(hour24)) {
+      hour24 = 9;
+    }
+
+    const period = hour24 >= 12 ? 'PM' : 'AM';
+    let hour12 = hour24 % 12;
+    if (hour12 === 0) {
+      hour12 = 12;
+    }
+
+    return {
+      hour12: String(hour12).padStart(2, '0'),
+      minute: Number.isNaN(minute) ? '00' : String(minute).padStart(2, '0'),
+      period,
+    };
+  };
+
+  const composeDueTime = (hour12String, minuteString, periodString) => {
+    const hour12 = Number.parseInt(hour12String, 10);
+    const minute = Number.parseInt(minuteString, 10);
+
+    if (Number.isNaN(hour12) || Number.isNaN(minute)) {
+      return TIME_DEFAULT;
+    }
+
+    let hour24 = hour12 % 12;
+    if (periodString === 'PM') {
+      hour24 += 12;
+    }
+
+    return `${String(hour24).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+  };
+
+  const formatDueTimeForDisplay = (timeValue) => {
+    const parts = parseDueTimeParts(timeValue);
+    return `${parts.hour12}:${parts.minute} ${parts.period}`;
+  };
+
+  const parseTypedDueTimeInput = (rawValue) => {
+    const normalized = String(rawValue || '').trim().toLowerCase();
+    const match = normalized.match(/^(\d{1,2})(?::(\d{1,2}))?\s*(am|pm)?$/i);
+
+    if (!match) {
+      return null;
+    }
+
+    const hourRaw = Number.parseInt(match[1], 10);
+    const minuteRaw = match[2] !== undefined ? Number.parseInt(match[2], 10) : 0;
+    const periodRaw = match[3] ? match[3].toUpperCase() : null;
+
+    if (Number.isNaN(hourRaw) || Number.isNaN(minuteRaw) || minuteRaw < 0 || minuteRaw > 59) {
+      return null;
+    }
+
+    if (periodRaw) {
+      if (hourRaw < 1 || hourRaw > 12) {
+        return null;
+      }
+
+      let hour24 = hourRaw % 12;
+      if (periodRaw === 'PM') {
+        hour24 += 12;
+      }
+
+      return `${String(hour24).padStart(2, '0')}:${String(minuteRaw).padStart(2, '0')}`;
+    }
+
+    if (hourRaw < 0 || hourRaw > 23) {
+      return null;
+    }
+
+    return `${String(hourRaw).padStart(2, '0')}:${String(minuteRaw).padStart(2, '0')}`;
+  };
+
+  const dueTimeParts = parseDueTimeParts(selectedDueTime);
+  const hourOptions = Array.from({ length: 12 }, (_, idx) => {
+    const value = String(idx + 1).padStart(2, '0');
+    return { value, label: value };
+  });
+  const minuteOptions = Array.from({ length: 12 }, (_, idx) => {
+    const value = String(idx * 5).padStart(2, '0');
+    return { value, label: value };
+  });
+  const periodOptions = [
+    { value: 'AM', label: 'AM' },
+    { value: 'PM', label: 'PM' },
+  ];
+
+  const handleHourChange = (nextHour) => {
+    handleSpecificTimeChange(composeDueTime(nextHour, dueTimeParts.minute, dueTimeParts.period));
+  };
+
+  const handleMinuteChange = (nextMinute) => {
+    handleSpecificTimeChange(composeDueTime(dueTimeParts.hour12, nextMinute, dueTimeParts.period));
+  };
+
+  const handlePeriodChange = (nextPeriod) => {
+    handleSpecificTimeChange(composeDueTime(dueTimeParts.hour12, dueTimeParts.minute, nextPeriod));
+  };
+
+  const commitTypedDueTime = () => {
+    const parsed = parseTypedDueTimeInput(typedDueTime);
+    if (!parsed) {
+      setTypedDueTime(formatDueTimeForDisplay(selectedDueTime));
+      return;
+    }
+
+    handleSpecificTimeChange(parsed);
+    setTypedDueTime(formatDueTimeForDisplay(parsed));
+  };
+
+  const selectTimeSegmentFromCaret = (inputEl) => {
+    const caretPos = typeof inputEl.selectionStart === 'number' ? inputEl.selectionStart : 0;
+
+    if (caretPos <= 2) {
+      inputEl.setSelectionRange(0, 2);
+      return;
+    }
+
+    if (caretPos <= 5) {
+      inputEl.setSelectionRange(3, 5);
+      return;
+    }
+
+    inputEl.setSelectionRange(6, 8);
   };
 
   const priorityOptions = [
@@ -367,6 +632,117 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
     col: {
       flex: 1,
     },
+    dueDateHeader: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: '6px',
+      gap: '8px',
+    },
+    timeToggleButton: {
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
+      backgroundColor: isSpecificTimeEnabled ? theme.bgOverlay : theme.bgRaised,
+      color: isSpecificTimeEnabled ? theme.textPrimary : theme.textSecondary,
+      borderRadius: '999px',
+      fontSize: '11px',
+      fontWeight: '600',
+      cursor: 'pointer',
+      padding: '4px 10px',
+      lineHeight: 1.2,
+      transition: 'all 150ms ease',
+      whiteSpace: 'nowrap',
+    },
+    timeSlideContainer: {
+      overflow: 'visible',
+      maxHeight: isSpecificTimeEnabled ? '190px' : '0',
+      opacity: isSpecificTimeEnabled ? 1 : 0,
+      transform: isSpecificTimeEnabled ? 'translateX(0)' : 'translateX(-16px)',
+      transition: 'all 220ms ease',
+      marginTop: isSpecificTimeEnabled ? '10px' : '0',
+      position: 'relative',
+      zIndex: isSpecificTimeEnabled ? 20 : 'auto',
+      pointerEvents: isSpecificTimeEnabled ? 'auto' : 'none',
+    },
+    timePickerContainer: {
+      position: 'relative',
+      width: '100%',
+    },
+    timePickerTrigger: {
+      width: '100%',
+      backgroundColor: theme.bgRaised,
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
+      borderRadius: '8px',
+      height: '44px',
+      padding: '0 14px',
+      boxSizing: 'border-box',
+      display: 'flex',
+      alignItems: 'center',
+      transition: 'all 150ms ease',
+    },
+    timePickerInput: {
+      all: 'unset',
+      display: 'block',
+      width: '100%',
+      color: theme.textPrimary,
+      fontSize: '14px',
+      fontWeight: '400',
+      lineHeight: '20px',
+      padding: 0,
+      fontFamily: 'inherit',
+      boxSizing: 'border-box',
+      cursor: 'text',
+    },
+    timePickerPanel: {
+      position: 'absolute',
+      top: 'calc(100% + 8px)',
+      left: 0,
+      right: 0,
+      backgroundColor: theme.bgCard,
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
+      borderRadius: '10px',
+      boxShadow: theme.shadows.md,
+      padding: '10px 10px 8px',
+      zIndex: 50,
+    },
+    timePartsRow: {
+      display: 'grid',
+      gridTemplateColumns: '1fr 1fr 1fr',
+      gap: '8px',
+      alignItems: 'start',
+    },
+    timeListColumn: {
+      minWidth: 0,
+    },
+    timeListTitle: {
+      color: theme.textMuted,
+      fontSize: '10px',
+      fontWeight: '700',
+      letterSpacing: '0.06em',
+      textTransform: 'uppercase',
+      marginBottom: '6px',
+      paddingLeft: '4px',
+    },
+    timeList: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '4px',
+      maxHeight: '134px',
+      overflowY: 'auto',
+      paddingRight: '2px',
+    },
+    timeListItem: (isSelected) => ({
+      border: `1px solid ${isSelected ? theme.borderMedium || theme.border : theme.borderSubtle || theme.border}`,
+      borderRadius: '7px',
+      backgroundColor: isSelected ? theme.bgOverlay : theme.bgRaised,
+      color: isSelected ? theme.textPrimary : theme.textSecondary,
+      fontSize: '13px',
+      fontWeight: isSelected ? '700' : '600',
+      height: '30px',
+      cursor: 'pointer',
+      padding: '0 8px',
+      textAlign: 'center',
+      transition: 'all 140ms ease',
+    }),
     priorityWrapper: {
       display: 'inline-flex',
       gap: '0',
@@ -668,6 +1044,11 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
           font-family: 'Geist', sans-serif;
         }
 
+        .unified-datepicker-popper {
+          z-index: 1400;
+          margin-left: 14px !important;
+        }
+
         .unified-datepicker .react-datepicker__header {
           background-color: ${theme.bgCard};
           border-bottom: 1px solid ${theme.borderSubtle || theme.border};
@@ -814,18 +1195,106 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
 
           <div style={styles.row}>
             <div style={styles.col}>
-              <label style={styles.label}><FaCalendarAlt /> Due Date</label>
+              <div style={styles.dueDateHeader}>
+                <label style={{ ...styles.label, marginBottom: 0 }}><FaCalendarAlt /> Due Date</label>
+                <button
+                  type="button"
+                  onClick={handleSpecificTimeToggle}
+                  style={styles.timeToggleButton}
+                >
+                  {isSpecificTimeEnabled ? 'Use end of day' : 'Add specific time'}
+                </button>
+              </div>
               <DatePicker
                 selected={formData.dueDate ? new Date(formData.dueDate) : null}
-                onChange={date => setFormData(prev => ({ ...prev, dueDate: date ? date.toISOString() : '' }))}
-                minDate={new Date()}
+                onChange={handleDueDateChange}
+                minDate={startOfToday}
                 dateFormat="MM/dd/yyyy"
                 placeholderText="mm/dd/yyyy"
                 wrapperClassName="unified-datepicker-wrapper"
                 calendarClassName="unified-datepicker"
+                popperClassName="unified-datepicker-popper"
+                popperPlacement="bottom"
                 isClearable
                 className="custom-datepicker-input"
               />
+              <div style={styles.timeSlideContainer}>
+                <div ref={timePickerRef} style={styles.timePickerContainer}>
+                  <div style={styles.timePickerTrigger}>
+                    <input
+                      type="text"
+                      value={typedDueTime}
+                      onChange={(e) => setTypedDueTime(e.target.value)}
+                      onFocus={() => setIsTimePickerOpen(true)}
+                      onClick={(e) => {
+                        setIsTimePickerOpen(true);
+                        requestAnimationFrame(() => selectTimeSegmentFromCaret(e.target));
+                      }}
+                      onBlur={commitTypedDueTime}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          commitTypedDueTime();
+                        }
+                      }}
+                      placeholder="09:00 AM"
+                      style={styles.timePickerInput}
+                      aria-label="Type due time"
+                    />
+                  </div>
+                  {isTimePickerOpen && (
+                    <div style={styles.timePickerPanel}>
+                      <div style={styles.timePartsRow}>
+                        <div style={styles.timeListColumn}>
+                          <div style={styles.timeListTitle}>Hour</div>
+                          <div style={styles.timeList}>
+                            {hourOptions.map((option) => (
+                              <button
+                                key={option.value}
+                                type="button"
+                                style={styles.timeListItem(dueTimeParts.hour12 === option.value)}
+                                onClick={() => handleHourChange(option.value)}
+                              >
+                                {option.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div style={styles.timeListColumn}>
+                          <div style={styles.timeListTitle}>Minute</div>
+                          <div style={styles.timeList}>
+                            {minuteOptions.map((option) => (
+                              <button
+                                key={option.value}
+                                type="button"
+                                style={styles.timeListItem(dueTimeParts.minute === option.value)}
+                                onClick={() => handleMinuteChange(option.value)}
+                              >
+                                {option.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div style={styles.timeListColumn}>
+                          <div style={styles.timeListTitle}>AM/PM</div>
+                          <div style={styles.timeList}>
+                            {periodOptions.map((option) => (
+                              <button
+                                key={option.value}
+                                type="button"
+                                style={styles.timeListItem(dueTimeParts.period === option.value)}
+                                onClick={() => handlePeriodChange(option.value)}
+                              >
+                                {option.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
             <div style={styles.col}>
               <label style={styles.label}><FaTag /> Category</label>

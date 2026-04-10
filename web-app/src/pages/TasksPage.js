@@ -32,6 +32,8 @@ const writeTasksCache = (payload) => {
   }
 };
 
+const AI_SCORABLE_STATUSES = ['pending', 'todo', 'in-progress'];
+
 const TasksPage = () => {
   const cachedTasksState = readTasksCache();
   const { theme } = useTheme();
@@ -45,7 +47,7 @@ const TasksPage = () => {
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [projectFilter, setProjectFilter] = useState('all');
-  const [sortBy, setSortBy] = useState('createdAt');
+  const [sortBy, setSortBy] = useState(cachedTasksState?.sortBy || 'aiPriorityScore');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -58,6 +60,7 @@ const TasksPage = () => {
   const [notification, setNotification] = useState(null);
   const notificationTimerRef = useRef(null);
   const debounceTimerRef = useRef(null);
+  const lastAutoScoreKeyRef = useRef('');
   const lastFilterKeyRef = useRef('');
   const [hasCache, setHasCache] = useState(Boolean(cachedTasksState));
 
@@ -118,9 +121,10 @@ const TasksPage = () => {
 
   const loadTasks = async () => {
     try {
+      const isAiSort = sortBy === 'aiPriorityScore';
       const params = {
         page: currentPage,
-        sortBy,
+        sortBy: isAiSort ? 'createdAt' : sortBy,
         sortOrder: sortBy === 'deadline' || sortBy === 'title' ? 'asc' : 'desc',
       };
 
@@ -159,6 +163,14 @@ const TasksPage = () => {
         ? responseTasks.filter(task => !!task.projectId)
         : responseTasks;
 
+      const scoreMap = responseTasks.reduce((acc, task) => {
+        if (AI_SCORABLE_STATUSES.includes(task.status) && typeof task.aiPriorityScore === 'number') {
+          acc[String(task._id || task.id)] = task.aiPriorityScore;
+        }
+        return acc;
+      }, {});
+      setAiPriorityScores(scoreMap);
+
       const shouldPushCompletedToBottom = statusFilter === 'all' && (sortBy === 'createdAt' || sortBy === 'deadline');
 
       const orderedTasks = shouldPushCompletedToBottom
@@ -168,12 +180,31 @@ const TasksPage = () => {
           ]
         : displayedTasks;
 
-      setFilteredTasks(orderedTasks);
+      const finalOrderedTasks = isAiSort
+        ? sortTasksByPriorityScore(orderedTasks, scoreMap)
+        : orderedTasks;
+
+      setFilteredTasks(finalOrderedTasks);
+
+      const unscoredActiveIds = finalOrderedTasks
+        .filter(task => AI_SCORABLE_STATUSES.includes(task.status) && typeof task.aiPriorityScore !== 'number')
+        .map(task => String(task._id || task.id))
+        .sort();
+      const autoScoreKey = unscoredActiveIds.join('|');
+
+      if (autoScoreKey && autoScoreKey !== lastAutoScoreKeyRef.current) {
+        lastAutoScoreKeyRef.current = autoScoreKey;
+        triggerAutoReprioritize();
+      } else if (!autoScoreKey) {
+        lastAutoScoreKeyRef.current = '';
+      }
+
       setHasCache(true);
       writeTasksCache({
         tasks: responseTasks,
-        filteredTasks: orderedTasks,
+        filteredTasks: finalOrderedTasks,
         totalPages: pagination.totalPages || 1,
+        sortBy,
       });
     } catch (error) {
       console.error('Error loading tasks:', error);
@@ -198,9 +229,10 @@ const TasksPage = () => {
   };
 
   const getPrioritizationSnapshot = async () => {
+    const isAiSort = sortBy === 'aiPriorityScore';
     const params = {
       page: currentPage,
-      sortBy,
+      sortBy: isAiSort ? 'createdAt' : sortBy,
       sortOrder: sortBy === 'deadline' || sortBy === 'title' ? 'asc' : 'desc',
     };
 
@@ -241,11 +273,6 @@ const TasksPage = () => {
   };
 
   const autoReprioritize = async () => {
-    const activeVisibleTasks = filteredTasks.filter(task => task.status !== 'done');
-    if (activeVisibleTasks.length === 0) {
-      return;
-    }
-
     const snapshotTasks = await getPrioritizationSnapshot();
     const nonDoneTasks = snapshotTasks.filter(task => task.status !== 'done');
 
@@ -253,7 +280,7 @@ const TasksPage = () => {
       return;
     }
 
-    const tasksToPrioritize = snapshotTasks.filter(task => ['pending', 'todo', 'in-progress'].includes(task.status));
+    const tasksToPrioritize = snapshotTasks.filter(task => AI_SCORABLE_STATUSES.includes(task.status));
 
     if (tasksToPrioritize.length === 0) {
       return;
@@ -273,26 +300,34 @@ const TasksPage = () => {
       const result = await aiService.prioritize(payloadTasks);
       const rankedTasks = Array.isArray(result?.tasks) ? result.tasks : [];
 
-      const refreshedTasks = await getPrioritizationSnapshot();
-      const scoreMap = refreshedTasks.reduce((acc, task) => {
-        const taskId = String(task._id || task.id);
-        const persistedScore = typeof task.aiPriorityScore === 'number' ? task.aiPriorityScore : null;
-        if (persistedScore !== null) {
-          acc[taskId] = persistedScore;
-        }
-        return acc;
-      }, rankedTasks.reduce((acc, item) => {
+      const scoreMap = rankedTasks.reduce((acc, item) => {
         acc[String(item.id)] = item.score;
         return acc;
-      }, {}));
+      }, {});
 
       setAiPriorityScores(scoreMap);
-      const sortedTasks = sortTasksByPriorityScore(refreshedTasks, scoreMap);
+
+      setTasks(prev => prev.map(task => {
+        const taskId = String(task._id || task.id);
+        return Object.prototype.hasOwnProperty.call(scoreMap, taskId)
+          ? { ...task, aiPriorityScore: scoreMap[taskId] }
+          : task;
+      }));
+
+      const scoredSnapshotTasks = snapshotTasks.map(task => {
+        const taskId = String(task._id || task.id);
+        return Object.prototype.hasOwnProperty.call(scoreMap, taskId)
+          ? { ...task, aiPriorityScore: scoreMap[taskId] }
+          : task;
+      });
+
+      const sortedTasks = sortTasksByPriorityScore(scoredSnapshotTasks, scoreMap);
       setFilteredTasks(sortedTasks);
       writeTasksCache({
-        tasks: refreshedTasks,
+        tasks: scoredSnapshotTasks,
         filteredTasks: sortedTasks,
         totalPages,
+        sortBy,
       });
     } catch (error) {
       console.warn('Auto AI prioritization failed:', error);
@@ -336,7 +371,7 @@ const TasksPage = () => {
   };
 
   const handleAIPrioritize = async () => {
-    const tasksToPrioritize = tasks.filter(task => ['pending', 'todo', 'in-progress'].includes(task.status));
+    const tasksToPrioritize = tasks.filter(task => AI_SCORABLE_STATUSES.includes(task.status));
 
     if (tasksToPrioritize.length === 0) {
       showNotification('No pending or in-progress tasks available for AI prioritization.', 'warning');
@@ -992,6 +1027,7 @@ const TasksPage = () => {
             <div style={{ width: '200px' }}>
               <CustomSelect
                 options={[
+                  { value: 'aiPriorityScore', label: 'AI Score' },
                   { value: 'createdAt', label: 'Date Created' },
                   { value: 'deadline', label: 'Due Date' },
                   { value: 'priority', label: 'Priority' },
@@ -1019,7 +1055,7 @@ const TasksPage = () => {
                 <TaskCard
                   key={task._id}
                   task={task}
-                  aiPriorityScore={aiPriorityScores[String(task._id || task.id)]}
+                  aiPriorityScore={task.status === 'done' ? undefined : aiPriorityScores[String(task._id || task.id)]}
                   onClick={() => handleTaskClick(task)}
                   getPriorityColor={getPriorityColor}
                   getStatusColor={getStatusColor}

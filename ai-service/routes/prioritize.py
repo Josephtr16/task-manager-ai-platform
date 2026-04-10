@@ -317,40 +317,44 @@ async def prioritize(req: PrioritizeRequest):
     prioritized_tasks = enforce_unique_scores(prioritized_tasks)
 
     if prioritized_tasks:
-        style = random.choice(REASON_STYLES)
-        reason_prompt_tasks = [
-            {
-                "id": task["id"],
-                "title": task["title"],
-                "score": task["score"],
-                "priority_label": task["priority_label"],
-                "days_remaining": task.get("days_remaining"),
-                "effort_ratio": task.get("effort_ratio"),
-                "deadline_pressure": task.get("deadline_pressure"),
-                "current_reason": task["reason"],
+        try:
+            style = random.choice(REASON_STYLES)
+            reason_prompt_tasks = [
+                {
+                    "id": task["id"],
+                    "title": task["title"],
+                    "score": task["score"],
+                    "priority_label": task["priority_label"],
+                    "days_remaining": task.get("days_remaining"),
+                    "effort_ratio": task.get("effort_ratio"),
+                    "deadline_pressure": task.get("deadline_pressure"),
+                    "current_reason": task["reason"],
+                }
+                for task in prioritized_tasks
+            ]
+
+            reason_result = ask_groq(
+                f"You write short, varied task-priority explanations in a {style} style.\n"
+                f"Do not reuse the same opening phrase across tasks.\n"
+                f"Each reason must be 1 sentence, natural, and not sound templated.\n"
+                f"Return only valid JSON of the form {{\"reasons\": [{{\"id\": \"<id>\", \"reason\": \"<text>\"}}]}}.",
+                f"Generate fresh reasons for these prioritized tasks:\n{json.dumps(reason_prompt_tasks, indent=2)}",
+                max_tokens=2000,
+                temperature=0.9,
+            )
+
+            reason_map = {
+                str(item.get("id")): item.get("reason")
+                for item in (reason_result.get("reasons") if isinstance(reason_result, dict) else []) or []
+                if item.get("id") is not None and item.get("reason")
             }
-            for task in prioritized_tasks
-        ]
 
-        reason_result = ask_groq(
-            f"You write short, varied task-priority explanations in a {style} style.\n"
-            f"Do not reuse the same opening phrase across tasks.\n"
-            f"Each reason must be 1 sentence, natural, and not sound templated.\n"
-            f"Return only valid JSON of the form {{\"reasons\": [{{\"id\": \"<id>\", \"reason\": \"<text>\"}}]}}.",
-            f"Generate fresh reasons for these prioritized tasks:\n{json.dumps(reason_prompt_tasks, indent=2)}",
-            max_tokens=2000,
-            temperature=0.9,
-        )
-
-        reason_map = {
-            str(item.get("id")): item.get("reason")
-            for item in (reason_result.get("reasons") if isinstance(reason_result, dict) else []) or []
-            if item.get("id") is not None and item.get("reason")
-        }
-
-        for task in prioritized_tasks:
-            task_id = str(task["id"])
-            task["reason"] = reason_map.get(task_id, task["reason"])
+            for task in prioritized_tasks:
+                task_id = str(task["id"])
+                task["reason"] = reason_map.get(task_id, task["reason"])
+        except Exception as exc:
+            # Keep deterministic fallback reasons instead of failing the endpoint.
+            print(f"[prioritize] reason generation fallback: {exc}")
 
     return {
         "tasks": prioritized_tasks,

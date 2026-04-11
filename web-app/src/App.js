@@ -11,6 +11,7 @@ import ForgotPassword from './components/Auth/ForgotPassword';
 import ResetPassword from './components/Auth/ResetPassword';
 import Dashboard from './components/Dashboard/Dashboard';
 import ErrorBoundary from './components/common/ErrorBoundary';
+import OnboardingTour from './components/common/OnboardingTour';
 import Layout from './components/Layout/Layout';
 import TasksPage from './pages/TasksPage';
 import KanbanPage from './pages/KanbanPage';
@@ -52,6 +53,7 @@ const ProtectedLayoutRoute = () => {
     <ProtectedRoute>
       <Layout isFocusMode={isFocusMode}>
         <Outlet />
+        <OnboardingTour />
       </Layout>
     </ProtectedRoute>
   );

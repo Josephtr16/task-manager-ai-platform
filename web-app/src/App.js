@@ -3,6 +3,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { FocusProvider, useFocus } from './context/FocusContext';
 import Login from './components/Auth/Login';
 import Register from './components/Auth/Register';
 import VerifyEmail from './components/Auth/VerifyEmail';
@@ -18,6 +19,7 @@ import InsightsPage from './pages/InsightsPage';
 import SettingsPage from './pages/SettingsPage';
 import ProjectsPage from './pages/ProjectsPage';
 import ProjectDetailPage from './pages/ProjectDetailPage';
+import FocusPage from './pages/FocusPage';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -43,20 +45,25 @@ const ProtectedRoute = ({ children }) => {
 };
 
 // Persistent Layout Route - keeps Layout/sidebar mounted across these routes
-const ProtectedLayoutRoute = () => (
-  <ProtectedRoute>
-    <Layout>
-      <Outlet />
-    </Layout>
-  </ProtectedRoute>
-);
+const ProtectedLayoutRoute = () => {
+  const { isFocusMode } = useFocus();
+
+  return (
+    <ProtectedRoute>
+      <Layout isFocusMode={isFocusMode}>
+        <Outlet />
+      </Layout>
+    </ProtectedRoute>
+  );
+};
 
 function App() {
   return (
     <Router>
       <AuthProvider>
         <ThemeProvider>
-          <Routes>
+          <FocusProvider>
+            <Routes>
             {/* Public Routes */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
@@ -68,6 +75,7 @@ function App() {
             <Route element={<ProtectedLayoutRoute />}>
               <Route path="/dashboard" element={<ErrorBoundary><Dashboard /></ErrorBoundary>} />
               <Route path="/tasks" element={<ErrorBoundary><TasksPage /></ErrorBoundary>} />
+              <Route path="/focus" element={<ErrorBoundary><FocusPage /></ErrorBoundary>} />
               <Route path="/projects" element={<ErrorBoundary><ProjectsPage /></ErrorBoundary>} />
               <Route path="/kanban" element={<ErrorBoundary><KanbanPage /></ErrorBoundary>} />
               <Route path="/calendar" element={<ErrorBoundary><CalendarPage /></ErrorBoundary>} />
@@ -83,7 +91,8 @@ function App() {
             {/* Default redirect */}
             <Route path="/" element={<Navigate to="/dashboard" />} />
             <Route path="*" element={<Navigate to="/dashboard" />} />
-          </Routes>
+            </Routes>
+          </FocusProvider>
         </ThemeProvider>
       </AuthProvider>
     </Router>

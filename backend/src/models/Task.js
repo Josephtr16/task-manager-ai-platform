@@ -133,6 +133,11 @@ const taskSchema = new mongoose.Schema({
     type: Number, // in minutes
     default: null,
   },
+  pomodoroCount: {
+    type: Number,
+    default: 0,
+    min: 0,
+  },
   scheduleStartAt: {
     type: Date,
     default: null,

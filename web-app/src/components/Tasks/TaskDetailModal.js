@@ -1,6 +1,7 @@
 // src/components/Tasks/TaskDetailModal.js
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../../context/ThemeContext';
+import { useNavigate } from 'react-router-dom';
 import { tasksAPI, timeTrackingAPI, subtasksAPI } from '../../services/api';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
@@ -27,6 +28,7 @@ const TaskDetailModal = ({
   canToggleSubtasks = true,
 }) => {
   const { theme } = useTheme();
+  const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({});
   const [loading, setLoading] = useState(false);
@@ -35,6 +37,8 @@ const TaskDetailModal = ({
   const [shareEmail, setShareEmail] = useState('');
   const [notification, setNotification] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [dependencyOptions, setDependencyOptions] = useState([]);
+  const [loadingDependencies, setLoadingDependencies] = useState(false);
 
   const showNotification = (type, message) => {
     setNotification({ type, message });
@@ -622,11 +626,43 @@ const TaskDetailModal = ({
     if (task) {
       setFormData({
         ...task,
+        dependencies: Array.isArray(task.dependencies)
+          ? task.dependencies.map((dep) => (typeof dep === 'string' ? dep : dep?._id)).filter(Boolean)
+          : [],
         deadline: toDateTimeLocalValue(task.deadline),
       });
       setIsTracking(task?.timeTracking?.isTracking || false);
     }
   }, [task]);
+
+  useEffect(() => {
+    const loadDependencyOptions = async () => {
+      if (!task?._id) {
+        setDependencyOptions([]);
+        return;
+      }
+
+      setLoadingDependencies(true);
+      try {
+        const params = task.projectId ? { projectId: task.projectId, limit: 200 } : { limit: 200 };
+        const response = await tasksAPI.getTasks(params);
+        const list = Array.isArray(response?.data?.tasks)
+          ? response.data.tasks
+          : Array.isArray(response?.data)
+            ? response.data
+            : [];
+
+        setDependencyOptions(list.filter((item) => item?._id && item._id !== task._id));
+      } catch (error) {
+        console.error('Failed to load dependency options:', error);
+        setDependencyOptions([]);
+      } finally {
+        setLoadingDependencies(false);
+      }
+    };
+
+    loadDependencyOptions();
+  }, [task?._id, task?.projectId]);
 
   if (!isOpen || !task) return null;
 
@@ -635,6 +671,66 @@ const TaskDetailModal = ({
       ...formData,
       [e.target.name]: e.target.value,
     });
+  };
+
+  const hasCircularDependency = (candidateDependencyId) => {
+    if (!task?._id || !candidateDependencyId) return false;
+
+    const dependencyMap = new Map();
+
+    dependencyOptions.forEach((item) => {
+      const deps = Array.isArray(item.dependencies)
+        ? item.dependencies
+          .map((dep) => (typeof dep === 'string' ? dep : dep?._id))
+          .filter(Boolean)
+        : [];
+      dependencyMap.set(item._id, deps);
+    });
+
+    const selectedDependencies = Array.isArray(formData.dependencies)
+      ? formData.dependencies.filter((depId) => depId !== candidateDependencyId)
+      : [];
+    dependencyMap.set(task._id, selectedDependencies);
+
+    const visited = new Set();
+    const stack = [candidateDependencyId];
+
+    while (stack.length > 0) {
+      const currentId = stack.pop();
+      if (!currentId || visited.has(currentId)) continue;
+      if (currentId === task._id) return true;
+
+      visited.add(currentId);
+      const currentDeps = dependencyMap.get(currentId) || [];
+      currentDeps.forEach((depId) => {
+        if (!visited.has(depId)) {
+          stack.push(depId);
+        }
+      });
+    }
+
+    return false;
+  };
+
+  const handleDependencyToggle = (dependencyId) => {
+    if (!dependencyId) return;
+
+    const existing = Array.isArray(formData.dependencies) ? formData.dependencies : [];
+    const isSelected = existing.includes(dependencyId);
+
+    if (!isSelected && hasCircularDependency(dependencyId)) {
+      showNotification('error', 'Circular dependency detected. This selection is not allowed.');
+      return;
+    }
+
+    const updated = isSelected
+      ? existing.filter((id) => id !== dependencyId)
+      : [...existing, dependencyId];
+
+    setFormData((prev) => ({
+      ...prev,
+      dependencies: updated,
+    }));
   };
 
   const handleUpdate = async () => {
@@ -665,6 +761,7 @@ const TaskDetailModal = ({
         description: formData.description,
         estimatedDuration: Number(formData.estimatedDuration) || 60,
         deadline: normalizedDeadline,
+        dependencies: Array.isArray(formData.dependencies) ? formData.dependencies : [],
       };
 
       const response = await tasksAPI.updateTask(task._id, updatePayload);
@@ -1233,6 +1330,74 @@ const TaskDetailModal = ({
           )}
         </div>
 
+        {/* Dependencies */}
+        <div style={styles.section}>
+          <h3 style={styles.sectionTitle}><FaTag style={{ fontSize: '16px' }} /> Depends On</h3>
+          {isEditing ? (
+            loadingDependencies ? (
+              <p style={styles.description}>Loading dependency options...</p>
+            ) : dependencyOptions.length === 0 ? (
+              <p style={styles.description}>No tasks available to depend on.</p>
+            ) : (
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                maxHeight: '180px',
+                overflowY: 'auto',
+                padding: '4px',
+              }}>
+                {dependencyOptions.map((item) => {
+                  const checked = Array.isArray(formData.dependencies)
+                    ? formData.dependencies.includes(item._id)
+                    : false;
+                  return (
+                    <label
+                      key={item._id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        padding: '8px 10px',
+                        borderRadius: '8px',
+                        border: `1px solid ${theme.borderSubtle || theme.border}`,
+                        backgroundColor: checked ? `${theme.primary}12` : theme.bgRaised,
+                        color: theme.textPrimary,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => handleDependencyToggle(item._id)}
+                      />
+                      <span style={{ fontSize: '13px' }}>{item.title}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            )
+          ) : (
+            (() => {
+              const selectedDeps = Array.isArray(formData.dependencies) ? formData.dependencies : [];
+              if (selectedDeps.length === 0) {
+                return <p style={styles.description}>No dependencies</p>;
+              }
+
+              const titleById = new Map(dependencyOptions.map((item) => [item._id, item.title]));
+              return (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  {selectedDeps.map((depId) => (
+                    <span key={depId} style={styles.tag}>
+                      {titleById.get(depId) || 'Linked task'}
+                    </span>
+                  ))}
+                </div>
+              );
+            })()
+          )}
+        </div>
+
         {/* Time Tracking */}
         <div style={styles.section}>
           <h3 style={styles.sectionTitle}><FaStopwatch style={{ fontSize: '16px' }} /> Time Tracking</h3>
@@ -1253,6 +1418,45 @@ const TaskDetailModal = ({
                   color: theme.error
                 }}>Timer is running...</p>
               )}
+              <div style={{ marginTop: '16px' }}>
+                <p style={{
+                  fontSize: '13px',
+                  color: theme.textSecondary,
+                  margin: '0 0 12px 0',
+                }}>
+                  Total logged: {(() => {
+                    const totalMinutes = task?.timeTracking?.totalTime || 0;
+                    const hours = Math.floor(totalMinutes / 60);
+                    const mins = totalMinutes % 60;
+                    return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+                  })()}
+                </p>
+                <button
+                  onClick={() => navigate('/focus', { state: { preSelectedTask: task } })}
+                  style={{
+                    backgroundColor: `${theme.primary}12`,
+                    border: `1.5px solid ${theme.primary}40`,
+                    borderRadius: '8px',
+                    padding: '12px 20px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: theme.primary,
+                    cursor: 'pointer',
+                    transition: 'all 150ms ease',
+                    width: '100%',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.backgroundColor = `${theme.primary}20`;
+                    e.target.style.borderColor = `${theme.primary}60`;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.backgroundColor = `${theme.primary}12`;
+                    e.target.style.borderColor = `${theme.primary}40`;
+                  }}
+                >
+                  Open Focus Mode
+                </button>
+              </div>
             </>
           ) : (
             <p style={styles.description}>You do not have permission to track time on this task.</p>

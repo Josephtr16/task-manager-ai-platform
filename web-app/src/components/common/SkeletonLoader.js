@@ -1,17 +1,28 @@
 import React from 'react';
 
+const skeletonVars = {
+  '--skeleton-base': 'color-mix(in srgb, var(--bg-main) 88%, var(--text-primary) 12%)',
+  '--skeleton-shimmer': 'color-mix(in srgb, var(--bg-main) 76%, var(--text-primary) 24%)',
+};
+
 const shimmerStyle = {
-  background: 'linear-gradient(90deg, var(--bg-card) 25%, var(--bg-elevated) 50%, var(--bg-card) 75%)',
-  backgroundSize: '200% 100%',
+  background: 'var(--skeleton-base)',
   borderRadius: '10px',
-  animation: 'shimmer 1.5s linear infinite',
+  animation: 'shimmer 1.5s ease-in-out infinite',
 };
 
 const SkeletonAnimation = () => (
   <style>{`
     @keyframes shimmer {
-      0% { background-position: 200% 0; }
-      100% { background-position: -200% 0; }
+      0% {
+        background-color: var(--skeleton-base);
+      }
+      50% {
+        background-color: var(--skeleton-shimmer);
+      }
+      100% {
+        background-color: var(--skeleton-base);
+      }
     }
   `}</style>
 );
@@ -20,10 +31,11 @@ export const TaskCardSkeleton = () => {
   return (
     <div
       style={{
+        ...skeletonVars,
         borderRadius: '16px',
         padding: '20px',
         minHeight: '240px',
-        background: 'var(--bg-card)',
+        background: 'var(--bg-main)',
         border: '1px solid var(--border)',
         display: 'flex',
         flexDirection: 'column',
@@ -50,10 +62,11 @@ export const StatsCardSkeleton = () => {
   return (
     <div
       style={{
+        ...skeletonVars,
         borderRadius: '16px',
         padding: '20px',
         minHeight: '145px',
-        background: 'var(--bg-card)',
+        background: 'var(--bg-main)',
         border: '1px solid var(--border)',
         display: 'flex',
         flexDirection: 'column',
@@ -73,10 +86,11 @@ export const ProjectCardSkeleton = () => {
   return (
     <div
       style={{
+        ...skeletonVars,
         borderRadius: '18px',
         padding: '22px',
         minHeight: '230px',
-        background: 'var(--bg-card)',
+        background: 'var(--bg-main)',
         border: '1px solid var(--border)',
         display: 'flex',
         flexDirection: 'column',

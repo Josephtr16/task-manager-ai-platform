@@ -98,6 +98,13 @@ export const aiService = {
     });
     return response.data;
   },
+
+  generateDependencies: async (tasks) => {
+    const response = await api.post(`${AI_BASE_PATH}/generate-dependencies`, {
+      tasks,
+    });
+    return response.data;
+  },
 };
 
 export default aiService;

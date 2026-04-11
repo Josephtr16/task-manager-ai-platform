@@ -222,6 +222,46 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
     return [...new Set(cleaned)];
   };
 
+  const mergeSubtasks = (existingSubtasks, aiSubtasks) => {
+    const current = Array.isArray(existingSubtasks) ? existingSubtasks : [];
+
+    if (!Array.isArray(aiSubtasks)) {
+      return current;
+    }
+
+    const existingTitles = new Set(
+      current
+        .map((subtask) => String(subtask?.title || '').trim().toLowerCase())
+        .filter(Boolean)
+    );
+
+    const aiToAppend = aiSubtasks
+      .map((subtask, index) => ({
+        id: Date.now() + index,
+        title: typeof subtask === 'string' ? subtask : subtask?.title || '',
+        completed: false,
+      }))
+      .map((subtask) => ({
+        ...subtask,
+        title: String(subtask.title || '').trim(),
+      }))
+      .filter((subtask) => {
+        if (!subtask.title) {
+          return false;
+        }
+
+        const normalizedTitle = subtask.title.toLowerCase();
+        if (existingTitles.has(normalizedTitle)) {
+          return false;
+        }
+
+        existingTitles.add(normalizedTitle);
+        return true;
+      });
+
+    return [...current, ...aiToAppend];
+  };
+
   const handleAssistWrite = async () => {
     const hasEnoughContext = formData.title.trim().length >= 3 || formData.description.trim().length >= 10;
 
@@ -247,13 +287,7 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
         description: result?.description || prev.description,
         estimatedDuration: result?.estimated_duration?.minutes || prev.estimatedDuration,
         tags: normalizeTags([...(prev.tags || []), ...(result?.suggested_tags || [])]),
-        subtasks: Array.isArray(result?.subtasks)
-          ? result.subtasks.map((subtask, index) => ({
-              id: Date.now() + index,
-              title: typeof subtask === 'string' ? subtask : subtask?.title || '',
-              completed: false,
-            })).filter(subtask => subtask.title)
-          : prev.subtasks,
+        subtasks: mergeSubtasks(prev.subtasks, result?.subtasks),
       }));
 
       showNotification('AI suggestions added beautifully to your task.', 'success');

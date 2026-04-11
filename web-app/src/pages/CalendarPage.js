@@ -33,7 +33,9 @@ const CalendarPage = () => {
   const loadTasks = async () => {
     try {
       const response = await tasksAPI.getTasks();
-      setTasks(response.data.tasks);
+      // The interceptor already unwraps one data level, so read tasks from the payload in response.data.
+      const tasksPayload = response.data;
+      setTasks(tasksPayload.tasks || []);
     } catch (error) {
       console.error('Error loading tasks:', error);
     } finally {

@@ -2,7 +2,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
-from routes import prioritize, assist_write, predict_time, plan_day, detect_risks, reports, project_breakdown
+from routes import prioritize, assist_write, predict_time, plan_day, detect_risks, reports, project_breakdown, dependency_graph
 
 load_dotenv()
 
@@ -31,6 +31,7 @@ app.include_router(plan_day.router,          prefix="/ai", tags=["AI"])
 app.include_router(detect_risks.router,      prefix="/ai", tags=["AI"])
 app.include_router(reports.router,           prefix="/ai", tags=["AI"])
 app.include_router(project_breakdown.router, prefix="/ai", tags=["AI"])
+app.include_router(dependency_graph.router,  prefix="/ai", tags=["AI"])
 
 @app.get("/")
 def root():
@@ -43,6 +44,7 @@ def root():
         "POST /ai/reports",
         "POST /ai/project-breakdown",
         "POST /ai/generate-subtasks",
+        "POST /ai/generate-dependencies",
     ]}
 
 @app.get("/health")

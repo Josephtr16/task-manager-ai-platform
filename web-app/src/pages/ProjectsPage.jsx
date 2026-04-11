@@ -8,28 +8,12 @@ import CreateProjectModal from '../components/Projects/CreateProjectModal';
 import { FaPlus, FaSearch, FaTimes, FaCheck, FaTimesCircle } from 'react-icons/fa';
 import CustomSelect from '../components/common/CustomSelect';
 import { ProjectCardSkeleton } from '../components/common/SkeletonLoader';
+import { readCache, writeCache } from '../utils/sessionCache';
 
 const PROJECTS_CACHE_KEY = 'taskflow_projects_page_cache';
 
-const readProjectsCache = () => {
-    try {
-        const cached = sessionStorage.getItem(PROJECTS_CACHE_KEY);
-        return cached ? JSON.parse(cached) : null;
-    } catch {
-        return null;
-    }
-};
-
-const writeProjectsCache = (payload) => {
-    try {
-        sessionStorage.setItem(PROJECTS_CACHE_KEY, JSON.stringify(payload));
-    } catch {
-        // Ignore storage errors.
-    }
-};
-
 const ProjectsPage = () => {
-    const cachedProjectsState = readProjectsCache();
+    const cachedProjectsState = readCache(PROJECTS_CACHE_KEY, 60000);
     const { theme } = useTheme();
     const [projects, setProjects] = useState(cachedProjectsState?.projects || []);
     const [filteredProjects, setFilteredProjects] = useState(cachedProjectsState?.filteredProjects || []);
@@ -64,7 +48,7 @@ const ProjectsPage = () => {
             ]);
             setProjects(projectsData);
             setPendingInvites(invitesData || []);
-            writeProjectsCache({
+            writeCache(PROJECTS_CACHE_KEY, {
                 projects: projectsData,
                 pendingInvites: invitesData || [],
                 filteredProjects: projectsData,

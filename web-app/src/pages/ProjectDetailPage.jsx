@@ -3,14 +3,16 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout/Layout';
 import projectService from '../services/projectService';
 import { tasksAPI } from '../services/api';
+import aiService from '../services/aiService';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { borderRadius } from '../theme';
 import { formatTaskDuration } from '../utils/formatTaskDuration';
-import { FaArrowLeft, FaCalendarAlt, FaTrash, FaPlus, FaCheck, FaClock, FaFlag, FaTag, FaShare, FaUserPlus } from 'react-icons/fa';
+import { FaArrowLeft, FaCalendarAlt, FaTrash, FaPlus, FaCheck, FaClock, FaFlag, FaTag, FaShare, FaUserPlus, FaRobot } from 'react-icons/fa';
 import AddTaskToProjectModal from '../components/Projects/AddTaskToProjectModal';
 import TaskDetailModal from '../components/Tasks/TaskDetailModal';
 import AIProjectBreakdownModal from '../components/Projects/AIProjectBreakdownModal';
+import TaskDependencyGraph from '../components/Projects/TaskDependencyGraph';
 import CustomPermissionSelect from '../components/common/CustomPermissionSelect';
 
 const ProjectDetailPage = () => {
@@ -28,6 +30,8 @@ const ProjectDetailPage = () => {
     const [showAIProjectBreakdown, setShowAIProjectBreakdown] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [shareEmail, setShareEmail] = useState('');
+    const [showDependencyGraph, setShowDependencyGraph] = useState(false);
+    const [isGeneratingDependencies, setIsGeneratingDependencies] = useState(false);
 
     const showNotification = (type, message) => {
         setNotification({ type, message });
@@ -112,6 +116,61 @@ const ProjectDetailPage = () => {
         // Refresh project
         const data = await projectService.getProject(id, localStorage.getItem('token'));
         setProject(data.project);
+    };
+
+    const handleAIGenerateDependencies = async () => {
+        if (!canGenerateTasks) {
+            showNotification('error', 'You do not have permission to generate dependencies.');
+            return;
+        }
+
+        if (!Array.isArray(tasks) || tasks.length < 2) {
+            showNotification('error', 'Add at least two tasks to generate dependencies.');
+            return;
+        }
+
+        setIsGeneratingDependencies(true);
+        try {
+            const payloadTasks = tasks.map((task) => ({
+                id: task._id,
+                title: task.title,
+                description: task.description || '',
+                status: task.status || 'todo',
+                priority: task.priority || 'medium',
+                estimated_minutes: task.estimatedDuration || null,
+                deadline: task.deadline || null,
+            }));
+
+            const result = await aiService.generateDependencies(payloadTasks);
+            const suggestions = Array.isArray(result?.dependencies) ? result.dependencies : [];
+
+            const dependsByTask = new Map(
+                suggestions
+                    .filter((entry) => entry?.task_id)
+                    .map((entry) => [
+                        entry.task_id,
+                        Array.isArray(entry.depends_on) ? entry.depends_on : [],
+                    ])
+            );
+
+            await Promise.all(
+                tasks.map((task) =>
+                    tasksAPI.updateTask(task._id, {
+                        dependencies: dependsByTask.get(task._id) || [],
+                    })
+                )
+            );
+
+            await loadProjectDetails();
+            setShowDependencyGraph(true);
+            const totalLinks = Number(result?.suggested_links) || 0;
+            showNotification('success', `AI generated ${totalLinks} dependency link${totalLinks === 1 ? '' : 's'}.`);
+        } catch (error) {
+            console.error('Failed to generate AI dependencies:', error);
+            showNotification('error', error.response?.data?.message || 'Failed to generate dependencies with AI.');
+        } finally {
+            setIsGeneratingDependencies(false);
+        }
     };
 
     const handleShareProject = async () => {
@@ -994,6 +1053,74 @@ const ProjectDetailPage = () => {
                                 </div>
                             );
                         })
+                    )}
+                </div>
+
+                {/* Task Dependency Graph Section */}
+                <div style={{
+                    backgroundColor: theme.bgCard || theme.bgMain,
+                    borderRadius: borderRadius.lg,
+                    padding: '24px',
+                    boxShadow: theme.shadows.neumorphic,
+                    marginBottom: '32px',
+                    border: `1px solid ${theme.border}`,
+                }}>
+                    <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: '12px',
+                        marginBottom: showDependencyGraph ? '16px' : 0,
+                    }}>
+                        <button
+                            onClick={() => setShowDependencyGraph(!showDependencyGraph)}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                background: 'none',
+                                border: 'none',
+                                fontSize: '18px',
+                                fontWeight: '700',
+                                color: theme.textPrimary,
+                                cursor: 'pointer',
+                                padding: 0,
+                            }}
+                        >
+                            <span style={{
+                                display: 'inline-block',
+                                transform: showDependencyGraph ? 'rotate(90deg)' : 'rotate(0deg)',
+                                transition: 'transform 0.3s ease',
+                            }}>▶</span>
+                            Task Dependencies
+                        </button>
+                        {canGenerateTasks && (
+                            <button
+                                type="button"
+                                onClick={handleAIGenerateDependencies}
+                                disabled={isGeneratingDependencies}
+                                style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    border: `1px solid ${theme.primary}55`,
+                                    backgroundColor: `${theme.primary}14`,
+                                    color: theme.primary,
+                                    borderRadius: borderRadius.md,
+                                    padding: '8px 12px',
+                                    fontSize: '13px',
+                                    fontWeight: '700',
+                                    cursor: isGeneratingDependencies ? 'not-allowed' : 'pointer',
+                                    opacity: isGeneratingDependencies ? 0.7 : 1,
+                                }}
+                            >
+                                <FaRobot />
+                                {isGeneratingDependencies ? 'Generating...' : 'AI Generate'}
+                            </button>
+                        )}
+                    </div>
+                    {showDependencyGraph && (
+                        <TaskDependencyGraph tasks={tasks} />
                     )}
                 </div>
 

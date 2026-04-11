@@ -3,11 +3,158 @@ const axios = require('axios');
 const { protect } = require('../middleware/auth');
 const Task = require('../models/Task');
 const schedulerService = require('../services/schedulerService');
+const sendResponse = require('../utils/ApiResponse');
 
 const router = express.Router();
 const AI_SERVICE_BASE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 
 router.use(protect);
+
+const getDayBounds = (date = new Date()) => {
+  const start = new Date(date);
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+
+  return { start, end };
+};
+
+const getUserTaskQuery = (userId) => ({
+  $or: [
+    { userId },
+    { sharedWith: userId },
+  ],
+});
+
+const getTaskMinutes = (task) => {
+  if (typeof task.timeTracking?.totalTime === 'number' && task.timeTracking.totalTime > 0) {
+    return task.timeTracking.totalTime;
+  }
+
+  if (typeof task.actualDuration === 'number' && task.actualDuration > 0) {
+    return task.actualDuration;
+  }
+
+  if (typeof task.estimatedDuration === 'number' && task.estimatedDuration > 0) {
+    return task.estimatedDuration;
+  }
+
+  return 0;
+};
+
+const buildStandupReportPayload = (completedYesterday, dueToday, overdueTasks) => {
+  const completedMinutes = completedYesterday.reduce((total, task) => total + getTaskMinutes(task), 0);
+  const averageCompletionMinutes = completedYesterday.length > 0
+    ? Math.round(completedMinutes / completedYesterday.length)
+    : 0;
+
+  return {
+    period: 'daily-standup',
+    total_tasks: completedYesterday.length + dueToday.length + overdueTasks.length,
+    completed: completedYesterday.length,
+    overdue: overdueTasks.length,
+    average_completion_minutes: averageCompletionMinutes,
+    tasks_by_day: {
+      yesterday: completedYesterday.length,
+    },
+    tasks_by_period: {
+      due_today: dueToday.length,
+      overdue: overdueTasks.length,
+    },
+  };
+};
+
+router.get('/daily-standup', async (req, res) => {
+  try {
+    const { start: todayStart, end: tomorrowStart } = getDayBounds();
+    const yesterdayStart = new Date(todayStart);
+    yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+
+    const accessQuery = getUserTaskQuery(req.user.id);
+
+    const [completedYesterday, dueToday, overdueTasks] = await Promise.all([
+      Task.find({
+        ...accessQuery,
+        status: 'done',
+        completedAt: {
+          $gte: yesterdayStart,
+          $lt: todayStart,
+        },
+      })
+        .sort({ completedAt: -1 })
+        .select('title status completedAt actualDuration estimatedDuration timeTracking.totalTime deadline priority category projectId'),
+      Task.find({
+        ...accessQuery,
+        status: { $ne: 'done' },
+        deadline: {
+          $gte: todayStart,
+          $lt: tomorrowStart,
+        },
+      })
+        .sort({ deadline: 1 })
+        .select('title status completedAt actualDuration estimatedDuration timeTracking.totalTime deadline priority category projectId'),
+      Task.find({
+        ...accessQuery,
+        status: { $ne: 'done' },
+        deadline: { $lt: todayStart },
+      })
+        .sort({ deadline: 1 })
+        .select('title status completedAt actualDuration estimatedDuration timeTracking.totalTime deadline priority category projectId'),
+    ]);
+
+    const reportPayload = buildStandupReportPayload(completedYesterday, dueToday, overdueTasks);
+
+    const aiResponse = await axios.post(
+      `${AI_SERVICE_BASE_URL}/ai/reports`,
+      reportPayload,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        timeout: 30000,
+      }
+    );
+
+    return sendResponse(res, 200, true, {
+      report: aiResponse.data,
+      standup: {
+        completedYesterday,
+        dueToday,
+        overdueTasks,
+        counts: {
+          completedYesterday: completedYesterday.length,
+          dueToday: dueToday.length,
+          overdue: overdueTasks.length,
+        },
+      },
+    });
+  } catch (error) {
+    if (error.code === 'ECONNABORTED') {
+      return res.status(504).json({
+        success: false,
+        message: 'AI service timed out. Please try again.',
+      });
+    }
+
+    if (error.response) {
+      const payload = error.response.data || {};
+      if (payload && !payload.message && payload.detail) {
+        return res.status(error.response.status).json({
+          success: false,
+          message: typeof payload.detail === 'string' ? payload.detail : 'AI request failed.',
+          detail: payload.detail,
+        });
+      }
+      return res.status(error.response.status).json(payload);
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: 'AI service is unavailable. Please try again shortly.',
+    });
+  }
+});
 
 const proxyEndpoint = (endpoint) => async (req, res) => {
   try {
@@ -230,6 +377,7 @@ router.post('/detect-risks', proxyEndpoint('detect-risks'));
 router.post('/reports', proxyEndpoint('reports'));
 router.post('/project-breakdown', proxyEndpoint('project-breakdown'));
 router.post('/generate-subtasks', proxyEndpoint('generate-subtasks'));
+router.post('/generate-dependencies', proxyEndpoint('generate-dependencies'));
 router.post('/enhance-project', enhanceProject);
 
 module.exports = router;

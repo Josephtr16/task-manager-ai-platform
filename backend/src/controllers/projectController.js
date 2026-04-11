@@ -1,5 +1,6 @@
 const projectService = require('../services/projectService');
 const mockAIService = require('../services/mockAIService');
+const axios = require('axios');
 const asyncHandler = require('../middleware/asyncHandler');
 const sendResponse = require('../utils/ApiResponse');
 
@@ -72,18 +73,32 @@ exports.deleteProject = asyncHandler(async (req, res) => {
 // @access  Private
 exports.generateTaskSuggestions = asyncHandler(async (req, res) => {
   const { title, description, category } = req.body;
-
-  // TODO: Replace with real AI service call to http://localhost:5000/analyze/project
-  // For now, we use the mock service
   const useMockAi = process.env.USE_MOCK_AI !== 'false';
-  
+
   let suggestions;
   if (useMockAi) {
     suggestions = await mockAIService.analyzeProject(title, description, category);
   } else {
-    // This is where real AI integration would go
-    // For now we still fallback to mock if real is not implemented
-    suggestions = await mockAIService.analyzeProject(title, description, category);
+    const aiServiceBaseUrl = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+
+    try {
+      const response = await axios.post(
+        `${aiServiceBaseUrl}/ai/project-breakdown`,
+        { title, description, category },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          timeout: 30000,
+        }
+      );
+
+      suggestions = response.data;
+    } catch (error) {
+      const axiosMessage = error.response?.data?.message || error.message;
+      console.warn(`AI project breakdown failed, falling back to mock: ${axiosMessage}`);
+      suggestions = await mockAIService.analyzeProject(title, description, category);
+    }
   }
 
   sendResponse(res, 200, true, suggestions);

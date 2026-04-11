@@ -1,5 +1,5 @@
 // src/pages/KanbanPage.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { tasksAPI } from '../services/api';
 import { useTheme } from '../context/ThemeContext';
 import { borderRadius } from '../theme';
@@ -17,6 +17,7 @@ const KanbanPage = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [draggedTask, setDraggedTask] = useState(null);
   const [dragOverColumn, setDragOverColumn] = useState(null);
+  const [hasMoreTasks, setHasMoreTasks] = useState(false);
   const isFirstMountRef = React.useRef(true);
 
   const COLUMNS = [
@@ -38,19 +39,15 @@ const KanbanPage = () => {
   const loadTasks = async () => {
     try {
       setLoading(true);
-      let allTasks = [];
-      let page = 1;
-      let hasMore = true;
-
-      while (hasMore) {
-        const response = await tasksAPI.getTasks({ page, limit: 100 });
-        const { tasks, pagination } = response.data;
-        allTasks = [...allTasks, ...tasks];
-        hasMore = pagination?.hasMore ?? false;
-        page += 1;
-      }
-
-      setTasks(allTasks);
+      const response = await tasksAPI.getTasks({ limit: 500 });
+      // The interceptor unwraps one data layer, so parse the endpoint payload from response.data.
+      const tasksPayload = response.data;
+      const fetchedTasks = tasksPayload.tasks || [];
+      const pagination = tasksPayload.pagination || {};
+      
+      setTasks(fetchedTasks);
+      // Track if there are more tasks than shown (>500)
+      setHasMoreTasks(pagination?.hasMore ?? false);
     } catch (error) {
       console.error('Error loading tasks:', error);
     } finally {
@@ -58,25 +55,27 @@ const KanbanPage = () => {
     }
   };
 
-  const getTasksByStatus = (status) =>
-    tasks
-      .filter(task => task.status === status)
-      .sort((a, b) => {
-        const aHasDeadline = Boolean(a.deadline);
-        const bHasDeadline = Boolean(b.deadline);
+  const getTasksByStatus = useMemo(() => {
+    return (status) =>
+      tasks
+        .filter(task => task.status === status)
+        .sort((a, b) => {
+          const aHasDeadline = Boolean(a.deadline);
+          const bHasDeadline = Boolean(b.deadline);
 
-        if (!aHasDeadline && !bHasDeadline) {
-          return new Date(b.createdAt) - new Date(a.createdAt);
-        }
-        if (!aHasDeadline) {
-          return 1;
-        }
-        if (!bHasDeadline) {
-          return -1;
-        }
+          if (!aHasDeadline && !bHasDeadline) {
+            return new Date(b.createdAt) - new Date(a.createdAt);
+          }
+          if (!aHasDeadline) {
+            return 1;
+          }
+          if (!bHasDeadline) {
+            return -1;
+          }
 
-        return new Date(a.deadline) - new Date(b.deadline);
-      });
+          return new Date(a.deadline) - new Date(b.deadline);
+        });
+  }, [tasks]);
 
   const getPriorityColor = (priority) => {
     switch (priority) {
@@ -505,7 +504,7 @@ const KanbanPage = () => {
           <div>
             <h1 style={styles.title}>Kanban Board</h1>
             <p style={styles.subtitle}>
-              {tasks.length} total tasks · Drag and drop to update status
+              {tasks.length} tasks shown {hasMoreTasks && '(more available)'} · Drag and drop to update status
             </p>
           </div>
           <button

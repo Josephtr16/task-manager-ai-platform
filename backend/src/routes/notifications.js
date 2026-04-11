@@ -37,6 +37,27 @@ router.get('/', async (req, res) => {
   }
 });
 
+router.patch('/read-all', async (req, res) => {
+  try {
+    const result = await Notification.updateMany(
+      { userId: req.user.id, read: false },
+      { read: true },
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        modifiedCount: result.modifiedCount || 0,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to mark all notifications as read',
+    });
+  }
+});
+
 router.patch('/:id/read', async (req, res) => {
   try {
     const notification = await Notification.findOneAndUpdate(
@@ -62,27 +83,6 @@ router.patch('/:id/read', async (req, res) => {
     return res.status(500).json({
       success: false,
       message: error.message || 'Failed to mark notification as read',
-    });
-  }
-});
-
-router.patch('/read-all', async (req, res) => {
-  try {
-    const result = await Notification.updateMany(
-      { userId: req.user.id, read: false },
-      { read: true }
-    );
-
-    return res.status(200).json({
-      success: true,
-      data: {
-        modifiedCount: result.modifiedCount || 0,
-      },
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'Failed to mark all notifications as read',
     });
   }
 });

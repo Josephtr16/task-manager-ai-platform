@@ -10,6 +10,46 @@ const schedulerService = require('./schedulerService');
 class TaskService extends BaseService {
     constructor() {
         super(Task);
+        // In-memory debounce map: userId -> timeoutId
+        this.scheduleDebounceMap = {};
+    }
+
+    /**
+     * Debounced scheduler call (5 second delay per userId).
+     * Rapid sequential changes only trigger one reschedule.
+     */
+    async _scheduleUserTasksDebounced(userId) {
+        // Clear any pending timeout for this user
+        if (this.scheduleDebounceMap[userId]) {
+            clearTimeout(this.scheduleDebounceMap[userId]);
+        }
+
+        // Set a new timeout that will call the scheduler after 5 seconds
+        return new Promise((resolve) => {
+            this.scheduleDebounceMap[userId] = setTimeout(async () => {
+                try {
+                    delete this.scheduleDebounceMap[userId];
+                    await schedulerService.scheduleUserTasks(userId);
+                } catch (scheduleErr) {
+                    console.warn('Scheduler failed (non-fatal):', scheduleErr.message);
+                }
+                resolve();
+            }, 5000); // 5 second debounce delay
+        });
+    }
+
+    /**
+     * Check if critical scheduling fields have changed.
+     * These fields affect task ordering and schedulability.
+     */
+    _hasSchedulingFieldsChanged(oldTask, updateData) {
+        const criticalFields = ['deadline', 'estimatedDuration', 'aiPredictedDuration', 'status', 'dependencies'];
+        return criticalFields.some((field) => {
+            if (!(field in updateData)) return false;
+            const oldValue = oldTask[field];
+            const newValue = updateData[field];
+            return JSON.stringify(oldValue) !== JSON.stringify(newValue);
+        });
     }
 
     async getAcceptedSharedProjectIds(userId) {
@@ -199,21 +239,23 @@ class TaskService extends BaseService {
             await projectService.calculateProjectProgress(task.projectId);
         }
 
-        try {
-            await schedulerService.scheduleUserTasks(task.userId);
-        } catch (scheduleErr) {
-            console.warn('Scheduler failed (non-fatal):', scheduleErr.message);
-        }
+        // Debounce scheduler: rapid creates only trigger one reschedule after 5s
+        this._scheduleUserTasksDebounced(task.userId);
+
         return this.model.findById(task._id).populate('projectId', 'title category status');
     }
 
     async updateTask(id, userId, updateData) {
         let task = await this.findById(id);
         let recurringTaskPayload = null;
+        let rollbackGeneratedRecurringTasks = false;
 
         if (!task) {
             throw new AppError('Task not found', 404);
         }
+
+        // Capture old task state to check if scheduler-critical fields changed
+        const oldTask = task.toObject ? task.toObject() : task;
 
         let permission = null;
         const isOwnerTask = task.userId.toString() === userId;
@@ -245,6 +287,21 @@ class TaskService extends BaseService {
         }
 
         const oldProjectId = task.projectId;
+
+        // If a completed task is reverted back to non-complete, roll back generated recurrence side effects.
+        if (oldTask.status === 'done' && updateData.status && updateData.status !== 'done') {
+            rollbackGeneratedRecurringTasks = true;
+
+            // Keep recurrence enabled for recurring tasks so future completions still generate the next occurrence.
+            if (task.recurrence && task.recurrence.frequency) {
+                const existingRecurrence = task.recurrence.toObject ? task.recurrence.toObject() : task.recurrence;
+                updateData.recurrence = {
+                    ...existingRecurrence,
+                    enabled: true,
+                    nextOccurrence: null,
+                };
+            }
+        }
 
         if (updateData.status === 'done' && task.status !== 'done') {
             if (!task.completedAt) {
@@ -337,10 +394,20 @@ class TaskService extends BaseService {
             await this.model.create(recurringTaskPayload);
         }
 
-        try {
-            await schedulerService.scheduleUserTasks(task.userId);
-        } catch (scheduleErr) {
-            console.warn('Scheduler failed (non-fatal):', scheduleErr.message);
+        if (rollbackGeneratedRecurringTasks) {
+            await this.model.deleteMany({
+                userId: task.userId,
+                title: task.title,
+                status: 'todo',
+                completedAt: null,
+                'recurrence.parentTaskId': task._id,
+            });
+        }
+
+        // Only reschedule if critical fields changed (deadline, estimatedDuration, aiPredictedDuration, status, dependencies)
+        // This prevents expensive rescheduling on minor updates (e.g., title, description)
+        if (this._hasSchedulingFieldsChanged(oldTask, updateData)) {
+            this._scheduleUserTasksDebounced(task.userId);
         }
 
         return task;
@@ -373,11 +440,9 @@ class TaskService extends BaseService {
             await projectService.calculateProjectProgress(projectId);
         }
 
-        try {
-            await schedulerService.scheduleUserTasks(task.userId);
-        } catch (scheduleErr) {
-            console.warn('Scheduler failed (non-fatal):', scheduleErr.message);
-        }
+        // Debounce scheduler: rapid deletes only trigger one reschedule after 5s
+        this._scheduleUserTasksDebounced(task.userId);
+
         return true;
     }
 

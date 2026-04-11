@@ -2,10 +2,14 @@
 import React, { useEffect, useState } from 'react';
 import Sidebar from './Sidebar';
 import { useTheme } from '../../context/ThemeContext';
+import { useFocus } from '../../context/FocusContext';
 
-const Layout = ({ children }) => {
+const Layout = ({ children, isFocusMode: isFocusModeProp }) => {
   const { theme } = useTheme();
+  const { isFocusMode: contextFocusMode } = useFocus();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  const isFocusMode = typeof isFocusModeProp === 'boolean' ? isFocusModeProp : contextFocusMode;
 
   useEffect(() => {
     const saved = localStorage.getItem('sidebarCollapsed');
@@ -22,7 +26,7 @@ const Layout = ({ children }) => {
     });
   };
 
-  const sidebarWidth = isSidebarCollapsed ? 64 : 232;
+  const sidebarWidth = isFocusMode ? 0 : (isSidebarCollapsed ? 64 : 232);
 
   const styles = {
     container: {
@@ -42,11 +46,13 @@ const Layout = ({ children }) => {
 
   return (
     <div style={styles.container}>
-      <Sidebar
-        isCollapsed={isSidebarCollapsed}
-        onToggle={handleToggleSidebar}
-        sidebarWidth={sidebarWidth}
-      />
+      {!isFocusMode && (
+        <Sidebar
+          isCollapsed={isSidebarCollapsed}
+          onToggle={handleToggleSidebar}
+          sidebarWidth={sidebarWidth}
+        />
+      )}
       <main style={styles.main}>
         {children}
       </main>

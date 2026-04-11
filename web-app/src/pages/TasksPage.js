@@ -12,30 +12,14 @@ import {
 } from 'react-icons/fa';
 import CustomSelect from '../components/common/CustomSelect';
 import { TaskCardSkeleton } from '../components/common/SkeletonLoader';
+import { readCache, writeCache } from '../utils/sessionCache';
 
 const TASKS_CACHE_KEY = 'taskflow_tasks_page_cache';
-
-const readTasksCache = () => {
-  try {
-    const cached = sessionStorage.getItem(TASKS_CACHE_KEY);
-    return cached ? JSON.parse(cached) : null;
-  } catch {
-    return null;
-  }
-};
-
-const writeTasksCache = (payload) => {
-  try {
-    sessionStorage.setItem(TASKS_CACHE_KEY, JSON.stringify(payload));
-  } catch {
-    // Ignore storage errors.
-  }
-};
 
 const AI_SCORABLE_STATUSES = ['pending', 'todo', 'in-progress'];
 
 const TasksPage = () => {
-  const cachedTasksState = readTasksCache();
+  const cachedTasksState = readCache(TASKS_CACHE_KEY, 60000);
   const { theme } = useTheme();
   const [tasks, setTasks] = useState(cachedTasksState?.tasks || []);
   const [filteredTasks, setFilteredTasks] = useState(cachedTasksState?.filteredTasks || []);
@@ -153,8 +137,10 @@ const TasksPage = () => {
       }
 
       const response = await tasksAPI.getTasks(params);
-      const responseTasks = response.data.tasks || [];
-      const pagination = response.data.pagination || {};
+      // The interceptor already unwraps one data layer, so consume the payload before reading task keys.
+      const tasksPayload = response.data;
+      const responseTasks = tasksPayload.tasks || [];
+      const pagination = tasksPayload.pagination || {};
 
       setTasks(responseTasks);
       setTotalPages(pagination.totalPages || 1);
@@ -200,7 +186,7 @@ const TasksPage = () => {
       }
 
       setHasCache(true);
-      writeTasksCache({
+      writeCache(TASKS_CACHE_KEY, {
         tasks: responseTasks,
         filteredTasks: finalOrderedTasks,
         totalPages: pagination.totalPages || 1,
@@ -257,7 +243,9 @@ const TasksPage = () => {
     }
 
     const response = await tasksAPI.getTasks(params);
-    const responseTasks = response.data.tasks || [];
+    // The interceptor returns the endpoint payload in response.data, so read tasks from that payload.
+    const tasksPayload = response.data;
+    const responseTasks = tasksPayload.tasks || [];
     const displayedTasks = projectFilter === 'project'
       ? responseTasks.filter(task => !!task.projectId)
       : responseTasks;
@@ -323,7 +311,7 @@ const TasksPage = () => {
 
       const sortedTasks = sortTasksByPriorityScore(scoredSnapshotTasks, scoreMap);
       setFilteredTasks(sortedTasks);
-      writeTasksCache({
+      writeCache(TASKS_CACHE_KEY, {
         tasks: scoredSnapshotTasks,
         filteredTasks: sortedTasks,
         totalPages,

@@ -54,6 +54,7 @@ const sharedTokens = {
     md: 'var(--shadow-md)',
     float: 'var(--shadow-lg)',
     glow: 'var(--shadow-glow)',
+    neumorphic: '0 10px 24px rgba(0, 0, 0, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.04)',
   },
 };
 

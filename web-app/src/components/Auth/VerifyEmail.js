@@ -1,5 +1,5 @@
 // src/components/Auth/VerifyEmail.js
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -8,12 +8,18 @@ import AuthLayout from './AuthLayout';
 const VerifyEmail = () => {
     const [status, setStatus] = useState('verifying'); // 'verifying', 'success', 'error'
     const [message, setMessage] = useState('');
+    const hasVerified = useRef(false);
     const { verifyEmail } = useAuth();
     const { theme, isDarkMode } = useTheme();
     const location = useLocation();
     const navigate = useNavigate();
 
     useEffect(() => {
+        if (hasVerified.current) {
+            return;
+        }
+        hasVerified.current = true;
+
         const queryParams = new URLSearchParams(location.search);
         const token = queryParams.get('token');
         const email = queryParams.get('email');
@@ -164,7 +170,7 @@ const getStyles = (theme, isDarkMode) => ({
         textDecoration: 'none',
         marginTop: '16px',
         transition: 'all 0.2s',
-        boxShadow: `0 4px 12px ${theme.primary}66`,
+        boxShadow: '0 4px 12px ' + theme.primary + '66',
     },
 });
 

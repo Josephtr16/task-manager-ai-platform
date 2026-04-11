@@ -42,12 +42,20 @@ const InsightsPage = () => {
         analyticsAPI.getBestDays(),
       ]);
 
-      setProductivityTrend(trendRes.data.data);
-      setCategoryDistribution(categoryRes.data.data.filter(d => d.count > 0));
-      setTimeOfDay(timeRes.data.data);
-      setPerformanceMetrics(metricsRes.data.metrics);
-      setAiInsights(insightsRes.data.insights);
-      setBestDays(bestDaysRes.data.data);
+      // The interceptor unwraps one data level; normalize each payload and avoid chained .data.data access.
+      const trendPayload = trendRes.data;
+      const categoryPayload = categoryRes.data;
+      const timePayload = timeRes.data;
+      const metricsPayload = metricsRes.data;
+      const insightsPayload = insightsRes.data;
+      const bestDaysPayload = bestDaysRes.data;
+
+      setProductivityTrend(Array.isArray(trendPayload) ? trendPayload : (trendPayload.data || []));
+      setCategoryDistribution((Array.isArray(categoryPayload) ? categoryPayload : (categoryPayload.data || [])).filter(d => d.count > 0));
+      setTimeOfDay(Array.isArray(timePayload) ? timePayload : (timePayload.data || []));
+      setPerformanceMetrics(metricsPayload.metrics || metricsPayload || null);
+      setAiInsights(insightsPayload.insights || (Array.isArray(insightsPayload) ? insightsPayload : []));
+      setBestDays(Array.isArray(bestDaysPayload) ? bestDaysPayload : (bestDaysPayload.data || []));
     } catch (error) {
       console.error('Error loading analytics:', error);
       setLoadError(error.response?.data?.message || 'Unable to load analytics right now. Please refresh and try again.');
@@ -60,14 +68,21 @@ const InsightsPage = () => {
     loadAnalytics();
   }, [loadAnalytics]);
 
-  const CATEGORY_COLORS = [
-    theme.primary,
-    theme.success,
-    theme.error,
-    theme.info,
-    theme.warning,
-    theme.copper,
-  ];
+  const getCategoryColor = React.useCallback((category) => {
+    const normalized = String(category || 'other').trim().toLowerCase();
+
+    if (theme.chart && theme.chart[normalized]) {
+      return theme.chart[normalized];
+    }
+
+    // Deterministic fallback color for unknown categories to avoid palette collisions.
+    let hash = 0;
+    for (let i = 0; i < normalized.length; i += 1) {
+      hash = normalized.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const hue = Math.abs(hash) % 360;
+    return `hsl(${hue}, 52%, 52%)`;
+  }, [theme.chart]);
 
   const styles = {
     container: {
@@ -571,7 +586,7 @@ const InsightsPage = () => {
                       {categoryDistribution.map((entry, index) => (
                         <Cell
                           key={entry.category}
-                          fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]}
+                          fill={getCategoryColor(entry.category)}
                         />
                       ))}
                     </Pie>
@@ -593,7 +608,7 @@ const InsightsPage = () => {
                     <div key={entry.category} style={styles.pieLegendItem}>
                       <div style={{
                         ...styles.pieLegendDot,
-                        backgroundColor: CATEGORY_COLORS[index % CATEGORY_COLORS.length],
+                        backgroundColor: getCategoryColor(entry.category),
                       }} />
                       <span style={styles.pieLegendLabel}>{entry.category}</span>
                       <span style={styles.pieLegendValue}>{entry.percentage}%</span>

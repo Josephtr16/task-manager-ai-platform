@@ -22,6 +22,7 @@ const createTaskSchema = Joi.object({
     dependencies: Joi.array().items(Joi.string()),
     order: Joi.number(),
     recurrence: recurrenceSchema,
+    pomodoroCount: Joi.number().min(0).default(0),
     subtasks: Joi.array().items(
         Joi.object({
             title: Joi.string().required(),
@@ -53,7 +54,8 @@ const updateTaskSchema = Joi.object({
     aiPredictedDuration: Joi.number(),
     bestTime: Joi.string(),
     aiInsight: Joi.string(),
-    completedAt: Joi.date()
+    completedAt: Joi.date(),
+    pomodoroCount: Joi.number().min(0)
 });
 
 module.exports = {

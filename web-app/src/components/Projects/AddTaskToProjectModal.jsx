@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FaTimes, FaCalendarAlt, FaTag, FaFlag, FaPlus, FaPaperclip, FaClock } from 'react-icons/fa';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 import { useTheme } from '../../context/ThemeContext';
 import { borderRadius } from '../../theme';
+import { tasksAPI } from '../../services/api';
 import CustomSelect from '../common/CustomSelect';
 
 const AddTaskToProjectModal = ({ isOpen, onClose, onTaskCreated, projectId }) => {
@@ -15,13 +16,14 @@ const AddTaskToProjectModal = ({ isOpen, onClose, onTaskCreated, projectId }) =>
         category: 'Work',
         priority: 'medium',
         estimatedDuration: 60,
+        dependencies: [],
         tags: [],
         subtasks: []
     });
     const [tagInput, setTagInput] = useState('');
     const [newSubtask, setNewSubtask] = useState('');
-
-    if (!isOpen) return null;
+    const [dependencyOptions, setDependencyOptions] = useState([]);
+    const [loadingDependencies, setLoadingDependencies] = useState(false);
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -47,6 +49,7 @@ const AddTaskToProjectModal = ({ isOpen, onClose, onTaskCreated, projectId }) =>
             dueDate: '',
             category: 'Work',
             priority: 'medium',
+            dependencies: [],
             tags: [],
             subtasks: []
         });
@@ -58,6 +61,43 @@ const AddTaskToProjectModal = ({ isOpen, onClose, onTaskCreated, projectId }) =>
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
+
+    const handleDependencyToggle = (taskId) => {
+        setFormData((prev) => {
+            const current = Array.isArray(prev.dependencies) ? prev.dependencies : [];
+            const exists = current.includes(taskId);
+            return {
+                ...prev,
+                dependencies: exists ? current.filter((id) => id !== taskId) : [...current, taskId],
+            };
+        });
+    };
+
+    useEffect(() => {
+        const loadDependencyOptions = async () => {
+            if (!isOpen || !projectId) {
+                return;
+            }
+
+            setLoadingDependencies(true);
+            try {
+                const response = await tasksAPI.getTasks({ projectId, limit: 200 });
+                const list = Array.isArray(response?.data?.tasks)
+                    ? response.data.tasks
+                    : Array.isArray(response?.data)
+                        ? response.data
+                        : [];
+                setDependencyOptions(list.filter((item) => item?._id));
+            } catch (error) {
+                console.error('Failed to load task dependencies:', error);
+                setDependencyOptions([]);
+            } finally {
+                setLoadingDependencies(false);
+            }
+        };
+
+        loadDependencyOptions();
+    }, [isOpen, projectId]);
 
     const handleAddTag = (e) => {
         if (e.key === 'Enter' && tagInput.trim()) {
@@ -316,6 +356,8 @@ const AddTaskToProjectModal = ({ isOpen, onClose, onTaskCreated, projectId }) =>
             transition: 'all 0.2s',
         },
     };
+
+    if (!isOpen) return null;
 
     return (
         <div style={styles.overlay} onClick={() => { resetForm(); onClose(); }}>
@@ -576,6 +618,53 @@ const AddTaskToProjectModal = ({ isOpen, onClose, onTaskCreated, projectId }) =>
                                 </button>
                             ))}
                         </div>
+                    </div>
+
+                    <div style={styles.formGroup}>
+                        <label style={styles.label}><FaTag /> Depends On</label>
+                        {loadingDependencies ? (
+                            <p style={{ ...styles.label, margin: 0, fontWeight: '500' }}>Loading tasks...</p>
+                        ) : dependencyOptions.length === 0 ? (
+                            <p style={{ ...styles.label, margin: 0, fontWeight: '500' }}>No tasks available yet.</p>
+                        ) : (
+                            <div style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '8px',
+                                maxHeight: '170px',
+                                overflowY: 'auto',
+                                paddingRight: '4px',
+                            }}>
+                                {dependencyOptions.map((item) => {
+                                    const checked = Array.isArray(formData.dependencies) && formData.dependencies.includes(item._id);
+                                    return (
+                                        <label
+                                            key={item._id}
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '10px',
+                                                padding: '8px 10px',
+                                                borderRadius: borderRadius.md,
+                                                border: `1px solid ${theme.border}`,
+                                                backgroundColor: checked ? `${theme.primary}15` : theme.bgMain,
+                                                boxShadow: theme.shadows.neumorphic,
+                                                cursor: 'pointer',
+                                                color: theme.textPrimary,
+                                                fontSize: '14px',
+                                            }}
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={checked}
+                                                onChange={() => handleDependencyToggle(item._id)}
+                                            />
+                                            <span>{item.title}</span>
+                                        </label>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
 
                     <div style={styles.formGroup}>

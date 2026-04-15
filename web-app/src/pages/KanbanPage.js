@@ -17,7 +17,7 @@ const KanbanPage = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [draggedTask, setDraggedTask] = useState(null);
   const [dragOverColumn, setDragOverColumn] = useState(null);
-  const [hasMoreTasks, setHasMoreTasks] = useState(false);
+  const [totalTasksCount, setTotalTasksCount] = useState(0);
   const isFirstMountRef = React.useRef(true);
 
   const COLUMNS = [
@@ -39,15 +39,14 @@ const KanbanPage = () => {
   const loadTasks = async () => {
     try {
       setLoading(true);
-      const response = await tasksAPI.getTasks({ limit: 500 });
+      const response = await tasksAPI.getTasks({ limit: 200, status: 'all' });
       // The interceptor unwraps one data layer, so parse the endpoint payload from response.data.
       const tasksPayload = response.data;
       const fetchedTasks = tasksPayload.tasks || [];
       const pagination = tasksPayload.pagination || {};
       
       setTasks(fetchedTasks);
-      // Track if there are more tasks than shown (>500)
-      setHasMoreTasks(pagination?.hasMore ?? false);
+      setTotalTasksCount(typeof pagination.total === 'number' ? pagination.total : fetchedTasks.length);
     } catch (error) {
       console.error('Error loading tasks:', error);
     } finally {
@@ -202,6 +201,18 @@ const KanbanPage = () => {
       justifyContent: 'space-between',
       alignItems: 'flex-start',
       marginBottom: '32px',
+    },
+    warningBanner: {
+      marginTop: '-12px',
+      marginBottom: '20px',
+      padding: '14px 16px',
+      borderRadius: borderRadius.md,
+      backgroundColor: theme.bgCard,
+      border: `1px solid ${theme.warning}55`,
+      boxShadow: theme.shadows.card,
+      color: theme.warning,
+      fontSize: '14px',
+      fontWeight: '600',
     },
     title: {
       fontFamily: '"Syne", sans-serif',
@@ -504,7 +515,7 @@ const KanbanPage = () => {
           <div>
             <h1 style={styles.title}>Kanban Board</h1>
             <p style={styles.subtitle}>
-              {tasks.length} tasks shown {hasMoreTasks && '(more available)'} · Drag and drop to update status
+              {tasks.length} tasks shown {totalTasksCount > tasks.length && '(more available)'} · Drag and drop to update status
             </p>
           </div>
           <button
@@ -514,6 +525,12 @@ const KanbanPage = () => {
             <FaPlus style={{ marginRight: '8px' }} /> New Task
           </button>
         </div>
+
+        {totalTasksCount > 200 && (
+          <div style={styles.warningBanner}>
+            Showing 200 of {totalTasksCount} tasks. Use the Tasks page to see all.
+          </div>
+        )}
 
         {/* Kanban Board */}
         <div style={styles.board}>

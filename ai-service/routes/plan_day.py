@@ -15,6 +15,7 @@ class Task(BaseModel):
     deadline: Optional[str] = None
     estimated_minutes: Optional[int] = 60
     category: Optional[str] = ""
+    dependencies: Optional[List[str]] = []
 
 class PlanDayRequest(BaseModel):
     tasks: List[Task]
@@ -57,15 +58,23 @@ async def plan_day(req: PlanDayRequest):
     now = datetime.now()
     now_minutes = now.hour * 60 + now.minute
     work_end_minutes = _parse_time_to_minutes(req.work_end, 18 * 60)
-    after_work_hours = now_minutes >= work_end_minutes
+    # Treat the final 4 hours of the workday as "tomorrow" planning time.
+    tomorrow_threshold_minutes = max(0, work_end_minutes - (4 * 60))
+    after_work_hours = now_minutes >= tomorrow_threshold_minutes
 
     target_date_obj = (now + timedelta(days=1)).date() if after_work_hours else now.date()
     target_date = target_date_obj.isoformat()
     planning_scope = "tomorrow" if after_work_hours else "today"
 
+    # For now, include all non-done tasks (allow AI to see all available work)
+    schedulable_tasks = [
+        task for task in req.tasks 
+        if task.status != 'done'
+    ]
+    
     prefs = {"work_start": req.work_start, "work_end": req.work_end}
     prompt = (
-        f"Pending tasks:\n{json.dumps([t.dict() for t in req.tasks], indent=2)}\n\n"
+        f"Pending tasks:\n{json.dumps([t.dict() for t in schedulable_tasks], indent=2)}\n\n"
         f"User preferences:\n{json.dumps(prefs)}\n\n"
         f"Create a {planning_scope} plan for date {target_date}. "
         f"Schedule items must fit within working hours ({req.work_start} to {req.work_end})."

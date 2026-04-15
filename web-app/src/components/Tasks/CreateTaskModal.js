@@ -39,7 +39,9 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
   const [isAssistingWrite, setIsAssistingWrite] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notification, setNotification] = useState(null);
+  const [aiDiffSummary, setAiDiffSummary] = useState('');
   const notificationTimerRef = useRef(null);
+  const previousFormDataRef = useRef(null);
   const timePickerRef = useRef(null);
 
   useEffect(() => {
@@ -60,6 +62,7 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
       setTagInput('');
       setNewSubtask('');
       setNotification(null);
+      setAiDiffSummary('');
       setIsAssistingWrite(false);
       setIsSubmitting(false);
     }
@@ -262,6 +265,72 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
     return [...current, ...aiToAppend];
   };
 
+  const cloneFormData = (value) => ({
+    ...value,
+    tags: Array.isArray(value?.tags) ? [...value.tags] : [],
+    subtasks: Array.isArray(value?.subtasks)
+      ? value.subtasks.map((subtask) => ({ ...subtask }))
+      : [],
+  });
+
+  const normalizeList = (items = []) => items
+    .map((item) => String(item || '').trim().toLowerCase())
+    .filter(Boolean)
+    .sort();
+
+  const normalizeSubtaskTitles = (subtasks = []) => normalizeList(
+    subtasks.map((subtask) => subtask?.title || '')
+  );
+
+  const areStringArraysEqual = (a = [], b = []) => {
+    if (a.length !== b.length) {
+      return false;
+    }
+
+    return a.every((value, index) => value === b[index]);
+  };
+
+  const buildAIDiffSummary = (previousState, nextState) => {
+    const changed = [];
+
+    if (String(previousState?.title || '').trim() !== String(nextState?.title || '').trim()) {
+      changed.push('title');
+    }
+
+    if (String(previousState?.description || '').trim() !== String(nextState?.description || '').trim()) {
+      changed.push('description');
+    }
+
+    if (String(previousState?.category || '') !== String(nextState?.category || '')) {
+      changed.push('category');
+    }
+
+    if (Number(previousState?.estimatedDuration || 0) !== Number(nextState?.estimatedDuration || 0)) {
+      changed.push('estimatedDuration');
+    }
+
+    const previousTags = normalizeList(previousState?.tags || []);
+    const nextTags = normalizeList(nextState?.tags || []);
+    if (!areStringArraysEqual(previousTags, nextTags)) {
+      changed.push('tags');
+    }
+
+    const previousSubtasks = normalizeSubtaskTitles(previousState?.subtasks || []);
+    const nextSubtasks = normalizeSubtaskTitles(nextState?.subtasks || []);
+    if (!areStringArraysEqual(previousSubtasks, nextSubtasks)) {
+      const subtaskDelta = nextSubtasks.length - previousSubtasks.length;
+      if (subtaskDelta > 0) {
+        changed.push(`+${subtaskDelta} subtasks`);
+      } else if (subtaskDelta < 0) {
+        changed.push(`${subtaskDelta} subtasks`);
+      } else {
+        changed.push('subtasks');
+      }
+    }
+
+    return changed.length > 0 ? `AI changed: ${changed.join(', ')}` : '';
+  };
+
   const handleAssistWrite = async () => {
     const hasEnoughContext = formData.title.trim().length >= 3 || formData.description.trim().length >= 10;
 
@@ -273,6 +342,8 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
     }
 
     try {
+      const previousFormData = cloneFormData(formData);
+      previousFormDataRef.current = previousFormData;
       setIsAssistingWrite(true);
       const result = await aiService.assistWrite({
         title: formData.title.trim(),
@@ -280,22 +351,37 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
         description: formData.description.trim(),
       });
 
-      setFormData(prev => ({
-        ...prev,
-        title: result?.suggested_title || prev.title,
-        category: toValidCategory(result?.suggested_category, prev.category),
-        description: result?.description || prev.description,
-        estimatedDuration: result?.estimated_duration?.minutes || prev.estimatedDuration,
-        tags: normalizeTags([...(prev.tags || []), ...(result?.suggested_tags || [])]),
-        subtasks: mergeSubtasks(prev.subtasks, result?.subtasks),
-      }));
+      const nextFormData = {
+        ...previousFormData,
+        title: result?.suggested_title || previousFormData.title,
+        category: toValidCategory(result?.suggested_category, previousFormData.category),
+        description: result?.description || previousFormData.description,
+        estimatedDuration: result?.estimated_duration?.minutes || previousFormData.estimatedDuration,
+        tags: normalizeTags([...(previousFormData.tags || []), ...(result?.suggested_tags || [])]),
+        subtasks: mergeSubtasks(previousFormData.subtasks, result?.subtasks),
+      };
 
-      showNotification('AI suggestions added beautifully to your task.', 'success');
+      setFormData(nextFormData);
+
+      const summary = buildAIDiffSummary(previousFormData, nextFormData);
+      setAiDiffSummary(summary);
+
+      showNotification(summary || 'AI suggestions added beautifully to your task.', 'info');
     } catch (error) {
       showNotification(error.response?.data?.message || 'Failed to generate AI task details. Please try again.', 'error');
     } finally {
       setIsAssistingWrite(false);
     }
+  };
+
+  const handleUndoAIAssistChanges = () => {
+    if (!previousFormDataRef.current) {
+      return;
+    }
+
+    setFormData(cloneFormData(previousFormDataRef.current));
+    setAiDiffSummary('');
+    setNotification(null);
   };
 
   const buildSmartDeadlineISO = (selectedDate, useSpecificTime = isSpecificTimeEnabled, explicitTime = selectedDueTime) => {
@@ -965,6 +1051,41 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
       gap: '8px',
       transition: 'all 180ms ease',
     },
+    aiDiffSummary: {
+      marginTop: '10px',
+      borderRadius: '8px',
+      padding: '10px 12px',
+      border: `1px solid ${theme.primary}40`,
+      background: `linear-gradient(120deg, ${theme.primary}16, ${theme.info || '#3b82f6'}10)`,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: '12px',
+      fontSize: '13px',
+      fontWeight: '600',
+      animation: 'fadeSlideIn 0.28s ease-out',
+    },
+    aiDiffSummaryText: {
+      margin: 0,
+      lineHeight: 1.4,
+      color: theme.textPrimary,
+    },
+    aiDiffActions: {
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '8px',
+      flexShrink: 0,
+    },
+    aiDiffActionButton: {
+      border: 'none',
+      background: 'transparent',
+      padding: 0,
+      color: theme.textSecondary,
+      fontSize: '12px',
+      fontWeight: '600',
+      cursor: 'pointer',
+      textDecoration: 'underline',
+    },
     spinner: {
       width: '14px',
       height: '14px',
@@ -1214,6 +1335,28 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
                   {isAssistingWrite ? <span style={styles.spinner} /> : <FaRobot size={12} />}
                 {isAssistingWrite ? 'Generating...' : 'AI Writing Assistant'}
               </button>
+
+              {aiDiffSummary && (
+                <div style={styles.aiDiffSummary} role="status" aria-live="polite">
+                  <p style={styles.aiDiffSummaryText}>{aiDiffSummary}</p>
+                  <div style={styles.aiDiffActions}>
+                    <button
+                      type="button"
+                      style={styles.aiDiffActionButton}
+                      onClick={handleUndoAIAssistChanges}
+                    >
+                      Undo
+                    </button>
+                    <button
+                      type="button"
+                      style={styles.aiDiffActionButton}
+                      onClick={() => setAiDiffSummary('')}
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+              )}
           </div>
 
           <div style={styles.formGroup}>

@@ -117,7 +117,7 @@ class TaskService extends BaseService {
 
         if (status === 'active') {
             query.$and.push({ status: { $ne: 'done' } });
-        } else if (status) {
+        } else if (status && status !== 'all') {
             query.$and.push({ status });
         }
 

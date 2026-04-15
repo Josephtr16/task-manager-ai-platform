@@ -1,5 +1,5 @@
 // src/components/Layout/Sidebar.js
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -30,6 +30,7 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 232
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const prevUnreadCountRef = useRef(0);
 
   const menuItems = [
     { icon: <FaHome />, label: 'Dashboard', path: '/dashboard' },
@@ -63,14 +64,44 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 232
   };
 
   const fetchNotifications = async () => {
+    let latestUnreadCount = prevUnreadCountRef.current;
+
     try {
       const response = await notificationsAPI.getNotifications();
       const list = response.data?.notifications || [];
       const unread = response.data?.unreadCount || 0;
+
+      latestUnreadCount = unread;
+
+      if (unread > prevUnreadCountRef.current) {
+        const firstNewUnread = list.find((item) => !item?.read);
+        const notificationBody = firstNewUnread?.message || 'You have a new unread notification.';
+
+        try {
+          if (typeof window !== 'undefined' && 'Notification' in window) {
+            let permission = Notification.permission;
+
+            if (permission !== 'granted') {
+              permission = await Notification.requestPermission();
+            }
+
+            if (permission === 'granted') {
+              new Notification('TaskFlow AI', { body: notificationBody });
+            }
+          }
+        } catch (notificationError) {
+          console.warn('Failed to show browser notification:', notificationError);
+        }
+
+        // Audio notification beep disabled
+      }
+
       setNotifications(list);
       setUnreadCount(unread);
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
+    } finally {
+      prevUnreadCountRef.current = latestUnreadCount;
     }
   };
 

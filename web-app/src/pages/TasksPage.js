@@ -39,6 +39,7 @@ const TasksPage = () => {
   const [aiPriorityScores, setAiPriorityScores] = useState({});
   const [isDetectingRisks, setIsDetectingRisks] = useState(false);
   const [riskAlerts, setRiskAlerts] = useState([]);
+  const [riskTaskIds, setRiskTaskIds] = useState(() => new Set());
   const [riskOverallStatus, setRiskOverallStatus] = useState(null);
   const [riskSummary, setRiskSummary] = useState('');
   const [notification, setNotification] = useState(null);
@@ -416,8 +417,15 @@ const TasksPage = () => {
       }));
 
       const result = await aiService.detectRisks(payloadTasks);
-      
-      setRiskAlerts(Array.isArray(result?.alerts) ? result.alerts : []);
+
+      const alerts = Array.isArray(result?.alerts) ? result.alerts : [];
+      setRiskAlerts(alerts);
+      const nextRiskTaskIds = new Set(
+        alerts
+          .flatMap((alert) => (Array.isArray(alert?.affected_task_ids) ? alert.affected_task_ids : []))
+          .map((taskId) => String(taskId))
+      );
+      setRiskTaskIds(nextRiskTaskIds);
       setRiskOverallStatus(result?.overall_status || 'ok');
       setRiskSummary(result?.summary || 'Risk analysis complete.');
       showNotification('Risk analysis complete. Review the alerts below.', 'success');
@@ -774,6 +782,12 @@ const TasksPage = () => {
           from { opacity: 0.95; }
           to { opacity: 1; }
         }
+
+        @keyframes warningPulse {
+          0% { opacity: 0.5; }
+          50% { opacity: 1; }
+          100% { opacity: 0.5; }
+        }
         
         .fab:hover {
             transform: scale(1.1) rotate(90deg);
@@ -877,6 +891,7 @@ const TasksPage = () => {
               <button
                 onClick={() => {
                   setRiskAlerts([]);
+                  setRiskTaskIds(new Set());
                   setRiskOverallStatus(null);
                   setRiskSummary('');
                 }}
@@ -1049,6 +1064,7 @@ const TasksPage = () => {
                   getStatusColor={getStatusColor}
                   formatDate={formatDate}
                   completed={task.status === 'done'}
+                  riskTaskIds={riskTaskIds}
                 />
               ))}
             </div>
@@ -1111,9 +1127,11 @@ const TasksPage = () => {
 };
 
 // Task Card Component
-const TaskCard = ({ task, aiPriorityScore, onClick, getPriorityColor, getStatusColor, formatDate, completed }) => {
+const TaskCard = ({ task, aiPriorityScore, onClick, getPriorityColor, getStatusColor, formatDate, completed, riskTaskIds }) => {
   const { theme } = useTheme();
   const deadline = formatDate(task.deadline, completed);
+  const taskId = task?._id != null ? task._id.toString() : String(task?.id || '');
+  const isRiskTask = riskTaskIds?.has(taskId);
 
   const styles = {
     taskCard: {
@@ -1300,6 +1318,26 @@ const TaskCard = ({ task, aiPriorityScore, onClick, getPriorityColor, getStatusC
       alignItems: 'center',
       fontFamily: '"Geist Mono", monospace',
     },
+    warningBorderStrip: {
+      position: 'absolute',
+      left: 0,
+      top: 0,
+      bottom: 0,
+      width: '3px',
+      backgroundColor: theme.warning,
+      opacity: 0.8,
+      animation: 'warningPulse 1.5s ease-in-out infinite',
+      pointerEvents: 'none',
+    },
+    warningBadge: {
+      position: 'absolute',
+      top: '10px',
+      right: '10px',
+      fontSize: '13px',
+      lineHeight: 1,
+      zIndex: 2,
+      pointerEvents: 'none',
+    },
   }
 
   // Modern animated checkbox
@@ -1323,12 +1361,19 @@ const TaskCard = ({ task, aiPriorityScore, onClick, getPriorityColor, getStatusC
       style={{
         ...styles.taskCard,
         opacity: completed ? 0.7 : 1,
-        border: `1px solid ${theme.borderSubtle || theme.border}`,
-        boxShadow: `${theme.shadows.xs}, inset 4px 0 0 ${getPriorityColor(task.priority)}`,
+        border: isRiskTask
+          ? `3px solid ${theme.warning}`
+          : `1px solid ${theme.borderSubtle || theme.border}`,
+        boxShadow: isRiskTask
+          ? theme.shadows.xs
+          : `${theme.shadows.xs}, inset 4px 0 0 ${getPriorityColor(task.priority)}`,
       }}
       onClick={onClick}
       className="task-card"
     >
+      {isRiskTask && <div style={styles.warningBorderStrip} />}
+      {isRiskTask && <span style={styles.warningBadge}>⚠️</span>}
+
       {/* Title Row */}
       <div style={styles.taskCardTop}>
         <div style={styles.taskCardLeft}>

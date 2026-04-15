@@ -22,9 +22,23 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 // Enable CORS
+const defaultOrigins = ['http://localhost:3000', 'http://127.0.0.1:3000'];
+const configuredOrigins = String(process.env.APP_URL || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const allowedOrigins = [...new Set([...defaultOrigins, ...configuredOrigins])];
+
 app.use(
   cors({
-    origin: process.env.APP_URL,
+    origin: (origin, callback) => {
+      // Allow non-browser clients and approved web origins.
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error('Not allowed by CORS'));
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],

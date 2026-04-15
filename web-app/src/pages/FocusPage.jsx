@@ -658,7 +658,7 @@ const FocusPage = () => {
       padding: '32px',
       color: theme.textPrimary,
     }}>
-      <div style={{ maxWidth: '980px', margin: '0 auto' }}>
+      <div style={{ maxWidth: '1120px', margin: '0 auto' }}>
         <h1 style={{ margin: '0 0 8px', fontSize: '34px', fontWeight: '700', letterSpacing: '-0.02em' }}>Focus Mode</h1>
         <p style={{ margin: '0 0 24px', color: theme.textSecondary, fontSize: '14px' }}>
           Pick a task, choose a focus technique, and start a distraction-free session.

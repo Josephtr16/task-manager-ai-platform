@@ -25,6 +25,12 @@ const getLocalDateKey = (date = new Date()) => {
   return `${year}-${month}-${day}`;
 };
 
+const getTomorrowDateKey = () => {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  return getLocalDateKey(tomorrow);
+};
+
 const DailyStandupBanner = ({ report, standupCounts, onDismiss, theme }) => {
   const insights = Array.isArray(report?.insights) ? report.insights : [];
 
@@ -637,6 +643,13 @@ const DailyPlanPanel = ({ plan, tasks, theme, onToggleScheduleItem, onTaskClick,
   const focusTaskLabel = resolvedFocusTask?.title
     || ((plan.focus_task_title && plan.focus_task_title !== plan.focus_task) ? plan.focus_task_title : null)
     || 'Not specified';
+  const todayKey = getLocalDateKey();
+  const tomorrowKey = getTomorrowDateKey();
+  const planDateKey = /^\d{4}-\d{2}-\d{2}$/.test(String(plan?.target_date || ''))
+    ? String(plan.target_date)
+    : todayKey;
+  const planTitle = planDateKey === tomorrowKey ? "Tomorrow's Plan" : "Today's Plan";
+  const planStatusLabel = planDateKey === tomorrowKey ? 'Starts tomorrow' : 'Active today';
 
   const toggleExpandedScheduleItem = (itemKey) => {
     setExpandedScheduleKeys((prev) => (
@@ -776,7 +789,7 @@ const DailyPlanPanel = ({ plan, tasks, theme, onToggleScheduleItem, onTaskClick,
           flexWrap: 'wrap',
         }}>
           <h3 style={{ margin: 0, color: theme.textPrimary, fontSize: '22px', fontWeight: '800', letterSpacing: '-0.01em' }}>
-            Today&apos;s Plan
+            {planTitle}
           </h3>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{
@@ -789,7 +802,7 @@ const DailyPlanPanel = ({ plan, tasks, theme, onToggleScheduleItem, onTaskClick,
               letterSpacing: '0.5px',
               textTransform: 'uppercase',
             }}>
-              Active today
+              {planStatusLabel}
             </span>
             <button
               type="button"
@@ -1174,6 +1187,9 @@ const Dashboard = () => {
   const { user } = useAuth();
   const { theme } = useTheme();
   const [tasks, setTasks] = useState(cachedDashboardState?.tasks || []);
+  const [stats, setStats] = useState(
+    cachedDashboardState?.stats || computeLocalStats(cachedDashboardState?.tasks || [])
+  );
   const [upcomingTasks, setUpcomingTasks] = useState(cachedDashboardState?.upcomingTasks || []);
   const [loading, setLoading] = useState(!cachedDashboardState);
   const [dailyStandup, setDailyStandup] = useState(null);
@@ -1189,7 +1205,9 @@ const Dashboard = () => {
   const [selectedTask, setSelectedTask] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
 
-  const stats = useMemo(() => computeLocalStats(tasks), [tasks]);
+  useEffect(() => {
+    setStats(computeLocalStats(tasks));
+  }, [tasks]);
 
   useEffect(() => {
     if (cachedDashboardState) {
@@ -1201,6 +1219,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     const todayKey = getLocalDateKey();
+    const tomorrowKey = getTomorrowDateKey();
     const rawAcceptedPlan = localStorage.getItem(DAILY_PLAN_STORAGE_KEY);
     if (!rawAcceptedPlan) {
       setAcceptedDailyPlan(null);
@@ -1209,9 +1228,10 @@ const Dashboard = () => {
 
     try {
       const parsed = JSON.parse(rawAcceptedPlan);
-      if (parsed?.date === todayKey && parsed?.plan) {
+      if ((parsed?.date === todayKey || parsed?.date === tomorrowKey) && parsed?.plan) {
         setAcceptedDailyPlan(parsed.plan);
       } else {
+        localStorage.removeItem(DAILY_PLAN_STORAGE_KEY);
         setAcceptedDailyPlan(null);
       }
     } catch {
@@ -1275,6 +1295,9 @@ const Dashboard = () => {
         deadline: task.deadline || null,
         estimated_minutes: task.estimatedDuration || 60,
         category: task.category || '',
+        dependencies: Array.isArray(task.dependencies) 
+          ? task.dependencies.map(dep => String(dep._id || dep)) 
+          : [],
       }));
 
     if (activeTasks.length === 0) {
@@ -1312,10 +1335,9 @@ const Dashboard = () => {
 
   const handleAcceptPlanDay = () => {
     if (planDayResult) {
-      const todayKey = getLocalDateKey();
       const targetDateKey = /^\d{4}-\d{2}-\d{2}$/.test(String(planDayResult?.target_date || ''))
         ? String(planDayResult.target_date)
-        : todayKey;
+        : getLocalDateKey();
       const focusTask = getFocusedPlanTask();
       const acceptedPlan = {
         ...planDayResult,
@@ -1329,7 +1351,7 @@ const Dashboard = () => {
         plan: acceptedPlan,
         acceptedAt: Date.now(),
       }));
-      setAcceptedDailyPlan(targetDateKey === todayKey ? acceptedPlan : null);
+      setAcceptedDailyPlan(acceptedPlan);
     }
     setShowPlanDayModal(false);
   };
@@ -1398,6 +1420,7 @@ const Dashboard = () => {
       const localStats = computeLocalStats(tasksPayload.tasks || []);
 
       setTasks(tasksPayload.tasks || []);
+      setStats(localStats);
       setUpcomingTasks(upcomingPayload.tasks || []);
       writeCache(DASHBOARD_CACHE_KEY, {
         tasks: tasksPayload.tasks || [],
@@ -1429,7 +1452,30 @@ const Dashboard = () => {
       // The interceptor unwraps to the endpoint payload, so support either { task } or direct task shapes.
       const updatedTask = response.data.task || response.data;
 
+      const completedDelta = task.status === 'done' && updatedTask.status !== 'done'
+        ? -1
+        : task.status !== 'done' && updatedTask.status === 'done'
+          ? 1
+          : 0;
+
       setTasks((prev) => prev.map((t) => (t._id === updatedTask._id ? updatedTask : t)));
+      setStats((prev) => {
+        const nextCompleted = Math.max(0, Math.min(prev.total, prev.completed + completedDelta));
+        const completionRate = prev.total > 0 ? (nextCompleted / prev.total) * 100 : 0;
+        const onTimeRate = prev.overdue === 0 ? 100 : Math.max(0, 100 - (prev.overdue / prev.total) * 100);
+        const productivityScore = Math.round((completionRate * 0.6) + (onTimeRate * 0.4));
+
+        return {
+          ...prev,
+          completed: nextCompleted,
+          productivityScore,
+          todo: task.status === 'todo' && updatedTask.status === 'done'
+            ? Math.max(0, prev.todo - 1)
+            : task.status === 'done' && updatedTask.status === 'todo'
+              ? prev.todo + 1
+              : prev.todo,
+        };
+      });
       setUpcomingTasks((prev) => {
         const remaining = prev.filter((task) => task._id !== updatedTask._id);
 
@@ -1447,6 +1493,7 @@ const Dashboard = () => {
       }
     } catch (error) {
       console.error('Error toggling task status from AI recommendations:', error);
+      loadDashboardData();
     }
   };
 
@@ -1735,15 +1782,6 @@ const Dashboard = () => {
         }
       `}</style>
       <div style={styles.container} className="dashboard-container">
-        {dailyStandup?.report && (
-          <DailyStandupBanner
-            report={dailyStandup.report}
-            standupCounts={dailyStandup.standup?.counts}
-            onDismiss={handleDismissDailyStandup}
-            theme={theme}
-          />
-        )}
-
         <PlanDayModal
           isOpen={showPlanDayModal}
           onClose={() => setShowPlanDayModal(false)}
@@ -1771,6 +1809,15 @@ const Dashboard = () => {
             You have <strong style={{ color: theme.textPrimary }}>{stats?.dueToday || 0}</strong> tasks due today and {stats?.dueTomorrow || 0} tomorrow.
           </p>
         </div>
+
+        {dailyStandup?.report && (
+          <DailyStandupBanner
+            report={dailyStandup.report}
+            standupCounts={dailyStandup.standup?.counts}
+            onDismiss={handleDismissDailyStandup}
+            theme={theme}
+          />
+        )}
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '14px', marginBottom: '24px', flexWrap: 'wrap' }}>
           <button

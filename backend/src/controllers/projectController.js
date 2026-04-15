@@ -1,5 +1,4 @@
 const projectService = require('../services/projectService');
-const mockAIService = require('../services/mockAIService');
 const axios = require('axios');
 const asyncHandler = require('../middleware/asyncHandler');
 const sendResponse = require('../utils/ApiResponse');
@@ -73,35 +72,58 @@ exports.deleteProject = asyncHandler(async (req, res) => {
 // @access  Private
 exports.generateTaskSuggestions = asyncHandler(async (req, res) => {
   const { title, description, category } = req.body;
-  const useMockAi = process.env.USE_MOCK_AI !== 'false';
+  const aiServiceBaseUrl = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 
-  let suggestions;
-  if (useMockAi) {
-    suggestions = await mockAIService.analyzeProject(title, description, category);
-  } else {
-    const aiServiceBaseUrl = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+  try {
+    const response = await axios.post(
+      `${aiServiceBaseUrl}/ai/project-breakdown`,
+      {
+        name: title,
+        description,
+        project_type: category?.toLowerCase() || 'general',
+        team: 'solo',
+        scope: 'auto',
+        task_count: 8,
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        timeout: 30000,
+      }
+    );
 
-    try {
-      const response = await axios.post(
-        `${aiServiceBaseUrl}/ai/project-breakdown`,
-        { title, description, category },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          timeout: 30000,
-        }
-      );
+    const aiData = response.data || {};
+    const tasks = Array.isArray(aiData.tasks) ? aiData.tasks : [];
 
-      suggestions = response.data;
-    } catch (error) {
-      const axiosMessage = error.response?.data?.message || error.message;
-      console.warn(`AI project breakdown failed, falling back to mock: ${axiosMessage}`);
-      suggestions = await mockAIService.analyzeProject(title, description, category);
+    const suggestions = {
+      is_large_task: Boolean(aiData.is_large_task),
+      estimated_total_hours: aiData.estimated_total_hours ?? null,
+      reasoning: aiData.reasoning || '',
+      suggested_subtasks: tasks.map((task, index) => ({
+        title: task?.title || task?.name || `Task ${index + 1}`,
+        estimated_minutes: task?.estimated_minutes ?? task?.estimatedDuration ?? null,
+      })),
+    };
+
+    return sendResponse(res, 200, true, suggestions);
+  } catch (error) {
+    if (error.code === 'ECONNABORTED') {
+      return res.status(504).json({
+        success: false,
+        message: 'AI service timed out. Please try again.',
+      });
     }
-  }
 
-  sendResponse(res, 200, true, suggestions);
+    if (error.response) {
+      return res.status(error.response.status).json(error.response.data);
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: 'AI service is unavailable. Please try again shortly.',
+    });
+  }
 });
 
 // @desc    Share project

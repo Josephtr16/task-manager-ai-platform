@@ -1,9 +1,11 @@
 const express = require('express');
 const axios = require('axios');
 const { protect } = require('../middleware/auth');
+const { aiLimiter } = require('../middleware/rateLimiter');
 const Task = require('../models/Task');
 const schedulerService = require('../services/schedulerService');
 const sendResponse = require('../utils/ApiResponse');
+const { sanitizeForAI } = require('../utils/sanitizeAIInput');
 
 const router = express.Router();
 const AI_SERVICE_BASE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
@@ -41,6 +43,28 @@ const getTaskMinutes = (task) => {
   }
 
   return 0;
+};
+
+const SANITIZABLE_FIELDS = new Set(['title', 'description', 'task']);
+
+const sanitizeAIPayloadFields = (value) => {
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeAIPayloadFields(item));
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.entries(value).reduce((accumulator, [key, fieldValue]) => {
+      if (SANITIZABLE_FIELDS.has(key.toLowerCase()) && typeof fieldValue === 'string') {
+        accumulator[key] = sanitizeForAI(fieldValue);
+        return accumulator;
+      }
+
+      accumulator[key] = sanitizeAIPayloadFields(fieldValue);
+      return accumulator;
+    }, {});
+  }
+
+  return value;
 };
 
 const buildStandupReportPayload = (completedYesterday, dueToday, overdueTasks) => {
@@ -158,9 +182,11 @@ router.get('/daily-standup', async (req, res) => {
 
 const proxyEndpoint = (endpoint) => async (req, res) => {
   try {
+    const sanitizedBody = sanitizeAIPayloadFields(req.body || {});
+
     const response = await axios.post(
       `${AI_SERVICE_BASE_URL}/ai/${endpoint}`,
-      req.body,
+      sanitizedBody,
       {
         headers: {
           'Content-Type': 'application/json',
@@ -191,7 +217,7 @@ const proxyEndpoint = (endpoint) => async (req, res) => {
 
 const enhanceProject = async (req, res) => {
   try {
-    const { name, description } = req.body || {};
+    const { name, description } = sanitizeAIPayloadFields(req.body || {});
     const response = await axios.post(
       `${AI_SERVICE_BASE_URL}/ai/enhance-project`,
       { name, description },
@@ -226,9 +252,11 @@ const enhanceProject = async (req, res) => {
 
 const prioritizeTasks = async (req, res) => {
   try {
+    const sanitizedBody = sanitizeAIPayloadFields(req.body || {});
+
     const response = await axios.post(
       `${AI_SERVICE_BASE_URL}/ai/prioritize`,
-      req.body,
+      sanitizedBody,
       {
         headers: {
           'Content-Type': 'application/json',
@@ -275,8 +303,8 @@ const prioritizeTasks = async (req, res) => {
   }
 };
 
-router.post('/assist-write', proxyEndpoint('assist-write'));
-router.post('/prioritize', prioritizeTasks);
+router.post('/assist-write', aiLimiter, proxyEndpoint('assist-write'));
+router.post('/prioritize', aiLimiter, prioritizeTasks);
 
 const predictTime = async (req, res) => {
   let history = [];
@@ -318,8 +346,10 @@ const predictTime = async (req, res) => {
     console.warn(`Failed to load task history for AI prediction: ${dbError.message}`);
   }
 
+  const sanitizedInput = sanitizeAIPayloadFields(req.body || {});
+
   const body = {
-    ...req.body,
+    ...sanitizedInput,
     history,
     accuracy_summary: accuracySummary,
   };
@@ -372,10 +402,10 @@ const predictTime = async (req, res) => {
 };
 
 router.post('/predict-time', predictTime);
-router.post('/plan-day', proxyEndpoint('plan-day'));
+router.post('/plan-day', aiLimiter, proxyEndpoint('plan-day'));
 router.post('/detect-risks', proxyEndpoint('detect-risks'));
 router.post('/reports', proxyEndpoint('reports'));
-router.post('/project-breakdown', proxyEndpoint('project-breakdown'));
+router.post('/project-breakdown', aiLimiter, proxyEndpoint('project-breakdown'));
 router.post('/generate-subtasks', proxyEndpoint('generate-subtasks'));
 router.post('/generate-dependencies', proxyEndpoint('generate-dependencies'));
 router.post('/enhance-project', enhanceProject);

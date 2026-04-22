@@ -16,7 +16,7 @@ class ReportRequest(BaseModel):
     tasks_by_period: Optional[Dict[str, int]] = {}
 
 SYSTEM = """You are a productivity analyst for a task management app.
-Given weekly stats about a user's completed tasks, generate a smart report.
+Given task productivity stats, generate a smart report.
 Return ONLY valid JSON — no explanation, no markdown:
 {
   "summary": "<2-3 sentence overall summary>",
@@ -27,7 +27,31 @@ Return ONLY valid JSON — no explanation, no markdown:
   "recommendation": "<one actionable improvement tip>"
 }"""
 
+
+def _period_brief(period: str) -> str:
+    normalized = (period or '').strip().lower()
+
+    if normalized.startswith('daily'):
+        return (
+            "Period context: DAILY. Use yesterday/today wording only. "
+            "Do not mention week, weekly, month, or monthly in summary, label, insights, or recommendation."
+        )
+
+    if normalized.startswith('weekly'):
+        return "Period context: WEEKLY. Use week/weekly wording where relevant."
+
+    if normalized.startswith('monthly'):
+        return "Period context: MONTHLY. Use month/monthly wording where relevant."
+
+    return "Period context: CUSTOM. Use neutral wording and avoid assuming week/month unless explicit in the input."
+
 @router.post("/reports")
 async def generate_report(req: ReportRequest):
-    result = ask_groq(SYSTEM, f"Generate a productivity report from these weekly stats:\n{json.dumps(req.dict(), indent=2)}")
+    period_hint = _period_brief(req.period)
+    prompt = (
+        f"{period_hint}\n"
+        "Generate a productivity report from these stats:\n"
+        f"{json.dumps(req.dict(), indent=2)}"
+    )
+    result = ask_groq(SYSTEM, prompt)
     return result

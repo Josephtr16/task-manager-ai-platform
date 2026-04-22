@@ -18,8 +18,14 @@ class Task(BaseModel):
 class DetectRisksRequest(BaseModel):
     tasks: List[Task]
 
+
+def _is_completed_status(status: Optional[str]) -> bool:
+    normalized = (status or '').strip().lower()
+    return normalized in {'done', 'completed', 'complete'}
+
 SYSTEM = """You are a workload risk analyzer for a productivity app.
 Scan the list of tasks and identify problems the user might not notice.
+Ignore completed tasks (status done/completed/complete) and assess risks only for active tasks.
 Return ONLY valid JSON — no explanation, no markdown:
 {
   "alerts": [
@@ -36,5 +42,14 @@ Return ONLY valid JSON — no explanation, no markdown:
 
 @router.post("/detect-risks")
 async def detect_risks(req: DetectRisksRequest):
-    result = ask_groq(SYSTEM, f"Analyze these tasks for risks:\n{json.dumps([t.dict() for t in req.tasks], indent=2)}")
+    active_tasks = [t.dict() for t in req.tasks if not _is_completed_status(t.status)]
+
+    if not active_tasks:
+        return {
+            "alerts": [],
+            "overall_status": "ok",
+            "summary": "No active tasks to analyze for risk.",
+        }
+
+    result = ask_groq(SYSTEM, f"Analyze these tasks for risks:\n{json.dumps(active_tasks, indent=2)}")
     return result

@@ -31,6 +31,48 @@ const getTomorrowDateKey = () => {
   return getLocalDateKey(tomorrow);
 };
 
+const parseSuggestedStartToMinutes = (value) => {
+  const text = String(value || '').trim();
+  const hhmmMatch = text.match(/^(\d{1,2}):(\d{2})$/);
+
+  if (hhmmMatch) {
+    const hour = Number(hhmmMatch[1]);
+    const minute = Number(hhmmMatch[2]);
+    if (Number.isInteger(hour) && Number.isInteger(minute) && hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59) {
+      return (hour * 60) + minute;
+    }
+  }
+
+  const ampmMatch = text.match(/^(\d{1,2}):(\d{2})\s*([AaPp][Mm])$/);
+  if (ampmMatch) {
+    let hour = Number(ampmMatch[1]);
+    const minute = Number(ampmMatch[2]);
+    const period = ampmMatch[3].toLowerCase();
+
+    if (!Number.isInteger(hour) || !Number.isInteger(minute) || hour < 1 || hour > 12 || minute < 0 || minute > 59) {
+      return Number.POSITIVE_INFINITY;
+    }
+
+    if (period === 'pm' && hour !== 12) hour += 12;
+    if (period === 'am' && hour === 12) hour = 0;
+    return (hour * 60) + minute;
+  }
+
+  return Number.POSITIVE_INFINITY;
+};
+
+const sortScheduleChronologically = (schedule = []) => {
+  if (!Array.isArray(schedule)) {
+    return [];
+  }
+
+  return [...schedule].sort((a, b) => {
+    const aMinutes = parseSuggestedStartToMinutes(a?.suggested_start);
+    const bMinutes = parseSuggestedStartToMinutes(b?.suggested_start);
+    return aMinutes - bMinutes;
+  });
+};
+
 const DailyStandupBanner = ({ report, standupCounts, onDismiss, theme }) => {
   const insights = Array.isArray(report?.insights) ? report.insights : [];
 
@@ -272,7 +314,7 @@ const PlanDayModal = ({
 
   if (!isOpen) return null;
 
-  const schedule = Array.isArray(result?.schedule) ? result.schedule : [];
+  const schedule = sortScheduleChronologically(Array.isArray(result?.schedule) ? result.schedule : []);
   const focusTaskLabel = focusTask?.title || result?.focus_task || 'No focus task returned';
   const planningScopeLabel = String(result?.planning_scope || 'today').toLowerCase() === 'tomorrow'
     ? 'tomorrow'
@@ -624,7 +666,7 @@ const DailyPlanPanel = ({ plan, tasks, theme, onToggleScheduleItem, onTaskClick,
 
   if (!plan) return null;
 
-  const schedule = Array.isArray(plan.schedule) ? plan.schedule : [];
+  const schedule = sortScheduleChronologically(Array.isArray(plan.schedule) ? plan.schedule : []);
   const completedScheduleKeys = Array.isArray(plan.completedScheduleKeys) ? plan.completedScheduleKeys : [];
 
   const getScheduleItemKey = (item) => String(item.task_id || `${item.title}-${item.suggested_start}`);

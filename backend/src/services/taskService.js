@@ -14,6 +14,36 @@ class TaskService extends BaseService {
         this.scheduleDebounceMap = {};
     }
 
+    _addRecurrenceInterval(date, frequency) {
+        if (frequency === 'daily') {
+            date.setDate(date.getDate() + 1);
+            return;
+        }
+
+        if (frequency === 'monthly') {
+            // Keep existing monthly behavior as 30-day increments.
+            date.setDate(date.getDate() + 30);
+            return;
+        }
+
+        // Default recurrence cadence is weekly.
+        date.setDate(date.getDate() + 7);
+    }
+
+    _computeNextRecurringDeadline(task, frequency, completedAt = new Date()) {
+        const completionDate = new Date(completedAt);
+        const taskDeadline = task.deadline ? new Date(task.deadline) : completionDate;
+
+        const nextDeadline = new Date(taskDeadline);
+        this._addRecurrenceInterval(nextDeadline, frequency);
+
+        while (nextDeadline <= completionDate) {
+            this._addRecurrenceInterval(nextDeadline, frequency);
+        }
+
+        return nextDeadline;
+    }
+
     /**
      * Debounced scheduler call (5 second delay per userId).
      * Rapid sequential changes only trigger one reschedule.
@@ -336,16 +366,7 @@ class TaskService extends BaseService {
 
             if (task.recurrence?.enabled) {
                 const frequency = task.recurrence.frequency || 'weekly';
-                const baseDeadline = task.deadline ? new Date(task.deadline) : new Date();
-                const nextDeadline = new Date(baseDeadline);
-
-                if (frequency === 'daily') {
-                    nextDeadline.setDate(nextDeadline.getDate() + 1);
-                } else if (frequency === 'monthly') {
-                    nextDeadline.setDate(nextDeadline.getDate() + 30);
-                } else {
-                    nextDeadline.setDate(nextDeadline.getDate() + 7);
-                }
+                const nextDeadline = this._computeNextRecurringDeadline(task, frequency, updateData.completedAt || new Date());
 
                 recurringTaskPayload = {
                     userId: task.userId,

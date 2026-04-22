@@ -398,15 +398,20 @@ const TasksPage = () => {
   };
 
   const handleDetectRisks = async () => {
-    if (filteredTasks.length === 0) {
-      showNotification('No tasks available for risk detection.', 'warning');
+    const riskEligibleTasks = filteredTasks.filter((task) => {
+      const normalizedStatus = String(task?.status || '').toLowerCase();
+      return !['done', 'completed', 'complete'].includes(normalizedStatus);
+    });
+
+    if (riskEligibleTasks.length === 0) {
+      showNotification('No active tasks available for risk detection.', 'warning');
       return;
     }
 
     try {
       setIsDetectingRisks(true);
 
-      const payloadTasks = filteredTasks.map(task => ({
+      const payloadTasks = riskEligibleTasks.map(task => ({
         id: String(task._id || task.id),
         title: task.title,
         priority: task.priority,

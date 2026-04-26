@@ -29,11 +29,31 @@ const configuredOrigins = String(process.env.APP_URL || '')
   .filter(Boolean);
 const allowedOrigins = [...new Set([...defaultOrigins, ...configuredOrigins])];
 
+const isLocalDevOrigin = (origin) => {
+  if (!origin) {
+    return false;
+  }
+
+  try {
+    const { protocol, hostname } = new URL(origin);
+    const isHttp = protocol === 'http:' || protocol === 'https:';
+    const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1';
+    return isHttp && isLocalHost;
+  } catch {
+    return false;
+  }
+};
+
 app.use(
   cors({
     origin: (origin, callback) => {
       // Allow non-browser clients and approved web origins.
       if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      // Flutter web and other local dev servers commonly use dynamic localhost ports.
+      if (process.env.NODE_ENV !== 'production' && isLocalDevOrigin(origin)) {
         return callback(null, true);
       }
 

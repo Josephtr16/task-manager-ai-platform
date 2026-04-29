@@ -18,15 +18,13 @@ class QuickStatsSection extends StatelessWidget {
     final inProgressCount = (stats['inProgress'] ?? 0) as num;
     final overdueCount = (stats['overdue'] ?? 0) as num;
 
-    return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 180, maxWidth: 200),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: tokens.bgSurface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: tokens.borderSubtle),
-        ),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: tokens.bgSurface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: tokens.borderSubtle),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
@@ -44,31 +42,51 @@ class QuickStatsSection extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
-            crossAxisSpacing: 8,
-            mainAxisSpacing: 8,
-            childAspectRatio: 1.2,
+          Row(
             children: <Widget>[
-              _statCell('🔥', urgentCount.toInt(), 'Urgent',
-                  AppSemanticColors.rose.withValues(alpha: 0.1), AppSemanticColors.rose),
-              _statCell('⚡', highCount.toInt(), 'High',
-                  AppSemanticColors.primary.withValues(alpha: 0.1), AppSemanticColors.primary),
-              _statCell('🔄', inProgressCount.toInt(), 'Active',
-                  AppSemanticColors.sky.withValues(alpha: 0.1), AppSemanticColors.sky),
-              _statCell('⚠️', overdueCount.toInt(), 'Overdue',
-                  AppSemanticColors.rose.withValues(alpha: 0.08), AppSemanticColors.rose),
+              Expanded(
+                child: _statCell(
+                  urgentCount.toInt(),
+                  'Urgent',
+                  AppSemanticColors.rose.withValues(alpha: 0.1),
+                  AppSemanticColors.rose,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _statCell(
+                  highCount.toInt(),
+                  'High',
+                  AppSemanticColors.primary.withValues(alpha: 0.1),
+                  AppSemanticColors.primary,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _statCell(
+                  inProgressCount.toInt(),
+                  'Active',
+                  AppSemanticColors.sky.withValues(alpha: 0.1),
+                  AppSemanticColors.sky,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _statCell(
+                  overdueCount.toInt(),
+                  'Overdue',
+                  AppSemanticColors.rose.withValues(alpha: 0.08),
+                  AppSemanticColors.rose,
+                ),
+              ),
             ],
           ),
         ],
       ),
-      ),
     );
   }
 
-  Widget _statCell(String emoji, int count, String label, Color bg, Color textColor) {
+  Widget _statCell(int count, String label, Color bg, Color textColor) {
     return Container(
       decoration: BoxDecoration(
         color: bg,
@@ -77,7 +95,6 @@ class QuickStatsSection extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
-          Text(emoji, style: const TextStyle(fontSize: 16)),
           Text(
             '$count',
             style: GoogleFonts.inter(

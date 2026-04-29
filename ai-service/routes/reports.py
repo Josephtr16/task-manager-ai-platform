@@ -17,10 +17,11 @@ class ReportRequest(BaseModel):
 
 SYSTEM = """You are a productivity analyst for a task management app.
 Given task productivity stats, generate a smart report.
+IMPORTANT FOR DAILY REPORTS: The 'completed' count refers to YESTERDAY's completions, 'due_today' is TODAY's tasks.
 Return ONLY valid JSON — no explanation, no markdown:
 {
-  "summary": "<2-3 sentence overall summary>",
-  "completion_rate_label": "<e.g. 'Great week — 85% completion'>",
+  "summary": "<2-3 sentence overall summary. For daily: praise yesterday's work, then address today's tasks>",
+  "completion_rate_label": "<e.g. 'Great day — 67% completion' (refer to yesterday for daily period)>",
   "insights": ["<insight 1>", "<insight 2>", "<insight 3>"],
   "best_day": "<day of week with most completions>",
   "best_period": "<morning | afternoon | evening>",
@@ -33,7 +34,9 @@ def _period_brief(period: str) -> str:
 
     if normalized.startswith('daily'):
         return (
-            "Period context: DAILY. Use yesterday/today wording only. "
+            "Period context: DAILY STANDUP. The 'completed' stat represents yesterday's completed tasks. "
+            "In your summary, praise yesterday's accomplishments FIRST, then preview today's tasks. "
+            "Use 'yesterday' and 'today' wording. "
             "Do not mention week, weekly, month, or monthly in summary, label, insights, or recommendation."
         )
 

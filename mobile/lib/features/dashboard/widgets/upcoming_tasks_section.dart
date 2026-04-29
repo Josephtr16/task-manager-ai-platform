@@ -13,6 +13,8 @@ class UpcomingTasksSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = Theme.of(context).extension<AppColorTokens>()!;
+    final visibleTasks = tasks.take(5).toList(growable: false);
+    final visibleCount = visibleTasks.length;
 
     return ConstrainedBox(
       constraints: const BoxConstraints(minWidth: 280, maxWidth: 300),
@@ -63,7 +65,7 @@ class UpcomingTasksSection extends StatelessWidget {
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
-                    '${tasks.length}',
+                    '$visibleCount',
                     style: AppTextStyles.labelSmall.copyWith(
                       color: AppSemanticColors.primary,
                     ),
@@ -78,10 +80,10 @@ class UpcomingTasksSection extends StatelessWidget {
                 style: AppTextStyles.bodyMedium.copyWith(color: tokens.textSecondary),
               )
             else
-              ...tasks.take(3).toList().asMap().entries.map(
+              ...visibleTasks.asMap().entries.map(
                     (entry) => _UpcomingItem(
                       task: entry.value,
-                      isLast: entry.key == tasks.take(3).length - 1,
+                      isLast: entry.key == visibleTasks.length - 1,
                     ),
                   ),
           ],
@@ -98,16 +100,7 @@ class _UpcomingItem extends StatelessWidget {
   final bool isLast;
 
   Color _priorityColor(String value) {
-    switch (value.toLowerCase()) {
-      case 'urgent':
-        return AppSemanticColors.rose;
-      case 'high':
-        return AppSemanticColors.primary;
-      case 'low':
-        return AppSemanticColors.sage;
-      default:
-        return AppSemanticColors.sky;
-    }
+    return AppPriorityColors.colorFor(value);
   }
 
   @override
@@ -115,10 +108,12 @@ class _UpcomingItem extends StatelessWidget {
     final tokens = Theme.of(context).extension<AppColorTokens>()!;
     final title = '${task['title'] ?? 'Task'}';
     final priority = '${task['priority'] ?? 'medium'}';
+    final category = '${task['category'] ?? task['type'] ?? 'General'}';
     final subtasks = task['subtasks'] as List? ?? const <dynamic>[];
     final completedSubtasks =
         subtasks.where((s) => (s as Map)['completed'] == true).length;
     final deadline = DateTime.tryParse('${task['deadline'] ?? ''}');
+    final showSubtaskChip = subtasks.isNotEmpty;
 
     return Column(
       children: <Widget>[
@@ -159,16 +154,29 @@ class _UpcomingItem extends StatelessWidget {
                       spacing: 6,
                       runSpacing: 6,
                       children: <Widget>[
+                        _chip(
+                          context,
+                          priority.toUpperCase(),
+                          _priorityColor(priority).withValues(alpha: 0.12),
+                          _priorityColor(priority),
+                        ),
+                        _chip(
+                          context,
+                          category,
+                          AppSemanticColors.primary.withValues(alpha: 0.1),
+                          AppSemanticColors.primary,
+                        ),
                         _chip(context,
                             deadline == null ? 'No date' : DateFormat('MMM d').format(deadline),
                             tokens.bgRaised, tokens.textSecondary),
-                        _chip(
-                          context,
-                          '$completedSubtasks/${subtasks.length}',
-                          AppSemanticColors.sage.withValues(alpha: 0.12),
-                          AppSemanticColors.sage,
-                          icon: Icons.check_circle_outline,
-                        ),
+                        if (showSubtaskChip)
+                          _chip(
+                            context,
+                            '$completedSubtasks/${subtasks.length}',
+                            AppSemanticColors.sage.withValues(alpha: 0.12),
+                            AppSemanticColors.sage,
+                            icon: Icons.check_circle_outline,
+                          ),
                       ],
                     ),
                   ],

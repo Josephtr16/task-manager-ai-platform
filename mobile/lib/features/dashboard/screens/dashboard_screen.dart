@@ -45,9 +45,9 @@ class DashboardScreen extends ConsumerWidget {
                 physics: const AlwaysScrollableScrollPhysics(),
                 slivers: <Widget>[
                   SliverAppBar(
-                    pinned: false,
-                    floating: true,
-                    snap: true,
+                    pinned: true,
+                    floating: false,
+                    snap: false,
                     elevation: 0,
                     backgroundColor: Colors.transparent,
                     automaticallyImplyLeading: false,
@@ -66,16 +66,16 @@ class DashboardScreen extends ConsumerWidget {
                                     text: '${_greeting()}, ',
                                     style: AppTextStyles.greetingItalic.copyWith(
                                       color: tokens.textSecondary,
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.w300,
+                                      fontSize: 30,
+                                      fontWeight: FontWeight.w400,
                                     ),
                                   ),
                                   TextSpan(
                                     text: firstName,
                                     style: AppTextStyles.greetingName.copyWith(
                                       color: tokens.textPrimary,
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.w600,
+                                      fontSize: 32,
+                                      fontWeight: FontWeight.w700,
                                     ),
                                   ),
                                 ],
@@ -139,7 +139,7 @@ class DashboardScreen extends ConsumerWidget {
                         physics: const NeverScrollableScrollPhysics(),
                         crossAxisSpacing: 12,
                         mainAxisSpacing: 12,
-                        childAspectRatio: 1.32,
+                        childAspectRatio: 1.08,
                         children: <Widget>[
                           StatsCard(
                             label: 'Due Today',
@@ -200,7 +200,10 @@ class DashboardScreen extends ConsumerWidget {
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: DailyPlanSection(
                             plan: data.dailyPlan,
-                            onGenerate: () {},
+                            onGenerate: () => _showPlanConfirmationDialog(context, ref),
+                            onDelete: data.dailyPlan == null
+                                ? null
+                                : () => _showDeletePlanConfirmationDialog(context, ref),
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -209,16 +212,14 @@ class DashboardScreen extends ConsumerWidget {
                           child: AiRecommendsSection(tasks: data.tasks),
                         ),
                         const SizedBox(height: 16),
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
+                        Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Row(
-                            children: <Widget>[
-                              UpcomingTasksSection(tasks: data.upcomingTasks),
-                              const SizedBox(width: 12),
-                              QuickStatsSection(stats: data.stats),
-                            ],
-                          ),
+                          child: UpcomingTasksSection(tasks: data.upcomingTasks),
+                        ),
+                        const SizedBox(height: 16),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: QuickStatsSection(stats: data.stats),
                         ),
                         const SizedBox(height: 120),
                       ],
@@ -249,7 +250,7 @@ class DashboardScreen extends ConsumerWidget {
                       crossAxisCount: 2,
                       crossAxisSpacing: 12,
                       mainAxisSpacing: 12,
-                      childAspectRatio: 1.32,
+                      childAspectRatio: 1.08,
                       children: const <Widget>[
                         StatsCardSkeleton(),
                         StatsCardSkeleton(),
@@ -271,6 +272,303 @@ class DashboardScreen extends ConsumerWidget {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+Future<void> _showPlanConfirmationDialog(
+  BuildContext context,
+  WidgetRef ref,
+) async {
+  TimeOfDay startTime = const TimeOfDay(hour: 9, minute: 0);
+  TimeOfDay endTime = const TimeOfDay(hour: 18, minute: 0);
+  bool isLoading = false;
+
+  Future<void> pickTime({required bool isStart}) async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: isStart ? startTime : endTime,
+    );
+    if (picked == null) return;
+    if (isStart) {
+      startTime = picked;
+    } else {
+      endTime = picked;
+    }
+  }
+
+  String formatTime(TimeOfDay time) {
+    final hour = time.hour.toString().padLeft(2, '0');
+    final minute = time.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+
+  await showDialog<void>(
+    context: context,
+    barrierDismissible: !isLoading,
+    builder: (dialogContext) {
+      final tokens = Theme.of(dialogContext).extension<AppColorTokens>()!;
+      return StatefulBuilder(
+        builder: (context, setState) {
+          Future<void> submitPlan() async {
+            setState(() {
+              isLoading = true;
+            });
+            try {
+              await ref.read(dashboardProvider.notifier).generateDailyPlan(
+                    workStart: formatTime(startTime),
+                    workEnd: formatTime(endTime),
+                  );
+              if (!dialogContext.mounted) return;
+              Navigator.of(dialogContext).pop();
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Today\'s plan generated.'),
+                ),
+              );
+            } catch (error) {
+              if (!dialogContext.mounted) return;
+              setState(() {
+                isLoading = false;
+              });
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    error.toString().replaceFirst('Exception: ', ''),
+                  ),
+                ),
+              );
+            }
+          }
+
+          return AlertDialog(
+            backgroundColor: tokens.bgSurface,
+            surfaceTintColor: Colors.transparent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+              side: BorderSide(color: tokens.borderMedium),
+            ),
+            titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+            contentPadding: const EdgeInsets.fromLTRB(24, 14, 24, 0),
+            actionsPadding: const EdgeInsets.fromLTRB(24, 18, 24, 24),
+            title: Text(
+              'Build today\'s schedule',
+              style: AppTextStyles.titleLarge.copyWith(
+                color: tokens.textPrimary,
+              ),
+            ),
+            content: SizedBox(
+              width: 420,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    'Use your open tasks and working hours to generate a focused plan for the day.',
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: tokens.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 22),
+                  Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: _TimeField(
+                          label: 'Start time',
+                          value: MaterialLocalizations.of(context).formatTimeOfDay(startTime),
+                          onTap: isLoading ? null : () async => pickTime(isStart: true),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _TimeField(
+                          label: 'End time',
+                          value: MaterialLocalizations.of(context).formatTimeOfDay(endTime),
+                          onTap: isLoading ? null : () async => pickTime(isStart: false),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            actions: <Widget>[
+              TextButton(
+                onPressed: isLoading ? null : () => Navigator.of(dialogContext).pop(),
+                child: Text(
+                  'Cancel',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: tokens.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              FilledButton(
+                onPressed: isLoading ? null : submitPlan,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppSemanticColors.primary,
+                  foregroundColor: tokens.bgSurface,
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: isLoading
+                    ? SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(tokens.bgSurface),
+                        ),
+                      )
+                    : Text(
+                        'Generate plan',
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: tokens.bgSurface,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+}
+
+Future<void> _showDeletePlanConfirmationDialog(
+  BuildContext context,
+  WidgetRef ref,
+) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) {
+      final tokens = Theme.of(dialogContext).extension<AppColorTokens>()!;
+      return AlertDialog(
+        backgroundColor: tokens.bgSurface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: BorderSide(color: tokens.borderMedium),
+        ),
+        titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+        contentPadding: const EdgeInsets.fromLTRB(24, 14, 24, 0),
+        actionsPadding: const EdgeInsets.fromLTRB(24, 18, 24, 24),
+        title: Text(
+          'Delete today\'s plan?',
+          style: AppTextStyles.titleLarge.copyWith(
+            color: tokens.textPrimary,
+          ),
+        ),
+        content: Text(
+          'This will remove the current plan from the dashboard so you can generate a fresh one.',
+          style: AppTextStyles.bodyMedium.copyWith(
+            color: tokens.textSecondary,
+          ),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(
+              'Cancel',
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: tokens.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppSemanticColors.rose,
+              foregroundColor: tokens.bgSurface,
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            child: Text(
+              'Delete plan',
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: tokens.bgSurface,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      );
+    },
+  );
+
+  if (confirmed != true || !context.mounted) return;
+
+  await ref.read(dashboardProvider.notifier).clearDailyPlan();
+  if (!context.mounted) return;
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(content: Text('Today\'s plan deleted.')),
+  );
+}
+
+class _TimeField extends StatelessWidget {
+  const _TimeField({
+    required this.label,
+    required this.value,
+    required this.onTap,
+  });
+
+  final String label;
+  final String value;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = Theme.of(context).extension<AppColorTokens>()!;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: tokens.bgRaised,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: tokens.borderMedium),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              label,
+              style: AppTextStyles.labelSmall.copyWith(
+                color: tokens.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: Text(
+                    value,
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: tokens.textPrimary,
+                    ),
+                  ),
+                ),
+                Icon(
+                  Icons.schedule_rounded,
+                  size: 18,
+                  color: tokens.textMuted,
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -322,7 +620,7 @@ class _BusiestDayChart extends StatelessWidget {
     final maxY = (capped.reduce((a, b) => a > b ? a : b) + 1).toDouble();
 
     return SizedBox(
-      height: 28,
+      height: 22,
       child: BarChart(
         BarChartData(
           maxY: maxY,
@@ -336,8 +634,8 @@ class _BusiestDayChart extends StatelessWidget {
               barRods: <BarChartRodData>[
                 BarChartRodData(
                   toY: capped[i],
-                  width: 8,
-                  borderRadius: BorderRadius.circular(6),
+                    width: 6,
+                    borderRadius: BorderRadius.circular(4),
                   color: AppSemanticColors.sky,
                 ),
               ],

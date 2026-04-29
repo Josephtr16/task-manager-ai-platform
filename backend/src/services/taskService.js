@@ -90,7 +90,7 @@ class TaskService extends BaseService {
         return projects.map((project) => project._id);
     }
 
-    async getTaskAccessOrConditions(userId) {
+    async getTaskAccessOrConditions(userId, { includeArchived = false } = {}) {
         const acceptedSharedProjectIds = await this.getAcceptedSharedProjectIds(userId);
         const conditions = [{ userId }, { sharedWith: userId }];
 
@@ -98,7 +98,14 @@ class TaskService extends BaseService {
             conditions.push({ projectId: { $in: acceptedSharedProjectIds } });
         }
 
-        return conditions;
+        if (includeArchived) {
+            return conditions;
+        }
+
+        return conditions.map((condition) => ({
+            ...condition,
+            archivedAt: null,
+        }));
     }
 
     async getProjectPermissionForUser(projectId, userId) {
@@ -321,6 +328,8 @@ class TaskService extends BaseService {
         // If a completed task is reverted back to non-complete, roll back generated recurrence side effects.
         if (oldTask.status === 'done' && updateData.status && updateData.status !== 'done') {
             rollbackGeneratedRecurringTasks = true;
+            updateData.completedAt = null;
+            updateData.archivedAt = null;
 
             // Keep recurrence enabled for recurring tasks so future completions still generate the next occurrence.
             if (task.recurrence && task.recurrence.frequency) {
@@ -337,6 +346,7 @@ class TaskService extends BaseService {
             if (!task.completedAt) {
                 updateData.completedAt = Date.now();
             }
+            updateData.archivedAt = null;
 
             const actualMinutes = task.timeTracking?.totalTime || task.estimatedDuration;
             const predictedMinutes = task.aiPredictedDuration;
@@ -465,6 +475,24 @@ class TaskService extends BaseService {
         this._scheduleUserTasksDebounced(task.userId);
 
         return true;
+    }
+
+    async archiveCompletedTasks(retentionDays = 7) {
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
+
+        return this.model.updateMany(
+            {
+                status: 'done',
+                completedAt: { $lte: cutoffDate },
+                archivedAt: null,
+            },
+            {
+                $set: {
+                    archivedAt: new Date(),
+                },
+            }
+        );
     }
 
     async addAttachment(id, userId, file) {
@@ -614,6 +642,7 @@ class TaskService extends BaseService {
             $or: accessOr,
             status: { $ne: 'done' },
             deadline: { $gte: now },
+            archivedAt: null,
         })
             .populate('projectId', 'title category')
             .sort({ deadline: 1 })
@@ -621,7 +650,7 @@ class TaskService extends BaseService {
     }
 
     async getStatistics(userId) {
-        const accessOr = await this.getTaskAccessOrConditions(userId);
+        const accessOr = await this.getTaskAccessOrConditions(userId, { includeArchived: true });
         const tasks = await this.model.find({ $or: accessOr });
 
         const now = new Date();

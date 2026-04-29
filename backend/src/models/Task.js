@@ -129,6 +129,10 @@ const taskSchema = new mongoose.Schema({
     type: Date,
     default: null,
   },
+  archivedAt: {
+    type: Date,
+    default: null,
+  },
   actualDuration: {
     type: Number, // in minutes
     default: null,
@@ -207,6 +211,7 @@ taskSchema.pre('save', function (next) {
 taskSchema.index({ userId: 1 });
 taskSchema.index({ userId: 1, status: 1 });
 taskSchema.index({ userId: 1, deadline: 1 });
+taskSchema.index({ userId: 1, status: 1, completedAt: 1, archivedAt: 1 });
 taskSchema.index({ projectId: 1 });
 taskSchema.index({ userId: 1, createdAt: -1 });
 taskSchema.index({ userId: 1, category: 1 });

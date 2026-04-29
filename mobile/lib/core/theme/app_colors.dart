@@ -1,5 +1,38 @@
 import 'package:flutter/material.dart';
 
+class AppColors {
+  // Dark mode
+  static const darkBgMain = Color(0xFF212529);
+  static const darkBgElevated = Color(0xFF1A1D21);
+  static const darkBgCard = Color(0xFF212529);
+  static const darkTextPrimary = Color(0xFFF3F4F6);
+  static const darkTextSecondary = Color(0xFF9CA3AF);
+  static const darkTextMuted = Color(0xFF6B7280);
+  static const darkBorder = Color(0x0DFFFFFF);
+
+  // Light mode
+  static const lightBgMain = Color(0xFFF3F4F6);
+  static const lightBgElevated = Color(0xFFE9EAEC);
+  static const lightBgCard = Color(0xFFF3F4F6);
+  static const lightTextPrimary = Color(0xFF1F2937);
+  static const lightTextSecondary = Color(0xFF4B5563);
+  static const lightTextMuted = Color(0xFF9CA3AF);
+  static const lightBorder = Color(0x0D000000);
+
+  // Shared accents
+  static const primary = Color(0xFF6366F1);
+  static const primaryDark = Color(0xFF4F46E5);
+  static const aiPurple = Color(0xFF8B7FFF);
+  static const success = Color(0xFF10B981);
+  static const warning = Color(0xFFF59E0B);
+  static const error = Color(0xFFEF4444);
+  static const info = Color(0xFF3B82F6);
+  static const urgent = Color(0xFFEF4444);
+  static const high = Color(0xFFFF6B6B);
+  static const medium = Color(0xFFF59E0B);
+  static const low = Color(0xFF10B981);
+}
+
 class AppColorsDark {
   static const bgBase = Color(0xFF0A0908);
   static const bgSurface = Color(0xFF121110);
@@ -52,4 +85,24 @@ class AppSemanticColors {
   static const sky = AppColorsShared.sky;
   static const priorityHigh = AppColorsShared.accent;
   static const priorityLow = AppColorsShared.sage;
+}
+
+class AppPriorityColors {
+  static Color colorFor(String? priority) {
+    switch ((priority ?? '').toLowerCase()) {
+      case 'urgent':
+        return AppSemanticColors.rose;
+      case 'high':
+        return AppSemanticColors.primary;
+      case 'low':
+        return AppSemanticColors.sage;
+      case 'medium':
+      default:
+        return AppSemanticColors.sky;
+    }
+  }
+
+  static Color backgroundFor(String? priority, {double alpha = 0.12}) {
+    return colorFor(priority).withValues(alpha: alpha);
+  }
 }

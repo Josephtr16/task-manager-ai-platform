@@ -23,13 +23,7 @@ class TfBadge extends StatelessWidget {
   final TfBadgeSize size;
 
   factory TfBadge.priority(String priority) {
-    final colors = {
-      'urgent': AppColorsShared.rose,
-      'high': AppColorsShared.accentDark,
-      'medium': AppColorsShared.sky,
-      'low': AppColorsShared.sage,
-    };
-    final color = colors[priority.toLowerCase()] ?? AppColorsShared.sky;
+    final color = AppPriorityColors.colorFor(priority);
     return TfBadge(
       label: priority.toUpperCase(),
       color: color,

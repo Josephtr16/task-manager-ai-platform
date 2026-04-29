@@ -5,7 +5,8 @@ String formatRelativeDate(DateTime date, {bool isCompleted = false}) {
 
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
-  final target = DateTime(date.year, date.month, date.day);
+  final localDate = date.toLocal();
+  final target = DateTime(localDate.year, localDate.month, localDate.day);
 
   if (target.isBefore(today)) return 'Overdue';
   if (target == today) return 'Today';
@@ -16,7 +17,7 @@ String formatRelativeDate(DateTime date, {bool isCompleted = false}) {
   final diff = target.difference(today).inDays;
   if (diff <= 7) return 'in $diff days';
 
-  return DateFormat('MMM d').format(date);
+  return DateFormat('MMM d').format(localDate);
 }
 
 String formatTimeAgo(DateTime date) {

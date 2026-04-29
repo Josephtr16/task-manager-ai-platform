@@ -1260,26 +1260,35 @@ const Dashboard = () => {
   }, []);
 
   useEffect(() => {
-    const todayKey = getLocalDateKey();
-    const tomorrowKey = getTomorrowDateKey();
-    const rawAcceptedPlan = localStorage.getItem(DAILY_PLAN_STORAGE_KEY);
-    if (!rawAcceptedPlan) {
-      setAcceptedDailyPlan(null);
-      return;
-    }
+    // Load persisted daily plan from backend so web and mobile stay in sync.
+    let isMounted = true;
+    const loadPersistedPlan = async () => {
+      try {
+        const resp = await api.get('/daily-plan');
+        const plan = resp.data || null;
+        if (!isMounted) return;
+        if (!plan) {
+          setAcceptedDailyPlan(null);
+          return;
+        }
 
-    try {
-      const parsed = JSON.parse(rawAcceptedPlan);
-      if ((parsed?.date === todayKey || parsed?.date === tomorrowKey) && parsed?.plan) {
-        setAcceptedDailyPlan(parsed.plan);
-      } else {
-        localStorage.removeItem(DAILY_PLAN_STORAGE_KEY);
+        const todayKey = getLocalDateKey();
+        const tomorrowKey = getTomorrowDateKey();
+        const planDate = String(plan?.target_date || plan?.date || '');
+        if (planDate === todayKey || planDate === tomorrowKey || !planDate) {
+          setAcceptedDailyPlan(plan);
+        } else {
+          // Persisted plan is for another date; ignore locally.
+          setAcceptedDailyPlan(null);
+        }
+      } catch (err) {
+        console.error('Error loading persisted daily plan:', err);
         setAcceptedDailyPlan(null);
       }
-    } catch {
-      localStorage.removeItem(DAILY_PLAN_STORAGE_KEY);
-      setAcceptedDailyPlan(null);
-    }
+    };
+
+    loadPersistedPlan();
+    return () => { isMounted = false; };
   }, []);
 
   useEffect(() => {
@@ -1353,6 +1362,14 @@ const Dashboard = () => {
     try {
       const result = await aiService.planDay(activeTasks, planDayWorkStart, planDayWorkEnd);
       setPlanDayResult(result);
+      // Persist generated plan so other clients can see it (best-effort)
+      (async () => {
+        try {
+          await api.post('/daily-plan', result);
+        } catch (err) {
+          console.warn('Failed to persist generated plan (non-fatal):', err);
+        }
+      })();
     } catch (error) {
       console.error('Error generating day plan:', error);
       const responseData = error?.response?.data;
@@ -1388,12 +1405,24 @@ const Dashboard = () => {
           ? planDayResult.completedScheduleKeys
           : [],
       };
-      localStorage.setItem(DAILY_PLAN_STORAGE_KEY, JSON.stringify({
-        date: targetDateKey,
-        plan: acceptedPlan,
-        acceptedAt: Date.now(),
-      }));
-      setAcceptedDailyPlan(acceptedPlan);
+      (async () => {
+        try {
+          await api.post('/daily-plan', {
+            ...acceptedPlan,
+            date: targetDateKey,
+          });
+          setAcceptedDailyPlan(acceptedPlan);
+        } catch (err) {
+          console.error('Failed to persist accepted plan:', err);
+          // fallback to localStorage so user still has plan available offline
+          localStorage.setItem(DAILY_PLAN_STORAGE_KEY, JSON.stringify({
+            date: targetDateKey,
+            plan: acceptedPlan,
+            acceptedAt: Date.now(),
+          }));
+          setAcceptedDailyPlan(acceptedPlan);
+        }
+      })();
     }
     setShowPlanDayModal(false);
   };
@@ -1415,11 +1444,14 @@ const Dashboard = () => {
       const planDateKey = /^\d{4}-\d{2}-\d{2}$/.test(String(prev?.target_date || ''))
         ? String(prev.target_date)
         : getLocalDateKey();
-      localStorage.setItem(DAILY_PLAN_STORAGE_KEY, JSON.stringify({
-        date: planDateKey,
-        plan: nextPlan,
-        acceptedAt: Date.now(),
-      }));
+      (async () => {
+        try {
+          await api.post('/daily-plan', { ...nextPlan, date: planDateKey });
+        } catch (err) {
+          console.error('Failed to persist completed toggle for plan:', err);
+          localStorage.setItem(DAILY_PLAN_STORAGE_KEY, JSON.stringify({ date: planDateKey, plan: nextPlan, acceptedAt: Date.now() }));
+        }
+      })();
 
       return nextPlan;
     });
@@ -1436,10 +1468,18 @@ const Dashboard = () => {
   };
 
   const handleConfirmDeleteAcceptedPlan = () => {
-    localStorage.removeItem(DAILY_PLAN_STORAGE_KEY);
-    setAcceptedDailyPlan(null);
-    setPlanDayResult(null);
-    setShowDeletePlanConfirm(false);
+    (async () => {
+      try {
+        await api.delete('/daily-plan');
+      } catch (err) {
+        console.error('Failed to delete persisted plan:', err);
+      } finally {
+        localStorage.removeItem(DAILY_PLAN_STORAGE_KEY);
+        setAcceptedDailyPlan(null);
+        setPlanDayResult(null);
+        setShowDeletePlanConfirm(false);
+      }
+    })();
   };
 
   const handleCancelDeleteAcceptedPlan = () => {

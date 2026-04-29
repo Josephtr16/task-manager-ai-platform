@@ -7,5 +7,6 @@
         "PYTHONPATH": "${workspaceFolder}/ai-service"
     },
     "python-envs.defaultEnvManager": "ms-python.python:venv",
-    "java.configuration.updateBuildConfiguration": "disabled"
+    "java.configuration.updateBuildConfiguration": "disabled",
+    "cmake.ignoreCMakeListsMissing": true
 }

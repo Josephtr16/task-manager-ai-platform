@@ -4,7 +4,7 @@ import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { authAPI } from '../../services/api';
-import { FaCheckCircle, FaEnvelope, FaExclamationTriangle } from 'react-icons/fa';
+import { FaCheckCircle, FaEnvelope, FaExclamationTriangle, FaLock, FaArrowRight } from 'react-icons/fa';
 import AuthLayout from './AuthLayout';
 
 const Login = () => {
@@ -14,6 +14,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const [resendSuccess, setResendSuccess] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const { login } = useAuth();
   const { theme, isDarkMode } = useTheme();
   const navigate = useNavigate();
@@ -62,116 +63,192 @@ const Login = () => {
 
   return (
     <AuthLayout>
-      <div style={styles.header}>
-        <div style={styles.logoContainer}>
-          <div style={styles.logo}>TF</div>
-          <h1 style={styles.title}>TaskFlow AI</h1>
-        </div>
-        <p style={styles.subtitle}>Sign in to your account</p>
-      </div>
-
-      {error && (
-        <div style={styles.error}>
-          <FaExclamationTriangle />
-          <span>{error}</span>
-          {error.includes('verify') && (
-            <button
-              type="button"
-              onClick={handleResendEmail}
-              style={styles.resendButton}
-              disabled={resending}
-            >
-              {resending ? 'Sending...' : 'Resend email'}
-            </button>
-          )}
-        </div>
-      )}
-
-      {successMessage && (
-        <div style={styles.success}>
-          <FaCheckCircle />
-          <span>{successMessage}</span>
-        </div>
-      )}
-
-      {resendSuccess && (
-        <div style={styles.success}>
-          <FaEnvelope />
-          <span>{resendSuccess}</span>
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} style={styles.form}>
-        <div style={styles.inputGroup}>
-          <label style={styles.label}>Email</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="your.email@example.com"
-            style={styles.input}
-            required
-          />
-        </div>
-
-        <div style={styles.inputGroup}>
-          <label style={styles.label}>Password</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
-            style={styles.input}
-            required
-          />
-          <div style={styles.forgotRow}>
-            <Link to="/forgot-password" style={styles.forgotLink}>
-              Forgot password?
-            </Link>
+      <div style={styles.container}>
+        {/* Header */}
+        <div style={styles.header}>
+          <div style={styles.logoContainer}>
+            <div style={styles.logo}>
+              <span style={styles.logoText}>TF</span>
+            </div>
           </div>
+          <h1 style={styles.title}>Welcome Back</h1>
+          <p style={styles.subtitle}>Sign in to continue to TaskFlow AI</p>
         </div>
 
-        <button
-          type="submit"
-          style={{
-            ...styles.button,
-            ...(loading && styles.buttonDisabled),
-          }}
-          disabled={loading}
-          onMouseEnter={(e) => {
-            if (!loading) {
-              e.currentTarget.style.backgroundColor = theme.primaryDark;
-              e.currentTarget.style.transform = 'translateY(-1px)';
-              e.currentTarget.style.boxShadow = `0 4px 12px ${theme.primary}66`;
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (!loading) {
-              e.currentTarget.style.backgroundColor = theme.primary;
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = 'none';
-            }
-          }}
-        >
-          {loading ? 'Signing in...' : 'Sign In'}
-        </button>
-      </form>
+        {/* Messages */}
+        {error && (
+          <div style={styles.alertBox} className="alert-error">
+            <div style={styles.alertIcon}>
+              <FaExclamationTriangle size={18} />
+            </div>
+            <div style={styles.alertContent}>
+              <p style={styles.alertText}>{error}</p>
+              {error.includes('verify') && (
+                <button
+                  type="button"
+                  onClick={handleResendEmail}
+                  style={styles.resendLink}
+                  disabled={resending}
+                >
+                  {resending ? 'Sending...' : 'Resend verification email →'}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
-      <div style={styles.footer}>
-        <p style={styles.footerText}>
-          Don't have an account?{' '}
-          <Link to="/register" style={styles.link}>
-            Sign up
-          </Link>
-        </p>
+        {successMessage && (
+          <div style={styles.alertBox} className="alert-success">
+            <div style={styles.alertIcon}>
+              <FaCheckCircle size={18} />
+            </div>
+            <p style={styles.alertText}>{successMessage}</p>
+          </div>
+        )}
+
+        {resendSuccess && (
+          <div style={styles.alertBox} className="alert-success">
+            <div style={styles.alertIcon}>
+              <FaEnvelope size={18} />
+            </div>
+            <p style={styles.alertText}>{resendSuccess}</p>
+          </div>
+        )}
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} style={styles.form}>
+          {/* Email Input */}
+          <div style={styles.inputGroup}>
+            <label htmlFor="email" style={styles.label}>Email Address</label>
+            <div style={styles.inputWrapper}>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                style={styles.input}
+                required
+              />
+            </div>
+          </div>
+
+          {/* Password Input */}
+          <div style={styles.inputGroup}>
+            <div style={styles.labelRow}>
+              <label htmlFor="password" style={styles.label}>Password</label>
+              <Link to="/forgot-password" style={styles.forgotLink}>
+                Forgot?
+              </Link>
+            </div>
+            <div style={styles.inputWrapper}>
+              <input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••••"
+                style={styles.input}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={styles.togglePasswordBtn}
+                tabIndex="-1"
+              >
+                <span style={styles.togglePasswordText}>
+                  {showPassword ? 'Hide' : 'Show'}
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {/* Sign In Button */}
+          <button
+            type="submit"
+            style={{
+              ...styles.submitBtn,
+              ...(loading && styles.submitBtnLoading),
+            }}
+            disabled={loading}
+          >
+            <span style={styles.submitBtnText}>
+              {loading ? (
+                <>
+                  <span style={styles.spinner}></span>
+                  Signing in...
+                </>
+              ) : (
+                <>
+                  Sign In
+                  <FaArrowRight size={16} style={styles.arrowIcon} />
+                </>
+              )}
+            </span>
+          </button>
+        </form>
+
+        {/* Footer */}
+        <div style={styles.footer}>
+          <p style={styles.footerText}>
+            Don't have an account?{' '}
+            <Link to="/register" style={styles.signupLink}>
+              Create one
+            </Link>
+          </p>
+        </div>
       </div>
+
       <style>{`
-        input:focus {
-            border-color: ${theme.primary} !important;
-            box-shadow: 0 0 0 3px ${theme.primary}33 !important;
+        @keyframes slideIn {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
         }
-        input::placeholder {
-            color: ${isDarkMode ? '#6B7280' : theme.textMuted};
+
+        @keyframes spin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+
+        @keyframes float {
+          0%, 100% {
+            transform: translateY(0px);
+          }
+          50% {
+            transform: translateY(-4px);
+          }
+        }
+
+        .auth-login-container {
+          animation: slideIn 0.5s ease-out;
+        }
+
+        #email:focus,
+        #password:focus {
+          border-color: ${theme.primary} !important;
+          box-shadow: 0 0 0 3px ${theme.primary}22 !important;
+          background-color: ${isDarkMode ? 'rgba(201, 146, 74, 0.05)' : 'rgba(201, 146, 74, 0.02)'} !important;
+        }
+
+        #email::placeholder,
+        #password::placeholder {
+          color: ${theme.textMuted};
+        }
+
+        .alert-error {
+          animation: slideIn 0.3s ease-out;
+        }
+
+        .alert-success {
+          animation: slideIn 0.3s ease-out;
         }
       `}</style>
     </AuthLayout>
@@ -179,84 +256,91 @@ const Login = () => {
 };
 
 const getStyles = (theme, isDarkMode) => ({
-  // Container & Card styles removed (handled by AuthLayout)
+  container: {
+    animation: 'slideIn 0.5s ease-out',
+    display: 'flex',
+    flexDirection: 'column',
+  },
   header: {
-    marginBottom: '28px',
+    marginBottom: '36px',
     textAlign: 'center',
   },
   logoContainer: {
     display: 'flex',
-    alignItems: 'center',
     justifyContent: 'center',
-    gap: '12px',
-    marginBottom: '16px',
+    marginBottom: '20px',
   },
   logo: {
-    width: '40px',
-    height: '40px',
-    borderRadius: '12px',
-    background: `linear-gradient(135deg, ${theme.primary}, ${theme.accentWarm})`,
-    color: '#fff',
+    width: '56px',
+    height: '56px',
+    borderRadius: '16px',
+    background: `linear-gradient(135deg, ${theme.primary} 0%, ${theme.accentWarm} 100%)`,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontSize: '13px',
+    boxShadow: `0 8px 24px ${theme.primary}44`,
+    animation: 'float 3s ease-in-out infinite',
+  },
+  logoText: {
+    color: '#FFFFFF',
+    fontSize: '20px',
     fontWeight: '800',
-    letterSpacing: '0.08em',
+    letterSpacing: '0.12em',
   },
   title: {
     fontFamily: '"Syne", sans-serif',
-    fontSize: '30px',
+    fontSize: '32px',
     fontWeight: '800',
     color: theme.textPrimary,
-    letterSpacing: '-0.04em',
-    margin: 0,
+    margin: '0 0 8px 0',
+    letterSpacing: '-0.02em',
   },
   subtitle: {
     fontSize: '15px',
     color: theme.textSecondary,
     margin: 0,
+    fontWeight: '500',
   },
-  error: {
-    backgroundColor: `${theme.error}14`,
-    border: `1px solid ${theme.error}30`,
-    borderLeft: `3px solid ${theme.error}`,
-    borderRadius: '14px',
-    padding: '14px 16px',
+  
+  // Alert Styles
+  alertBox: {
     marginBottom: '24px',
+    padding: '14px 16px',
+    borderRadius: '12px',
+    display: 'flex',
+    gap: '12px',
+    alignItems: 'flex-start',
+    border: `1px solid ${isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)'}`,
+  },
+  alertIcon: {
+    marginTop: '2px',
+    minWidth: '20px',
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
-    color: theme.error,
-    fontSize: '14px',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
   },
-  resendButton: {
-    backgroundColor: theme.error,
-    color: '#FFF',
+  alertContent: {
+    flex: 1,
+  },
+  alertText: {
+    margin: '0 0 8px 0',
+    fontSize: '14px',
+    fontWeight: '500',
+    lineHeight: '1.5',
+  },
+  resendLink: {
+    backgroundColor: 'transparent',
+    color: 'inherit',
     border: 'none',
-    borderRadius: '999px',
-    padding: '6px 12px',
+    padding: '4px 0',
     fontSize: '13px',
     fontWeight: '600',
     cursor: 'pointer',
-    transition: 'all 150ms ease',
-    whiteSpace: 'nowrap',
-    marginLeft: '8px',
+    textDecoration: 'underline',
+    transition: 'opacity 150ms ease',
   },
-  success: {
-    backgroundColor: `${theme.success}14`,
-    border: `1px solid ${theme.success}30`,
-    borderLeft: `3px solid ${theme.success}`,
-    borderRadius: '14px',
-    padding: '14px 16px',
-    marginBottom: '24px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    color: theme.success,
-    fontSize: '14px',
-  },
+
+  // Form Styles
   form: {
     display: 'flex',
     flexDirection: 'column',
@@ -267,65 +351,122 @@ const getStyles = (theme, isDarkMode) => ({
     flexDirection: 'column',
     gap: '8px',
   },
-  forgotRow: {
+  labelRow: {
     display: 'flex',
-    justifyContent: 'flex-end',
-    marginTop: '4px',
-  },
-  forgotLink: {
-    color: theme.primary,
-    textDecoration: 'none',
-    fontSize: '13px',
-    fontWeight: '600',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '2px',
   },
   label: {
-    fontSize: '14px',
+    fontSize: '13px',
     fontWeight: '600',
-    color: theme.textSecondary, // Muted label
-    marginBottom: '2px',
-    letterSpacing: '0.01em',
+    color: theme.textSecondary,
+    letterSpacing: '0.03em',
+    textTransform: 'uppercase',
+  },
+  forgotLink: {
+    fontSize: '13px',
+    fontWeight: '600',
+    color: theme.primary,
+    textDecoration: 'none',
+    transition: 'opacity 150ms ease',
+    cursor: 'pointer',
+  },
+  inputWrapper: {
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'center',
   },
   input: {
+    width: '100%',
     backgroundColor: theme.bgCard,
-    border: `1px solid ${theme.border}`,
-    borderRadius: '14px',
-    padding: '14px 16px',
+    border: `1.5px solid ${theme.border}`,
+    borderRadius: '12px',
+    padding: '12px 16px',
     fontSize: '15px',
     color: theme.textPrimary,
     outline: 'none',
-    transition: 'all 150ms ease',
-    boxShadow: 'none',
+    transition: 'all 200ms ease',
+    fontFamily: 'inherit',
   },
-  button: {
-    backgroundColor: theme.primary,
-    color: '#FFFFFF',
+  togglePasswordBtn: {
+    position: 'absolute',
+    right: '12px',
+    backgroundColor: 'transparent',
     border: 'none',
-    borderRadius: '999px',
-    padding: '14px 18px',
+    color: theme.textMuted,
+    cursor: 'pointer',
+    fontSize: '12px',
+    fontWeight: '600',
+    padding: '4px 8px',
+    transition: 'color 150ms ease',
+  },
+  togglePasswordText: {
+    fontSize: '11px',
+  },
+
+  // Submit Button
+  submitBtn: {
+    marginTop: '8px',
+    paddingTop: '13px',
+    paddingBottom: '13px',
+    paddingLeft: '20px',
+    paddingRight: '20px',
     fontSize: '15px',
     fontWeight: '600',
+    color: '#FFFFFF',
+    backgroundColor: theme.primary,
+    border: 'none',
+    borderRadius: '12px',
     cursor: 'pointer',
-    marginTop: '12px',
-    transition: 'all 150ms ease',
-    boxShadow: theme.shadows.float,
+    transition: 'all 200ms ease',
+    boxShadow: `0 4px 12px ${theme.primary}44`,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
   },
-  buttonDisabled: {
-    opacity: 0.6,
+  submitBtnText: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  arrowIcon: {
+    marginLeft: '4px',
+    transition: 'transform 200ms ease',
+  },
+  spinner: {
+    display: 'inline-block',
+    width: '14px',
+    height: '14px',
+    border: '2px solid rgba(255, 255, 255, 0.3)',
+    borderTop: '2px solid #FFFFFF',
+    borderRadius: '50%',
+    animation: 'spin 0.8s linear infinite',
+  },
+  submitBtnLoading: {
+    opacity: 0.8,
     cursor: 'not-allowed',
   },
+
+  // Footer
   footer: {
-    marginTop: '32px',
+    marginTop: '28px',
     textAlign: 'center',
+    paddingTop: '20px',
+    borderTop: `1px solid ${theme.border}`,
   },
   footerText: {
     fontSize: '14px',
     color: theme.textMuted,
     margin: 0,
   },
-  link: {
+  signupLink: {
     color: theme.primary,
     textDecoration: 'none',
     fontWeight: '600',
+    transition: 'opacity 150ms ease',
+    cursor: 'pointer',
   },
 });
 

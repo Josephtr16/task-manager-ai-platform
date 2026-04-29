@@ -16,7 +16,7 @@ import { readCache, writeCache } from '../utils/sessionCache';
 
 const TASKS_CACHE_KEY = 'taskflow_tasks_page_cache';
 
-const AI_SCORABLE_STATUSES = ['pending', 'todo', 'in-progress'];
+const AI_SCORABLE_STATUSES = ['todo', 'in-progress', 'review'];
 
 const TasksPage = () => {
   const cachedTasksState = readCache(TASKS_CACHE_KEY, 60000);
@@ -487,7 +487,11 @@ const TasksPage = () => {
 
     const d = new Date(date);
     const now = new Date();
-    const diff = Math.ceil((d - now) / (1000 * 60 * 60 * 24));
+    
+    // Normalize to midnight to compare dates only, not times
+    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const deadlineMidnight = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const diff = Math.floor((deadlineMidnight - todayMidnight) / (1000 * 60 * 60 * 24));
 
     if (diff < 0) return { text: 'Overdue', color: theme.error };
     if (diff === 0) return { text: 'Today', color: theme.warning };
@@ -1165,10 +1169,10 @@ const TaskCard = ({ task, aiPriorityScore, onClick, getPriorityColor, getStatusC
       flex: 1,
     },
     checkboxContainer: {
-      width: '20px',
-      height: '20px',
+      width: '24px',
+      height: '24px',
       borderRadius: '6px',
-      border: `1.5px solid ${theme.borderStrong || theme.border}`,
+      border: `1px solid ${theme.borderStrong || theme.border}`,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -1176,15 +1180,18 @@ const TaskCard = ({ task, aiPriorityScore, onClick, getPriorityColor, getStatusC
       transition: 'all 150ms ease',
       backgroundColor: theme.bgRaised,
       boxShadow: 'none',
-      opacity: 0.35,
+      flexShrink: 0,
     },
     checkboxChecked: {
-      backgroundColor: theme.sage,
+      backgroundColor: theme.success,
       boxShadow: 'none',
-      borderColor: theme.sage,
+      borderColor: theme.success,
     },
     checkboxInner: {
-      transition: 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      transition: 'transform 0.2s ease',
     },
     taskTitleContainer: { // New style for title and project badge
       display: 'flex',
@@ -1350,13 +1357,12 @@ const TaskCard = ({ task, aiPriorityScore, onClick, getPriorityColor, getStatusC
     <div style={{
       ...styles.checkboxContainer,
       ...(checked && styles.checkboxChecked),
-      borderColor: checked ? theme.success : theme.border,
     }}>
       <div style={{
         ...styles.checkboxInner,
         transform: checked ? 'scale(1)' : 'scale(0)',
       }}>
-        <FaCheck size={10} color="#fff" />
+        <FaCheck size={12} color="#fff" />
       </div>
     </div>
   );

@@ -177,13 +177,9 @@ def _task_importance_score(task: Task, planning_date) -> int:
 
     score += category_focus_weights.get(category, 20)
 
-    # Routine wellness tasks are usually not the single top focus item unless urgent.
-    title = (task.title or '').strip().lower()
-    routine_keywords = ('gym', 'workout', 'exercise', 'walk', 'jog', 'run', 'stretch')
-    if any(keyword in title for keyword in routine_keywords):
-        score -= 120
-
+    # Parse deadline early so we can avoid penalizing routine tasks with a same-day deadline.
     deadline_dt = _parse_deadline(task.deadline)
+    days_until = None
     if deadline_dt:
         days_until = (deadline_dt.date() - planning_date).days
         if days_until < 0:
@@ -198,6 +194,14 @@ def _task_importance_score(task: Task, planning_date) -> int:
             score += 60
         else:
             score += 10
+
+    # Routine wellness tasks are usually not the single top focus item unless urgent.
+    # However, if the task has a deadline today, do not apply the routine penalty.
+    title = (task.title or '').strip().lower()
+    routine_keywords = ('gym', 'workout', 'exercise', 'walk', 'jog', 'run', 'stretch')
+    if any(keyword in title for keyword in routine_keywords):
+        if not (deadline_dt and days_until == 0):
+            score -= 120
 
     return score
 

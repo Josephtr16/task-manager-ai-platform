@@ -25,7 +25,11 @@ const AIRecommends = ({ tasks, onTaskClick, onToggleTask, onTaskDeleted, onTaskU
     if (!deadline) return null;
     const date = new Date(deadline);
     const now = new Date();
-    const diff = Math.ceil((date - now) / (1000 * 60 * 60 * 24));
+    
+    // Normalize to midnight to compare dates only, not times
+    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const deadlineMidnight = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const diff = Math.floor((deadlineMidnight - todayMidnight) / (1000 * 60 * 60 * 24));
 
     if (diff < 0) return 'Overdue';
     if (diff === 0) return 'Today';
@@ -58,7 +62,11 @@ const AIRecommends = ({ tasks, onTaskClick, onToggleTask, onTaskDeleted, onTaskU
 
     const now = new Date();
     const due = new Date(deadline);
-    const diffDays = Math.ceil((due - now) / (1000 * 60 * 60 * 24));
+    
+    // Normalize to midnight to compare dates only, not times
+    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const dueMidnight = new Date(due.getFullYear(), due.getMonth(), due.getDate());
+    const diffDays = Math.floor((dueMidnight - todayMidnight) / (1000 * 60 * 60 * 24));
 
     if (diffDays < 0) return 50;
     if (diffDays === 0) return 40;

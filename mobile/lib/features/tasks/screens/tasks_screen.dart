@@ -38,7 +38,9 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
     return Scaffold(
       body: GradientBackground(
         child: state.when(
-          data: (data) => ListView(
+          data: (data) => RefreshIndicator(
+            onRefresh: () => ref.read(tasksProvider.notifier).loadTasks(),
+            child: ListView(
             padding: const EdgeInsets.fromLTRB(16, 52, 16, 120),
             children: <Widget>[
               Text('All Tasks', style: Theme.of(context).textTheme.displaySmall),
@@ -107,6 +109,34 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                       ),
                     ),
                   ),
+                  ActionChip(
+                    label: const Text('Priority'),
+                    onPressed: () => showModalBottomSheet<void>(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (_) => FilterBottomSheet(
+                        title: 'Priority',
+                        options: const <String>['all', 'low', 'medium', 'high', 'urgent'],
+                        current: "${data.filters['priority']}",
+                        onSelect: (value) => ref.read(tasksProvider.notifier).setFilter('priority', value),
+                      ),
+                    ),
+                  ),
+                  ActionChip(
+                    label: const Text('Category'),
+                    onPressed: () => showModalBottomSheet<void>(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (_) => FilterBottomSheet(
+                        title: 'Category',
+                        options: const <String>['all', 'Work', 'Personal', 'Health', 'Shopping', 'Learning', 'Family'],
+                        current: "${data.filters['category']}",
+                        onSelect: (value) => ref.read(tasksProvider.notifier).setFilter('category', value),
+                      ),
+                    ),
+                  ),
                 ],
               ),
               if (data.riskAlerts != null) ...<Widget>[
@@ -114,19 +144,76 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                 RiskAlertsPanel(risk: data.riskAlerts!),
               ],
               const SizedBox(height: 12),
-              ...data.tasks.map((task) => Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: TaskCard(
-                      task: task,
-                      onTap: () => showModalBottomSheet<void>(
-                        context: context,
-                        isScrollControlled: true,
-                        backgroundColor: Colors.transparent,
-                        builder: (_) => TaskDetailSheet(task: task),
+              ...() {
+                final activeTasks = data.tasks
+                    .where((t) => t.status.toLowerCase() != 'done')
+                    .toList(growable: false);
+                final completedTasks = data.tasks
+                    .where((t) => t.status.toLowerCase() == 'done')
+                    .toList(growable: false);
+
+                if (data.tasks.isEmpty) {
+                  return <Widget>[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 24),
+                      child: Center(
+                        child: Text(
+                          'No tasks found. Create one with + New Task.',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
                       ),
                     ),
-                  )),
+                  ];
+                }
+
+                return <Widget>[
+                  if (activeTasks.isNotEmpty) ...<Widget>[
+                    Text(
+                      'Active Tasks',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    ...activeTasks.map(
+                      (task) => Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: TaskCard(
+                          task: task,
+                          onTap: () => showModalBottomSheet<void>(
+                            context: context,
+                            isScrollControlled: true,
+                            backgroundColor: Colors.transparent,
+                            builder: (_) => TaskDetailSheet(task: task),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                  ],
+                  if (completedTasks.isNotEmpty) ...<Widget>[
+                    Text(
+                      'Completed Tasks',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    ...completedTasks.map(
+                      (task) => Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: TaskCard(
+                          task: task,
+                          onTap: () => showModalBottomSheet<void>(
+                            context: context,
+                            isScrollControlled: true,
+                            backgroundColor: Colors.transparent,
+                            builder: (_) => TaskDetailSheet(task: task),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ];
+              }(),
             ],
+            ),
           ),
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (err, _) => Center(child: Text(err.toString())),

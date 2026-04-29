@@ -40,13 +40,13 @@ class StatsCard extends StatelessWidget {
     final isProductivity = label.toLowerCase().contains('productivity');
     final displayValue =
       (isProductivity && !value.contains('%')) ? '$value%' : value;
-    final valueFontSize = compact ? 30.0 : 40.0;
-    final subtitleFontSize = compact ? 11.0 : 12.0;
-    final indicatorRadius = compact ? 22.0 : 28.0;
+    final valueFontSize = compact ? 24.0 : 40.0;
+    final subtitleFontSize = compact ? 10.0 : 12.0;
+    final indicatorRadius = compact ? 18.0 : 28.0;
     final isChartOnlyCard = compact && customContent != null && progress == null;
-    final topSpacing = isChartOnlyCard ? 4.0 : (compact ? 6.0 : 10.0);
-    final middleSpacing = isChartOnlyCard ? 4.0 : (compact ? 6.0 : 10.0);
-    final afterValueSpacing = isChartOnlyCard ? 4.0 : (compact ? 8.0 : 12.0);
+    final topSpacing = isChartOnlyCard ? 2.0 : (compact ? 4.0 : 10.0);
+    final middleSpacing = isChartOnlyCard ? 2.0 : (compact ? 4.0 : 10.0);
+    final afterValueSpacing = isChartOnlyCard ? 2.0 : (compact ? 4.0 : 12.0);
     final afterCustomSpacing = isChartOnlyCard ? 0.0 : (compact ? 6.0 : 10.0);
 
     return Container(
@@ -111,11 +111,11 @@ class StatsCard extends StatelessWidget {
             style: AppTextStyles.labelCaps.copyWith(
               color: tokens.textSecondary,
               fontSize: compact ? 10 : 11,
-              letterSpacing: compact ? 0.7 : 0.88,
+              letterSpacing: compact ? 0.55 : 0.88,
             ),
           ),
           if (subtitle != null) ...<Widget>[
-            SizedBox(height: compact ? 2 : 4),
+            SizedBox(height: compact ? 1 : 4),
             Text(
               subtitle!,
               maxLines: 1,
@@ -164,7 +164,7 @@ class StatsCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   CircularPercentIndicator(
-                    radius: compact ? 22 : indicatorRadius,
+                    radius: compact ? 18 : indicatorRadius,
                     lineWidth: 6,
                     percent: progressValue,
                     center: const SizedBox.shrink(),

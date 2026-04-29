@@ -148,7 +148,11 @@ class SchedulerService {
   }
 
   async scheduleUserTasks(userId) {
-    const tasks = await Task.find({ userId })
+    const tasks = await Task.find({
+      userId,
+      status: { $ne: 'done' },
+      archivedAt: null,
+    })
       .populate('projectId', 'title category status createdAt')
       .populate('userId', 'preferences')
       .sort({ createdAt: 1, order: 1 });

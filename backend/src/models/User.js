@@ -72,6 +72,11 @@ const userSchema = new mongoose.Schema({
       order: { type: Number, default: 3 },
     }],
   },
+  // Persist the user's accepted daily plan so it can be shared across clients.
+  dailyPlan: {
+    type: Object,
+    default: null,
+  },
 });
 
 // Optimizes user lookup by email and verification token checks.

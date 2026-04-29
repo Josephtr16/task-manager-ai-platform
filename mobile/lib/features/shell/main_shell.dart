@@ -1,175 +1,110 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_theme.dart';
-import '../auth/providers/auth_provider.dart';
-import '../notifications/providers/notifications_provider.dart';
-import 'notification_sheet.dart';
+import '../tasks/widgets/create_task_sheet.dart';
+import '../../../shared/widgets/bottom_nav_bar.dart';
 
-class MainShell extends ConsumerWidget {
+class MainShell extends StatelessWidget {
   const MainShell({super.key, required this.child});
 
   final Widget child;
 
   int _indexFromLocation(String loc) {
     if (loc.startsWith('/tasks')) return 1;
-    if (loc.startsWith('/focus')) return 2;
     if (loc.startsWith('/projects')) return 3;
+    if (loc.startsWith('/insights')) return 4;
+    if (loc.startsWith('/kanban')) return 4;
+    if (loc.startsWith('/calendar')) return 4;
+    if (loc.startsWith('/focus')) return 4;
+    if (loc.startsWith('/settings')) return 4;
     return 0;
   }
 
+  void _onTab(BuildContext context, int index) {
+    switch (index) {
+      case 0:
+        context.go('/dashboard');
+      case 1:
+        context.go('/tasks');
+      case 3:
+        context.go('/projects');
+      case 4:
+        _openMoreMenu(context);
+    }
+  }
+
+  void _openMoreMenu(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _MoreMenu(),
+    );
+  }
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final tokens = Theme.of(context).extension<AppColorTokens>()!;
+  Widget build(BuildContext context) {
     final location = GoRouterState.of(context).uri.toString();
     final idx = _indexFromLocation(location);
-    final unread =
-        ref.watch(notificationsProvider).valueOrNull?.unreadCount ?? 0;
 
     return Scaffold(
       body: child,
-      bottomNavigationBar: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(height: 1, color: tokens.borderSubtle),
-            NavigationBar(
-              height: 68,
-              backgroundColor: tokens.bgSurface,
-              indicatorColor: AppColorsShared.accentDim,
-              shadowColor: Colors.transparent,
-              surfaceTintColor: Colors.transparent,
-              selectedIndex: idx,
-              labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-              onDestinationSelected: (value) {
-                switch (value) {
-                  case 0:
-                    context.go('/dashboard');
-                  case 1:
-                    context.go('/tasks');
-                  case 2:
-                    context.go('/focus');
-                  case 3:
-                    context.go('/projects');
-                  case 4:
-                    showModalBottomSheet<void>(
-                      context: context,
-                      backgroundColor: Colors.transparent,
-                      builder: (_) => _MoreMenu(unreadCount: unread),
-                    );
-                }
-              },
-              destinations: const [
-                NavigationDestination(
-                  icon: Icon(Icons.home_outlined),
-                  selectedIcon: Icon(Icons.home, color: AppColorsShared.accent),
-                  label: 'Dashboard',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.checklist_outlined),
-                  selectedIcon: Icon(Icons.checklist, color: AppColorsShared.accent),
-                  label: 'Tasks',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.my_location_outlined),
-                  selectedIcon: Icon(Icons.my_location, color: AppColorsShared.accent),
-                  label: 'Focus',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.folder_outlined),
-                  selectedIcon: Icon(Icons.folder, color: AppColorsShared.accent),
-                  label: 'Projects',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.menu),
-                  label: 'More',
-                ),
-              ],
-            ),
-          ],
-        ),
+      bottomNavigationBar: BottomNavBar(
+        currentIndex: idx,
+        onTabSelected: (index) => _onTab(context, index),
+        onFabTap: () {
+          showModalBottomSheet<void>(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (_) => const CreateTaskSheet(),
+          );
+        },
       ),
     );
   }
 }
 
-class _MoreMenu extends ConsumerWidget {
-  const _MoreMenu({required this.unreadCount});
-
-  final int unreadCount;
-
+class _MoreMenu extends StatelessWidget {
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final auth = ref.read(authProvider.notifier);
-    final user = ref.watch(authProvider).valueOrNull?.user;
-
+  Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        color: Color(0xFF121110),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 20),
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          ListTile(
-            leading: CircleAvatar(child: Text(user?.initials ?? 'U')),
-            title: Text(user?.name ?? 'User'),
-            subtitle: Text(user?.email ?? ''),
+          Container(
+            width: 44,
+            height: 4,
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade400,
+              borderRadius: BorderRadius.circular(999),
+            ),
           ),
-          _menu(context,
-              icon: Icons.view_kanban_outlined,
-              label: 'Kanban',
-              route: '/kanban'),
-          _menu(context,
-              icon: Icons.calendar_today_outlined,
-              label: 'Calendar',
-              route: '/calendar'),
-          _menu(context,
-              icon: Icons.smart_toy_outlined,
-              label: 'AI Insights',
-              route: '/insights'),
-          ListTile(
-            leading: const Icon(Icons.notifications_none),
-            title:
-                Text('Notifications ${unreadCount > 99 ? "99+" : unreadCount}'),
-            onTap: () {
-              Navigator.of(context).pop();
-              showModalBottomSheet<void>(
-                context: context,
-                isScrollControlled: true,
-                backgroundColor: Colors.transparent,
-                builder: (_) => const NotificationSheet(),
-              );
-            },
-          ),
-          _menu(context,
-              icon: Icons.settings_outlined,
-              label: 'Settings',
-              route: '/settings'),
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.logout, color: Colors.redAccent),
-            title:
-                const Text('Logout', style: TextStyle(color: Colors.redAccent)),
-            onTap: () async {
-              await auth.logout();
-              if (context.mounted) context.go('/login');
-            },
-          ),
+          _menuItem(context, Icons.psychology_rounded, 'Insights', '/insights'),
+          _menuItem(context, Icons.view_kanban_rounded, 'Kanban', '/kanban'),
+          _menuItem(context, Icons.calendar_month_rounded, 'Calendar', '/calendar'),
+          _menuItem(context, Icons.my_location_rounded, 'Focus', '/focus'),
+          _menuItem(context, Icons.settings_rounded, 'Settings', '/settings'),
         ],
       ),
     );
   }
 
-  Widget _menu(BuildContext context,
-      {required IconData icon, required String label, required String route}) {
+  Widget _menuItem(
+    BuildContext context,
+    IconData icon,
+    String label,
+    String route,
+  ) {
     return ListTile(
       leading: Icon(icon),
       title: Text(label),
+      trailing: const Icon(Icons.chevron_right),
       onTap: () {
         Navigator.of(context).pop();
         context.go(route);

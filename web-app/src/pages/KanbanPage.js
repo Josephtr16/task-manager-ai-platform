@@ -95,7 +95,12 @@ const KanbanPage = () => {
 
     const date = new Date(deadline);
     const now = new Date();
-    const diff = Math.ceil((date - now) / (1000 * 60 * 60 * 24));
+    
+    // Normalize to midnight to compare dates only, not times
+    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const deadlineMidnight = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const diff = Math.floor((deadlineMidnight - todayMidnight) / (1000 * 60 * 60 * 24));
+    
     if (diff < 0) return { text: 'Overdue', color: theme.error };
     if (diff === 0) return { text: 'Today', color: theme.warning };
     if (diff === 1) return { text: 'Tomorrow', color: theme.warning };

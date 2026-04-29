@@ -4,7 +4,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
 import '../theme/app_theme.dart';
 
-enum TfButtonVariant { primary, secondary, ghost, danger }
+enum TfButtonVariant { primary, secondary, ghost, danger, accent }
 
 class TfButton extends StatefulWidget {
   const TfButton({
@@ -63,6 +63,18 @@ class _TfButtonState extends State<TfButton> {
         bg = Colors.transparent;
         textColor = AppColorsShared.accent;
         border = Border.all(color: Colors.transparent);
+        break;
+      case TfButtonVariant.accent:
+        bg = AppColorsShared.accent;
+        textColor = Colors.white;
+        border = Border.all(color: Colors.transparent);
+        shadows = [
+          BoxShadow(
+            color: AppColorsShared.accentGlow,
+            blurRadius: _pressed ? 6 : 12,
+            offset: const Offset(0, 2),
+          ),
+        ];
         break;
       case TfButtonVariant.danger:
         bg = isDark

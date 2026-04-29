@@ -215,6 +215,56 @@ const proxyEndpoint = (endpoint) => async (req, res) => {
   }
 };
 
+// Custom proxy with request/response logging for plan-day to aid debugging differences
+const planDayProxy = async (req, res) => {
+  try {
+    const sanitizedBody = sanitizeAIPayloadFields(req.body || {});
+    try {
+      console.log('[AI PROXY] /plan-day request - user:', req.user?.id, 'body:', JSON.stringify(sanitizedBody));
+    } catch (logErr) {
+      console.warn('[AI PROXY] failed to stringify request body for logging', logErr?.message || logErr);
+    }
+
+    const response = await axios.post(
+      `${AI_SERVICE_BASE_URL}/ai/plan-day`,
+      sanitizedBody,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        timeout: 30000,
+      }
+    );
+
+    try {
+      // Truncate large responses to keep logs readable
+      const respSnippet = JSON.stringify(response.data).slice(0, 4000);
+      console.log('[AI PROXY] /plan-day response - status:', response.status, 'bodySnippet:', respSnippet);
+    } catch (logErr) {
+      console.warn('[AI PROXY] failed to stringify response body for logging', logErr?.message || logErr);
+    }
+
+    return res.status(response.status).json(response.data);
+  } catch (error) {
+    console.error('[AI PROXY] /plan-day error', error?.message || error);
+    if (error.code === 'ECONNABORTED') {
+      return res.status(504).json({
+        success: false,
+        message: 'AI service timed out. Please try again.',
+      });
+    }
+
+    if (error.response) {
+      return res.status(error.response.status).json(error.response.data);
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: 'AI service is unavailable. Please try again shortly.',
+    });
+  }
+};
+
 const enhanceProject = async (req, res) => {
   try {
     const { name, description } = sanitizeAIPayloadFields(req.body || {});
@@ -402,7 +452,7 @@ const predictTime = async (req, res) => {
 };
 
 router.post('/predict-time', predictTime);
-router.post('/plan-day', aiLimiter, proxyEndpoint('plan-day'));
+router.post('/plan-day', aiLimiter, planDayProxy);
 router.post('/detect-risks', proxyEndpoint('detect-risks'));
 router.post('/reports', proxyEndpoint('reports'));
 router.post('/project-breakdown', aiLimiter, proxyEndpoint('project-breakdown'));

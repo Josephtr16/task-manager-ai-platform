@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'dart:io';
 
 import 'api_service.dart';
 
@@ -41,8 +42,35 @@ class TaskService {
     return Map<String, dynamic>.from(res.data as Map);
   }
 
+  Future<Map<String, dynamic>?> getDailyPlan() async {
+    final res = await _dio.get('/daily-plan');
+    return res.data == null ? null : Map<String, dynamic>.from(res.data as Map);
+  }
+
+  Future<Map<String, dynamic>?> saveDailyPlan(Map<String, dynamic> plan) async {
+    final res = await _dio.post('/daily-plan', data: plan);
+    return res.data == null ? null : Map<String, dynamic>.from(res.data as Map);
+  }
+
+  Future<void> deleteDailyPlan() async {
+    await _dio.delete('/daily-plan');
+  }
+
   Future<Map<String, dynamic>> addComment(String id, String text) async {
     final res = await _dio.post('/tasks/$id/comments', data: <String, dynamic>{'text': text});
+    return Map<String, dynamic>.from(res.data as Map);
+  }
+
+  Future<Map<String, dynamic>> addAttachment(String id, File file) async {
+    final fileName = file.path.split(Platform.pathSeparator).last;
+    final form = FormData.fromMap(<String, dynamic>{
+      'file': await MultipartFile.fromFile(file.path, filename: fileName),
+    });
+    final res = await _dio.post(
+      '/tasks/$id/attachments',
+      data: form,
+      options: Options(contentType: 'multipart/form-data'),
+    );
     return Map<String, dynamic>.from(res.data as Map);
   }
 

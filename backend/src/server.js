@@ -3,6 +3,7 @@ const dotenv = require('dotenv');
 const cors = require('cors');
 const helmet = require('helmet');
 const connectDB = require('./config/db');
+const taskService = require('./services/taskService');
 const { apiLimiter } = require('./middleware/rateLimiter');
 const path = require('path');
 
@@ -79,6 +80,7 @@ app.use('/api/tasks/:id/subtasks', require('./routes/subtasks'));
 app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/projects', require('./routes/projects'));
 app.use('/api/ai', require('./routes/ai'));
+app.use('/api/daily-plan', require('./routes/dailyPlan'));
 app.use('/api/notifications', require('./routes/notifications'));
 
 // Basic route
@@ -112,6 +114,24 @@ const server = app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📝 Environment: ${process.env.NODE_ENV}`);
 });
+
+const archiveCompletedTasks = async () => {
+  try {
+    const result = await taskService.archiveCompletedTasks(7);
+    if (result.modifiedCount > 0) {
+      console.log(`🗄️ Archived ${result.modifiedCount} completed task(s) older than 7 days`);
+    }
+  } catch (error) {
+    console.warn('Task archive job failed (non-fatal):', error.message);
+  }
+};
+
+archiveCompletedTasks();
+
+const archiveInterval = setInterval(archiveCompletedTasks, 24 * 60 * 60 * 1000);
+if (typeof archiveInterval.unref === 'function') {
+  archiveInterval.unref();
+}
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err, promise) => {

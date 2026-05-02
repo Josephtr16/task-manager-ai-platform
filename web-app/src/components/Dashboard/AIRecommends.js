@@ -89,11 +89,17 @@ const AIRecommends = ({ tasks, onTaskClick, onToggleTask, onTaskDeleted, onTaskU
   const recommendationTasks = (tasks || [])
     .filter((task) => task.status !== 'done')
     .map((task) => {
-      const aiBoost = Number(task.aiPriorityScore) || 0;
+      const aiScoreRaw = task.aiPriorityScore;
+      const aiBoost = Number.isFinite(Number(aiScoreRaw)) ? Number(aiScoreRaw) : 0;
       const score = getPriorityScore(task.priority) + getUrgencyScore(task.deadline) + aiBoost;
-      return { ...task, _recommendationScore: score };
+      return { ...task, _recommendationScore: score, _aiScore: Number.isFinite(Number(aiScoreRaw)) ? Number(aiScoreRaw) : -1 };
     })
-    .sort((a, b) => b._recommendationScore - a._recommendationScore)
+    .sort((a, b) => {
+      const aiA = Number.isFinite(a._aiScore) ? a._aiScore : -1;
+      const aiB = Number.isFinite(b._aiScore) ? b._aiScore : -1;
+      if (aiB !== aiA) return aiB - aiA; // prefer higher explicit AI score
+      return b._recommendationScore - a._recommendationScore;
+    })
     .slice(0, 3);
 
   const styles = {

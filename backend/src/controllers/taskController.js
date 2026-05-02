@@ -84,6 +84,18 @@ exports.getUpcoming = asyncHandler(async (req, res) => {
   sendResponse(res, 200, true, { tasks });
 });
 
+// @desc    Get pending task invites for recipient
+// @route   GET /api/tasks/invites
+// @access  Private
+exports.getPendingInvites = asyncHandler(async (req, res) => {
+  const tasks = await taskService.getPendingInvites(req.user.id);
+
+  sendResponse(res, 200, true, {
+    count: tasks.length,
+    tasks,
+  });
+});
+
 // @desc    Upload attachment
 // @route   POST /api/tasks/:id/attachments
 // @access  Private
@@ -122,4 +134,14 @@ exports.shareTask = asyncHandler(async (req, res) => {
   const user = await taskService.shareTask(req.params.id, req.user.id, req.body.email);
 
   sendResponse(res, 200, true, { user }, 'Task shared successfully');
+});
+
+// @desc    Accept or decline task share invite
+// @route   POST /api/tasks/:id/respond-share
+// @access  Private
+exports.respondToShareInvite = asyncHandler(async (req, res) => {
+  const { action } = req.body;
+  const result = await taskService.respondToShareInvite(req.params.id, req.user.id, action);
+
+  sendResponse(res, 200, true, result, `Task invite ${action}ed successfully`);
 });

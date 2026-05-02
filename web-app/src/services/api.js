@@ -79,6 +79,7 @@ export const tasksAPI = {
   deleteTask: (id) => api.delete(`/tasks/${id}`),
   getStatistics: () => api.get('/tasks/statistics'),
   getUpcoming: () => api.get('/tasks/upcoming'),
+  getPendingInvites: () => api.get('/tasks/invites'),
   // New features
   addAttachment: (id, formData) => api.post(`/tasks/${id}/attachments`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
@@ -86,6 +87,7 @@ export const tasksAPI = {
   deleteAttachment: (id, attachmentId) => api.delete(`/tasks/${id}/attachments/${attachmentId}`),
   addComment: (id, text) => api.post(`/tasks/${id}/comments`, { text }),
   shareTask: (id, email) => api.post(`/tasks/${id}/share`, { email }),
+  respondToShareInvite: (id, action) => api.post(`/tasks/${id}/respond-share`, { action }),
 };
 
 // Time Tracking API

@@ -72,20 +72,25 @@ class AiRecommendsSection extends StatelessWidget {
         .map((task) {
       final priority = '${task['priority'] ?? 'medium'}';
       final deadlineRaw = task['deadline']?.toString();
-      final aiBoost = _parseScore(
-        task['aiPriorityScore'] ?? task['ai_priority_score'] ?? task['aiScore'],
-      );
+      final dynamic aiCandidate = task['aiPriorityScore'] ?? task['ai_priority_score'] ?? task['aiScore'] ?? task['ai_score'] ?? task['score'];
+      final bool hasAi = aiCandidate != null;
+      final int aiBoost = _parseScore(aiCandidate);
       final score =
           _getPriorityScore(priority) + _getUrgencyScore(deadlineRaw) + aiBoost;
 
       return <String, dynamic>{
         ...task,
         '_recommendationScore': score,
+        '_aiScore': hasAi ? aiBoost : -1,
       };
     }).toList();
 
-    ranked.sort((a, b) => (b['_recommendationScore'] as int)
-        .compareTo(a['_recommendationScore'] as int));
+    ranked.sort((a, b) {
+      final int aiA = (a['_aiScore'] as int?) ?? -1;
+      final int aiB = (b['_aiScore'] as int?) ?? -1;
+      if (aiB != aiA) return aiB.compareTo(aiA); // prefer higher explicit AI score
+      return (b['_recommendationScore'] as int).compareTo(a['_recommendationScore'] as int);
+    });
 
     final seenTitles = <String>{};
     final unique = <Map<String, dynamic>>[];

@@ -86,6 +86,12 @@ const KanbanPage = () => {
     }
   };
 
+  const getProjectLabel = (project) => {
+    if (!project) return '';
+    if (typeof project === 'string') return project;
+    return project.title || project.name || project.projectTitle || project.projectName || project.label || '';
+  };
+
   const formatDeadline = (deadline, status) => {
     if (!deadline) return null;
 
@@ -683,7 +689,7 @@ const KanbanCard = ({
           {task.projectId && (
             <div style={styles.projectBadge}>
               <FaClipboardList size={10} />
-              {typeof task.projectId === 'object' ? task.projectId.title : 'Project'}
+              {getProjectLabel(task.projectId) || 'Project'}
             </div>
           )}
         </div>

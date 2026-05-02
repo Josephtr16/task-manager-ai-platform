@@ -1,6 +1,7 @@
 const fs = require('fs');
 const Task = require('../models/Task');
 const Project = require('../models/Project');
+const Notification = require('../models/Notification');
 const User = require('../models/User');
 const AppError = require('../utils/AppError');
 const BaseService = require('./BaseService');
@@ -42,6 +43,96 @@ class TaskService extends BaseService {
         }
 
         return nextDeadline;
+    }
+
+    _extractMentionTokens(text) {
+        const rawText = String(text || '');
+        const matches = rawText.match(/@([A-Za-z0-9_.-]+)/g) || [];
+        return [...new Set(matches.map((match) => match.slice(1).toLowerCase()))];
+    }
+
+    _normalizeMentionCandidate(user) {
+        if (!user) {
+            return null;
+        }
+
+        const fullName = String(user.name || '').trim();
+        const email = String(user.email || '').trim().toLowerCase();
+        const emailLocalPart = email ? email.split('@')[0] : '';
+        const firstName = fullName ? fullName.split(/\s+/)[0] : '';
+
+        return {
+            user,
+            candidates: [fullName, emailLocalPart, firstName]
+                .map((value) => String(value || '').trim().toLowerCase())
+                .filter(Boolean),
+        };
+    }
+
+    async _createMentionNotifications(task, commenterId, text) {
+        const mentionTokens = this._extractMentionTokens(text);
+
+        if (mentionTokens.length === 0) {
+            return;
+        }
+
+        const collaboratorIds = new Set();
+        if (task.userId) {
+            collaboratorIds.add(String(task.userId));
+        }
+
+        (task.sharedWith || []).forEach((userId) => collaboratorIds.add(String(userId)));
+
+        (task.comments || []).forEach((comment) => {
+            if (comment?.user) {
+                collaboratorIds.add(String(comment.user));
+            }
+        });
+
+        const collaborators = await User.find({ _id: { $in: [...collaboratorIds] } }).select('name email');
+        const recipients = [];
+
+        collaborators.forEach((collaborator) => {
+            if (String(collaborator._id) === String(commenterId)) {
+              return;
+            }
+
+            const normalized = this._normalizeMentionCandidate(collaborator);
+            if (!normalized) {
+                return;
+            }
+
+            const matched = mentionTokens.some((token) => normalized.candidates.includes(token));
+            if (matched) {
+                recipients.push(collaborator);
+            }
+        });
+
+        if (recipients.length === 0) {
+            return;
+        }
+
+        const uniqueRecipients = recipients.filter((recipient, index, array) => (
+            index === array.findIndex((item) => String(item._id) === String(recipient._id))
+        ));
+
+        const mentionPreview = String(text || '').trim();
+        const notificationMessage = mentionPreview.length > 120
+            ? `You were mentioned in a task comment: ${mentionPreview.slice(0, 117)}...`
+            : `You were mentioned in a task comment: ${mentionPreview}`;
+
+        const notifications = uniqueRecipients.map((recipient) => ({
+            userId: recipient._id,
+            type: 'comment',
+            message: notificationMessage,
+            taskId: task._id,
+            projectId: task.projectId || null,
+            read: false,
+        }));
+
+        if (notifications.length > 0) {
+            await Notification.insertMany(notifications);
+        }
     }
 
     /**
@@ -106,6 +197,35 @@ class TaskService extends BaseService {
             ...condition,
             archivedAt: null,
         }));
+    }
+
+    async getPendingInvites(userId) {
+        const tasks = await this.model.find({
+            shareInvites: {
+                $elemMatch: {
+                  user: userId,
+                  status: 'pending',
+                },
+            },
+        })
+            .populate('userId', 'name email')
+            .populate('projectId', 'title category status')
+            .sort({ createdAt: -1 });
+
+        return tasks.map((taskDoc) => {
+            const task = taskDoc.toObject();
+            const invite = (task.shareInvites || []).find(
+                (item) => item.user && item.user.toString() === userId && item.status === 'pending'
+            );
+
+            return {
+                ...task,
+                inviteStatus: invite ? invite.status : null,
+                invitedAt: invite ? invite.invitedAt : null,
+                accessRole: 'invite',
+                owner: task.userId,
+            };
+        });
     }
 
     async getProjectPermissionForUser(projectId, userId) {
@@ -211,7 +331,10 @@ class TaskService extends BaseService {
 
         const [tasks, total] = await Promise.all([
             this.model.find(query)
+                .populate('userId', 'name email')
                 .populate('projectId', 'title category status')
+                .populate('comments.user', 'name email')
+                .populate('sharedWith', 'name email')
                 .sort({ [safeSortBy]: safeSortOrder })
                 .skip((safePage - 1) * safeLimit)
                 .limit(safeLimit),
@@ -236,7 +359,10 @@ class TaskService extends BaseService {
         const accessOr = await this.getTaskAccessOrConditions(userId);
         const task = await this.model
             .findOne({ _id: id, $or: accessOr })
-            .populate('projectId', 'title category status');
+            .populate('userId', 'name email')
+            .populate('projectId', 'title category status')
+            .populate('comments.user', 'name email')
+            .populate('sharedWith', 'name email');
 
         if (!task) {
             throw new AppError('Task not found', 404);
@@ -253,7 +379,10 @@ class TaskService extends BaseService {
 
         return this.model
             .find({ projectId })
+            .populate('userId', 'name email')
             .populate('projectId', 'title category status')
+            .populate('comments.user', 'name email')
+            .populate('sharedWith', 'name email')
             .sort({ order: 1, createdAt: -1 });
     }
 
@@ -279,7 +408,7 @@ class TaskService extends BaseService {
         // Debounce scheduler: rapid creates only trigger one reschedule after 5s
         this._scheduleUserTasksDebounced(task.userId);
 
-        return this.model.findById(task._id).populate('projectId', 'title category status');
+        return this.model.findById(task._id).populate('userId', 'name email').populate('projectId', 'title category status');
     }
 
     async updateTask(id, userId, updateData) {
@@ -411,7 +540,7 @@ class TaskService extends BaseService {
         task = await this.model.findByIdAndUpdate(id, updateData, {
             new: true,
             runValidators: true,
-        }).populate('projectId', 'title category status');
+        }).populate('userId', 'name email').populate('projectId', 'title category status');
 
         if (oldProjectId) {
             await projectService.calculateProjectProgress(oldProjectId);
@@ -596,6 +725,9 @@ class TaskService extends BaseService {
         task.comments.push(comment);
         await task.save();
 
+        await this._createMentionNotifications(task, userId, text);
+
+        await task.populate('comments.user', 'name email');
         return task.comments[task.comments.length - 1];
     }
 
@@ -620,18 +752,76 @@ class TaskService extends BaseService {
             throw new AppError('Cannot share with yourself', 400);
         }
 
-        if (task.sharedWith.includes(targetUser._id)) {
+        if (task.sharedWith.some((uid) => uid.toString() === targetUser._id.toString())) {
             throw new AppError('Task already shared with this user', 400);
         }
 
-        task.sharedWith.push(targetUser._id);
+        const hasPendingInvite = (task.shareInvites || []).some(
+            (invite) => invite.user && invite.user.toString() === targetUser._id.toString() && invite.status === 'pending'
+        );
+
+        if (hasPendingInvite) {
+            throw new AppError('Task already has a pending invite for this user', 400);
+        }
+
+        if (!task.shareInvites) {
+            task.shareInvites = [];
+        }
+
+        task.shareInvites.push({
+            user: targetUser._id,
+            status: 'pending',
+            invitedAt: new Date(),
+            respondedAt: null,
+        });
         await task.save();
 
         return {
             id: targetUser._id,
             name: targetUser.name,
             email: targetUser.email,
+            inviteStatus: 'pending',
         };
+    }
+
+    async respondToShareInvite(id, userId, action) {
+        const task = await this.findById(id);
+
+        if (!task) {
+            throw new AppError('Task not found', 404);
+        }
+
+        const invite = (task.shareInvites || []).find(
+            (item) => item.user && item.user.toString() === userId && item.status === 'pending'
+        );
+
+        if (!invite) {
+            throw new AppError('No pending invite found for this task', 404);
+        }
+
+        if (action === 'accept') {
+            if (!task.sharedWith.some((uid) => uid.toString() === userId)) {
+                task.sharedWith.push(userId);
+            }
+
+            task.shareInvites = (task.shareInvites || []).filter(
+                (item) => !(item.user && item.user.toString() === userId && item.status === 'pending')
+            );
+            await task.save();
+
+            return { accepted: true };
+        }
+
+        if (action === 'decline') {
+            task.shareInvites = (task.shareInvites || []).filter(
+                (item) => !(item.user && item.user.toString() === userId && item.status === 'pending')
+            );
+            await task.save();
+
+            return { declined: true };
+        }
+
+        throw new AppError('Invalid action', 400);
     }
 
     async getUpcoming(userId) {

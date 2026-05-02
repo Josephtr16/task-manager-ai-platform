@@ -27,8 +27,16 @@ class ProjectEnhanceRequest(BaseModel):
   name: str
   description: Optional[str] = ""
 
-BREAKDOWN_SYSTEM = """You are a senior software project manager with 15 years of experience.
-Break down a software project into specific, actionable tasks with ACCURATE time estimates and deadlines.
+BREAKDOWN_SYSTEM = """You are a senior project manager with 15 years of experience across software, research, environmental, social, business, and academic projects.
+Break down the given project into specific, actionable tasks with ACCURATE time estimates and deadlines.
+The project may be a software product, a research study, a community program, a business initiative, or any other domain — detect the domain from the description and adapt all tasks and categories accordingly.
+
+DOMAIN DETECTION RULES:
+  - If the description mentions apps, APIs, databases, frontend, backend, deployment → it is a SOFTWARE project
+  - If it mentions communities, environment, awareness, outreach, campaigns, recycling → it is a COMMUNITY/ENVIRONMENTAL project
+  - If it mentions research, data collection, surveys, analysis, publications → it is a RESEARCH/ACADEMIC project
+  - If it mentions sales, revenue, market, customers, partnerships, strategy → it is a BUSINESS project
+  - Mixed projects (e.g. a platform for a community program) → treat as SOFTWARE for technical tasks, but do NOT force pure software patterns onto non-technical deliverables
 
 CRITICAL TIME ESTIMATION RULES:
 Scope reference points:
@@ -37,17 +45,38 @@ Scope reference points:
   - Professional/production: 300-600 hours TOTAL
   - Advanced/enterprise: 700+ hours TOTAL
 
-Per-task minimums:
-  - Any UI component or page: minimum 8h (480 min)
-  - Full frontend module: 15-30h
-  - Backend API endpoint group: 8-20h
-  - Database design + implementation: 10-25h
-  - Authentication system: 15-25h
-  - Payment integration: 20-40h
-  - Testing: 15-30h
-  - Deployment + CI/CD: 8-20h
-  - Documentation: 5-15h
+Per-task minimums by domain:
+  SOFTWARE:
+    - Any UI component or page: minimum 8h (480 min)
+    - Full frontend module: 15-30h
+    - Backend API endpoint group: 8-20h
+    - Database design + implementation: 10-25h
+    - Authentication system: 15-25h
+    - Payment integration: 20-40h
+    - Testing: 15-30h
+    - Deployment + CI/CD: 8-20h
+    - Documentation: 5-15h
+  RESEARCH/ACADEMIC:
+    - Literature review: 10-20h
+    - Data collection or surveys: 15-40h
+    - Data analysis: 10-30h
+    - Report or thesis writing: 10-20h
+    - Presentation preparation: 5-10h
+  COMMUNITY/ENVIRONMENTAL:
+    - Stakeholder outreach and engagement: 8-20h
+    - Educational material production: 10-25h
+    - Event planning and coordination: 10-30h
+    - Partnership negotiation: 10-25h
+    - Impact assessment and reporting: 8-20h
+    - Campaign design: 8-20h
+  BUSINESS:
+    - Market research: 8-20h
+    - Strategy document: 6-15h
+    - Partnership development: 10-25h
+    - Financial planning: 8-20h
+    - Pitch or presentation: 5-15h
   NEVER set estimated_minutes below 240.
+  NEVER generate software-specific tasks (authentication systems, CI/CD pipelines, unit tests, API endpoints, database schemas) for purely non-software projects.
 
 DEADLINE DISTRIBUTION RULES:
   - Tasks are divided across phases in this order: planning → design → development → testing → deployment
@@ -71,7 +100,7 @@ Return ONLY valid JSON, no markdown:
       "description": "<what needs to be done, 1-2 sentences>",
       "estimated_minutes": <int, MINIMUM 240>,
       "priority": "low|medium|high|urgent",
-      "category": "Frontend|Backend|Database|Design|Testing|DevOps|Documentation",
+      "category": "<for SOFTWARE use: Frontend|Backend|Database|Design|Testing|DevOps|Documentation — for other domains pick a fitting label such as: Research|Outreach|Planning|Content|Logistics|Analysis|Communication|Fundraising|Partnerships>",
       "phase": "planning|design|development|testing|deployment",
       "deadline": "<YYYY-MM-DD>"
     }
@@ -81,7 +110,7 @@ Return ONLY valid JSON, no markdown:
   ]
 }"""
 
-SUBTASKS_SYSTEM = """You are a project manager. Given a task from a software project, generate specific subtasks.
+SUBTASKS_SYSTEM = """You are a project manager. Given a task from any type of project (software, research, community, business, etc.), generate specific and domain-appropriate subtasks.
 Return ONLY valid JSON:
 {
   "subtasks": [
@@ -96,7 +125,8 @@ Rules:
 - Generate 3 to 6 subtasks
 - Each subtask must be concrete and actionable
 - Total subtask time should approximately equal the parent task time
-- Subtasks must be specific to the exact task, not generic"""
+- Subtasks must be specific to the exact task and appropriate to its domain
+- Do NOT apply software development patterns (unit tests, deployments, API calls) to non-software tasks"""
 
 @router.post("/project-breakdown")
 async def project_breakdown(req: ProjectBreakdownRequest):
@@ -118,7 +148,7 @@ Type: {req.project_type}
 Team: {req.team}
 Scope: {scope_hint}
 {deadline_info}
-Generate exactly {req.task_count} tasks. Each must be specific to THIS project."""
+Generate exactly {req.task_count} tasks. Each must be specific to THIS project and appropriate to its actual domain."""
     result = ask_groq(BREAKDOWN_SYSTEM, prompt, max_tokens=3000, temperature=0.1)
     return result
 

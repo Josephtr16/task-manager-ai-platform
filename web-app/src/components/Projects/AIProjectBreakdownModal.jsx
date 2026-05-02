@@ -252,7 +252,7 @@ const AIProjectBreakdownModal = ({ isOpen, onClose, project, onAddAcceptedTasks 
       display: 'grid',
       gridTemplateColumns: '1fr 1fr auto',
       gap: '12px',
-      alignItems: 'end',
+      alignItems: 'center',
       marginBottom: '18px',
     },
     deadlineHint: {
@@ -271,7 +271,8 @@ const AIProjectBreakdownModal = ({ isOpen, onClose, project, onAddAcceptedTasks 
       fontSize: '14px',
     },
     generateBtn: {
-      padding: '11px 18px',
+      height: '44px',
+      padding: '0 18px',
       border: 'none',
       borderRadius: borderRadius.md,
       backgroundColor: theme.primary,

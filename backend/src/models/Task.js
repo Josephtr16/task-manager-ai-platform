@@ -82,6 +82,26 @@ const taskSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
   }],
+  shareInvites: [{
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    },
+    status: {
+      type: String,
+      enum: ['pending', 'accepted', 'declined'],
+      default: 'pending',
+    },
+    invitedAt: {
+      type: Date,
+      default: Date.now,
+    },
+    respondedAt: {
+      type: Date,
+      default: null,
+    },
+  }],
   comments: [{
     user: {
       type: mongoose.Schema.Types.ObjectId,
@@ -213,6 +233,7 @@ taskSchema.index({ userId: 1, status: 1 });
 taskSchema.index({ userId: 1, deadline: 1 });
 taskSchema.index({ userId: 1, status: 1, completedAt: 1, archivedAt: 1 });
 taskSchema.index({ projectId: 1 });
+taskSchema.index({ 'shareInvites.user': 1, 'shareInvites.status': 1 });
 taskSchema.index({ userId: 1, createdAt: -1 });
 taskSchema.index({ userId: 1, category: 1 });
 

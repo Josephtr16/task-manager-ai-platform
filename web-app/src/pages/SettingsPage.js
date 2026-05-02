@@ -1,5 +1,6 @@
 // src/pages/SettingsPage.js
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { authAPI } from '../services/api';
@@ -24,7 +25,7 @@ const SettingsPage = () => {
     aiSuggestions: true,
     autoPrioritize: true,
     dataSharing: false,
-    language: 'en',
+    language: localStorage.getItem('tracely_language') || 'en',
     timezone: 'UTC-5',
     currentPassword: '',
     newPassword: '',
@@ -291,6 +292,25 @@ const SettingsPage = () => {
       color: theme.textPrimary,
       boxShadow: theme.shadows.sm,
     },
+    languageBtn: {
+      display: 'flex',
+      alignItems: 'center',
+      padding: '8px 14px',
+      border: 'none',
+      backgroundColor: 'transparent',
+      color: theme.textSecondary,
+      fontSize: '13px',
+      fontWeight: '600',
+      cursor: 'pointer',
+      borderRadius: '6px',
+      transition: 'all 120ms ease',
+    },
+    languageBtnActive: {
+      border: `2px solid ${theme.primary}`,
+      backgroundColor: `${theme.primary}22`,
+      color: theme.textPrimary,
+      boxShadow: theme.shadows.sm,
+    },
     toggleLabel: {
       position: 'relative',
       display: 'inline-block',
@@ -358,6 +378,9 @@ const SettingsPage = () => {
     },
   };
 
+  const { t, i18n } = useTranslation();
+  const tt = (key, fallback, options = {}) => t(key, { defaultValue: fallback, ...options });
+
   const renderContent = () => {
     switch (activeTab) {
       case 'profile':
@@ -419,7 +442,43 @@ const SettingsPage = () => {
       case 'appearance':
         return (
           <div style={styles.section}>
-            <h2 style={styles.sectionTitle}>Appearance</h2>
+              <h2 style={styles.sectionTitle}>Appearance</h2>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>{tt('settings.language', 'Language')}</label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    type="button"
+                    style={{
+                      ...styles.languageBtn,
+                      ...(formData.language === 'en' ? styles.languageBtnActive : {})
+                    }}
+                    onClick={() => {
+                      i18n.changeLanguage('en');
+                      localStorage.setItem('tracely_language', 'en');
+                      setFormData(prev => ({ ...prev, language: 'en' }));
+                    }}
+                  >
+                    <span style={{ marginRight: 8 }}>🇬🇧</span>
+                    {tt('settings.english', 'English')}
+                  </button>
+
+                  <button
+                    type="button"
+                    style={{
+                      ...styles.languageBtn,
+                      ...(formData.language === 'fr' ? styles.languageBtnActive : {})
+                    }}
+                    onClick={() => {
+                      i18n.changeLanguage('fr');
+                      localStorage.setItem('tracely_language', 'fr');
+                      setFormData(prev => ({ ...prev, language: 'fr' }));
+                    }}
+                  >
+                    <span style={{ marginRight: 8 }}>🇫🇷</span>
+                    {tt('settings.french', 'French')}
+                  </button>
+                </div>
+              </div>
             <div style={styles.settingItem}>
               <div style={styles.settingInfo}>
                 <span style={styles.settingLabel}>Theme Mode</span>

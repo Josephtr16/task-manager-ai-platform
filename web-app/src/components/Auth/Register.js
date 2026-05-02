@@ -4,6 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import AuthLayout from './AuthLayout';
+import { useTranslation } from 'react-i18next';
 
 const Register = () => {
   const [name, setName] = useState('');
@@ -15,6 +16,8 @@ const Register = () => {
   const { register } = useAuth();
   const { theme, isDarkMode } = useTheme();
   const navigate = useNavigate();
+  const { t } = useTranslation();
+  const tt = (key, fallback, options = {}) => t(key, { defaultValue: fallback, ...options });
 
   const validateEmail = (email) => {
     return String(email)
@@ -29,17 +32,17 @@ const Register = () => {
     setError('');
 
     if (!validateEmail(email)) {
-      setError('Please provide a valid email format');
+      setError(tt('authExtras.invalidEmail', 'Please enter a valid email address.'));
       return;
     }
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      setError(tt('authExtras.passwordMismatch', 'Passwords do not match.'));
       return;
     }
 
     if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+      setError(tt('authExtras.passwordTooShort', 'Password must be at least 6 characters.'));
       return;
     }
 
@@ -63,9 +66,9 @@ const Register = () => {
       <div style={styles.header}>
         <div style={styles.logoContainer}>
           <div style={styles.logo}>TF</div>
-          <h1 style={styles.title}>TaskFlow AI</h1>
+          <h1 style={styles.title}>{t('app.name')}</h1>
         </div>
-        <p style={styles.subtitle}>Create your account</p>
+        <p style={styles.subtitle}>{tt('auth.createAccount', 'Create your account')}</p>
       </div>
 
       {error && (
@@ -76,7 +79,7 @@ const Register = () => {
 
       <form onSubmit={handleSubmit} style={styles.form}>
         <div style={styles.inputGroup}>
-          <label style={styles.label}>Full Name</label>
+          <label style={styles.label}>{tt('auth.fullName', 'Full name')}</label>
           <input
             type="text"
             value={name}
@@ -88,36 +91,36 @@ const Register = () => {
         </div>
 
         <div style={styles.inputGroup}>
-          <label style={styles.label}>Email</label>
+          <label style={styles.label}>{tt('auth.email', 'Email')}</label>
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="your.email@example.com"
+            placeholder={tt('authExtras.emailPlaceholder', 'your.email@example.com')}
             style={styles.input}
             required
           />
         </div>
 
         <div style={styles.inputGroup}>
-          <label style={styles.label}>Password</label>
+          <label style={styles.label}>{tt('auth.password', 'Password')}</label>
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
+            placeholder={tt('authExtras.passwordPlaceholder', 'Enter your password')}
             style={styles.input}
             required
           />
         </div>
 
         <div style={styles.inputGroup}>
-          <label style={styles.label}>Confirm Password</label>
+          <label style={styles.label}>{tt('auth.confirmPassword', 'Confirm password')}</label>
           <input
             type="password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            placeholder="••••••••"
+            placeholder={tt('authExtras.passwordPlaceholder', 'Enter your password')}
             style={styles.input}
             required
           />
@@ -145,15 +148,15 @@ const Register = () => {
             }
           }}
         >
-          {loading ? 'Creating account...' : 'Create Account'}
+          {loading ? tt('authExtras.creatingAccount', 'Creating account...') : tt('auth.createAccount', 'Create account')}
         </button>
       </form>
 
       <div style={styles.footer}>
         <p style={styles.footerText}>
-          Already have an account?{' '}
+          {tt('authExtras.alreadyHaveAccount', 'Already have an account?')}{' '}
           <Link to="/login" style={styles.link}>
-            Sign in
+            {tt('auth.login', 'Sign in')}
           </Link>
         </p>
       </div>

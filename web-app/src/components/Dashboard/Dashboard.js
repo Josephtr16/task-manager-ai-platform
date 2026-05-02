@@ -1,5 +1,6 @@
 // src/components/Dashboard/Dashboard.js
 import React, { useState, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import api, { tasksAPI } from '../../services/api';
@@ -13,7 +14,7 @@ import TaskDetailModal from '../Tasks/TaskDetailModal';
 import { StatsCardSkeleton } from '../common/SkeletonLoader';
 import { readCache, writeCache } from '../../utils/sessionCache';
 import { formatTaskDuration } from '../../utils/formatTaskDuration';
-import { FaChartLine, FaCheckCircle, FaCalendarAlt, FaChartPie, FaPlus, FaTimes, FaRegLightbulb, FaPlay, FaClock, FaListOl, FaTrash } from 'react-icons/fa';
+import { FaChartLine, FaCheckCircle, FaCalendarAlt, FaPlus, FaTimes, FaRegLightbulb, FaPlay, FaClock, FaListOl, FaTrash } from 'react-icons/fa';
 
 const DASHBOARD_CACHE_KEY = 'taskflow_dashboard_cache';
 const DAILY_PLAN_STORAGE_KEY = 'taskflow_daily_plan';
@@ -75,6 +76,8 @@ const sortScheduleChronologically = (schedule = []) => {
 
 const DailyStandupBanner = ({ report, standupCounts, onDismiss, theme }) => {
   const insights = Array.isArray(report?.insights) ? report.insights : [];
+  const { t } = useTranslation();
+  const tt = (key, fallback, options = {}) => t(key, { defaultValue: fallback, ...options });
 
   return (
     <div style={{
@@ -127,7 +130,7 @@ const DailyStandupBanner = ({ report, standupCounts, onDismiss, theme }) => {
                 fontWeight: '700',
                 marginBottom: '10px',
               }}>
-                Daily AI Standup
+                {t('ai.aiAssistant')}
               </div>
               <h2 style={{
                 margin: '0 0 8px 0',
@@ -136,7 +139,7 @@ const DailyStandupBanner = ({ report, standupCounts, onDismiss, theme }) => {
                 fontWeight: '800',
                 letterSpacing: '-0.02em',
               }}>
-                {report?.completion_rate_label || 'Your daily standup is ready'}
+                {report?.completion_rate_label || tt('dashboard.standupReady', 'Standup ready')}
               </h2>
               <p style={{
                 margin: '0 0 10px 0',
@@ -145,7 +148,7 @@ const DailyStandupBanner = ({ report, standupCounts, onDismiss, theme }) => {
                 lineHeight: 1.6,
                 maxWidth: '920px',
               }}>
-                {report?.summary || 'A quick AI summary of what happened yesterday and what needs attention today.'}
+                {report?.summary || tt('dashboard.standupSummary', 'Here is your daily progress summary.')}
               </p>
               <div style={{
                 display: 'flex',
@@ -153,7 +156,7 @@ const DailyStandupBanner = ({ report, standupCounts, onDismiss, theme }) => {
                 gap: '8px',
                 marginBottom: '10px',
               }}>
-                <span style={{
+                  <span style={{
                   padding: '6px 10px',
                   borderRadius: '999px',
                   backgroundColor: `${theme.success}12`,
@@ -161,7 +164,7 @@ const DailyStandupBanner = ({ report, standupCounts, onDismiss, theme }) => {
                   fontSize: '12px',
                   fontWeight: '700',
                 }}>
-                  Completed yesterday: {standupCounts?.completedYesterday || 0}
+                  {tt('dashboard.completedYesterday', 'Completed yesterday')}: {standupCounts?.completedYesterday || 0}
                 </span>
                 <span style={{
                   padding: '6px 10px',
@@ -171,7 +174,7 @@ const DailyStandupBanner = ({ report, standupCounts, onDismiss, theme }) => {
                   fontSize: '12px',
                   fontWeight: '700',
                 }}>
-                  Due today: {standupCounts?.dueToday || 0}
+                  {tt('dashboard.dueToday', 'Due today')}: {standupCounts?.dueToday || 0}
                 </span>
                 <span style={{
                   padding: '6px 10px',
@@ -181,7 +184,7 @@ const DailyStandupBanner = ({ report, standupCounts, onDismiss, theme }) => {
                   fontSize: '12px',
                   fontWeight: '700',
                 }}>
-                  Overdue: {standupCounts?.overdue || 0}
+                  {tt('dashboard.overdue', 'Overdue')}: {standupCounts?.overdue || 0}
                 </span>
                 {report?.best_day && (
                   <span style={{
@@ -224,7 +227,7 @@ const DailyStandupBanner = ({ report, standupCounts, onDismiss, theme }) => {
                     <FaCalendarAlt />
                   </span>
                   <span>
-                    <strong>Recommendation:</strong> {report.recommendation}
+                    <strong>{tt('dashboard.recommendation', 'Recommendation')}:</strong> {report.recommendation}
                   </span>
                 </div>
               )}
@@ -250,7 +253,7 @@ const DailyStandupBanner = ({ report, standupCounts, onDismiss, theme }) => {
           <button
             type="button"
             onClick={onDismiss}
-            aria-label="Dismiss daily standup banner"
+            aria-label={tt('common.close', 'Close')}
             style={{
               width: '36px',
               height: '36px',
@@ -299,6 +302,7 @@ const PlanDayModal = ({
   focusTask,
   theme,
 }) => {
+  const { t } = useTranslation();
   useEffect(() => {
     if (!isOpen) {
       return undefined;
@@ -374,13 +378,13 @@ const PlanDayModal = ({
                 fontWeight: '700',
                 marginBottom: '10px',
               }}>
-                <FaPlay /> Plan Day
+                <FaPlay /> {t('ai.planMyDay')}
               </div>
               <h2 style={{ margin: 0, color: theme.textPrimary, fontSize: '24px', fontWeight: '800' }}>
-                Build {planningScopeLabel}&apos;s schedule
+                {t('dashboard.buildSchedule', { scope: planningScopeLabel })}
               </h2>
               <p style={{ margin: '8px 0 0', color: theme.textSecondary, fontSize: '14px', lineHeight: 1.6 }}>
-                Use your open tasks and working hours to generate a focused plan for the day.
+                {t('dashboard.planDescription')}
               </p>
               {targetDateLabel && (
                 <p style={{ margin: '8px 0 0', color: theme.textMuted, fontSize: '12px', fontWeight: '600' }}>
@@ -426,7 +430,7 @@ const PlanDayModal = ({
             marginBottom: '24px',
           }}>
             <label style={{ display: 'grid', gap: '10px', color: theme.textSecondary, fontSize: '13px', fontWeight: '680' }}>
-              Start time
+              {t('dashboard.startTime')}
               <input
                 type="time"
                 value={workStart}
@@ -452,7 +456,7 @@ const PlanDayModal = ({
               />
             </label>
             <label style={{ display: 'grid', gap: '10px', color: theme.textSecondary, fontSize: '13px', fontWeight: '680' }}>
-              End time
+              {t('dashboard.endTime')}
               <input
                 type="time"
                 value={workEnd}
@@ -510,7 +514,7 @@ const PlanDayModal = ({
                   e.currentTarget.style.boxShadow = `0 4px 16px ${theme.primary}35`;
                 }}
               >
-                <FaClock style={{ fontSize: '13px' }} /> {loading ? 'Planning...' : 'Generate plan'}
+                <FaClock style={{ fontSize: '13px' }} /> {loading ? t('ai.generating') : t('ai.planMyDay')}
               </button>
             </div>
           </div>
@@ -540,7 +544,7 @@ const PlanDayModal = ({
               }}>
                 <div style={{ padding: '20px', borderRadius: '14px', backgroundColor: theme.bgElevated, border: `1.5px solid ${theme.border}` }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: theme.primary, marginBottom: '12px', fontWeight: '800', fontSize: '13px' }}>
-                    <FaListOl /> FOCUS TASK
+                    <FaListOl /> {t('dashboard.focusTask')}
                   </div>
                   <div style={{ color: theme.textPrimary, fontSize: '15px', lineHeight: 1.6, fontWeight: '700' }}>
                     {focusTaskLabel}
@@ -548,16 +552,16 @@ const PlanDayModal = ({
                 </div>
                 <div style={{ padding: '20px', borderRadius: '14px', backgroundColor: theme.bgElevated, border: `1.5px solid ${theme.border}` }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: theme.primary, marginBottom: '12px', fontWeight: '800', fontSize: '13px' }}>
-                    <FaClock /> ADVICE
+                    <FaClock /> {t('dashboard.advice')}
                   </div>
                   <div style={{ color: theme.textPrimary, fontSize: '15px', lineHeight: 1.6 }}>
-                    {result.advice || 'No advice returned'}
+                    {result.advice || t('common.noData')}
                   </div>
                 </div>
               </div>
 
               <div style={{ padding: '20px', borderRadius: '14px', backgroundColor: theme.bgElevated, border: `1.5px solid ${theme.border}` }}>
-                <h3 style={{ margin: '0 0 16px 0', color: theme.textPrimary, fontSize: '16px', fontWeight: '800', letterSpacing: '-0.005em' }}>Suggested schedule</h3>
+                <h3 style={{ margin: '0 0 16px 0', color: theme.textPrimary, fontSize: '16px', fontWeight: '800', letterSpacing: '-0.005em' }}>{t('dashboard.suggestedSchedule')}</h3>
                 {schedule.length > 0 ? (
                   <div style={{ display: 'grid', gap: '12px' }}>
                     {schedule.map((item) => (
@@ -590,7 +594,7 @@ const PlanDayModal = ({
                     ))}
                   </div>
                 ) : (
-                  <div style={{ color: theme.textSecondary, fontSize: '14px' }}>No schedule returned yet.</div>
+                  <div style={{ color: theme.textSecondary, fontSize: '14px' }}>{t('common.noData')}</div>
                 )}
               </div>
             </div>
@@ -1665,42 +1669,6 @@ const Dashboard = () => {
       maxCount,
       busiestLabel: labels[busiestIndex],
       busiestCount: maxCount,
-    };
-  }, [tasks]);
-
-  const getCategoryColor = React.useCallback((category) => {
-    const normalized = String(category || 'other').trim().toLowerCase();
-
-    if (theme.chart && theme.chart[normalized]) {
-      return theme.chart[normalized];
-    }
-
-    // Deterministic fallback color for unknown categories to avoid palette collisions.
-    let hash = 0;
-    for (let i = 0; i < normalized.length; i += 1) {
-      hash = normalized.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    const hue = Math.abs(hash) % 360;
-    return `hsl(${hue}, 52%, 52%)`;
-  }, [theme.chart]);
-
-  const categoryBreakdownData = useMemo(() => {
-    const activeTasks = (tasks || []).filter((task) => task.status !== 'done');
-    const categoryCounts = activeTasks.reduce((acc, task) => {
-      const category = (task.category || 'Other').trim() || 'Other';
-      acc[category] = (acc[category] || 0) + 1;
-      return acc;
-    }, {});
-
-    const entries = Object.entries(categoryCounts)
-      .map(([category, count]) => ({ category, count }))
-      .sort((a, b) => b.count - a.count);
-
-    const total = entries.reduce((sum, item) => sum + item.count, 0);
-
-    return {
-      entries,
-      total,
     };
   }, [tasks]);
 

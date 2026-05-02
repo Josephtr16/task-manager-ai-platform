@@ -1136,6 +1136,16 @@ const ProjectDetailPage = () => {
                 <TaskDetailModal
                     task={selectedTask}
                     isOpen={showTaskDetailModal}
+                    mentionUsers={[
+                        project?.userId,
+                        ...(Array.isArray(project?.collaborators)
+                            ? project.collaborators.map((sharedUser) => ({
+                                _id: sharedUser.userId,
+                                name: sharedUser.name,
+                                email: sharedUser.email,
+                              }))
+                            : []),
+                    ]}
                     canComplete={canToggleTaskStatus}
                     canComment={canComment}
                     canEdit={canEditTask}

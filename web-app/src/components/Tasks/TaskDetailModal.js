@@ -1,5 +1,5 @@
 // src/components/Tasks/TaskDetailModal.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useTheme } from '../../context/ThemeContext';
 import { useNavigate } from 'react-router-dom';
 import { tasksAPI, timeTrackingAPI, subtasksAPI } from '../../services/api';
@@ -26,6 +26,7 @@ const TaskDetailModal = ({
   canManageAttachments = true,
   canShareTask = true,
   canToggleSubtasks = true,
+  mentionUsers = [],
 }) => {
   const { theme } = useTheme();
   const navigate = useNavigate();
@@ -39,6 +40,140 @@ const TaskDetailModal = ({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [dependencyOptions, setDependencyOptions] = useState([]);
   const [loadingDependencies, setLoadingDependencies] = useState(false);
+  const [commentSelectionStart, setCommentSelectionStart] = useState(0);
+  const [isSendingComment, setIsSendingComment] = useState(false);
+  const commentInputRef = useRef(null);
+
+  const renderTextWithMentions = (text) => {
+    const rawText = String(text || '');
+    const parts = rawText.split(/(@[A-Za-z0-9_.-]+)/g);
+
+    return parts.map((part, index) => {
+      if (/^@[A-Za-z0-9_.-]+$/.test(part)) {
+        return (
+          <span key={`${part}-${index}`} style={{ color: theme.accent, fontWeight: 700 }}>
+            {part}
+          </span>
+        );
+      }
+
+      return <React.Fragment key={`text-${index}`}>{part}</React.Fragment>;
+    });
+  };
+
+  const collaboratorSuggestions = useMemo(() => {
+    const seen = new Set();
+    const suggestions = [];
+
+    const addSuggestion = (candidate) => {
+      if (!candidate) return;
+
+      if (typeof candidate === 'string') {
+        const rawValue = candidate.trim();
+        const inferredEmail = rawValue.includes('@') ? rawValue : '';
+        const inferredName = inferredEmail ? inferredEmail.split('@')[0] : rawValue;
+        const inferredId = rawValue;
+
+        if (!inferredId || seen.has(inferredId)) return;
+        seen.add(inferredId);
+
+        suggestions.push({
+          id: inferredId,
+          name: inferredName || inferredEmail || 'User',
+          email: inferredEmail,
+          initial: (inferredName || inferredEmail || 'U').charAt(0).toUpperCase(),
+        });
+
+        return;
+      }
+
+      const name = String(candidate.name || '').trim();
+      const email = String(candidate.email || '').trim();
+      const id = String(candidate._id || candidate.id || email || name).trim();
+
+      if (!id || seen.has(id)) return;
+      seen.add(id);
+
+      suggestions.push({
+        id,
+        name: name || email || 'User',
+        email,
+        initial: (name || email || 'U').charAt(0).toUpperCase(),
+      });
+    };
+
+    if (Array.isArray(mentionUsers)) {
+      mentionUsers.forEach(addSuggestion);
+    }
+
+    addSuggestion(task?.userId && typeof task.userId === 'object' ? task.userId : null);
+
+    if (Array.isArray(task?.sharedWith)) {
+      task.sharedWith.forEach(addSuggestion);
+    }
+
+    if (Array.isArray(task?.comments)) {
+      task.comments.forEach((comment) => addSuggestion(comment?.user));
+    }
+
+    return suggestions;
+  }, [task, mentionUsers]);
+
+  const mentionContext = useMemo(() => {
+    const textBeforeCursor = String(newComment || '').slice(0, commentSelectionStart);
+    const match = textBeforeCursor.match(/(^|\s)@([A-Za-z0-9_.-]*)$/);
+
+    if (!match) {
+      return null;
+    }
+
+    const triggerStart = textBeforeCursor.lastIndexOf('@');
+    const query = match[2] || '';
+
+    return {
+      triggerStart,
+      query,
+    };
+  }, [newComment, commentSelectionStart]);
+
+  const filteredMentionSuggestions = useMemo(() => {
+    if (!mentionContext) {
+      return [];
+    }
+
+    const normalizedQuery = mentionContext.query.trim().toLowerCase();
+
+    return collaboratorSuggestions.filter((person) => {
+      if (!normalizedQuery) {
+        return true;
+      }
+
+      return person.name.toLowerCase().includes(normalizedQuery)
+        || person.email.toLowerCase().includes(normalizedQuery);
+    });
+  }, [collaboratorSuggestions, mentionContext]);
+
+  const insertMention = (person) => {
+    if (!mentionContext) {
+      return;
+    }
+
+    const insertionLabel = person.name || person.email;
+    const before = newComment.slice(0, mentionContext.triggerStart);
+    const after = newComment.slice(commentSelectionStart);
+    const nextValue = `${before}@${insertionLabel} ${after}`.replace(/\s{2,}/g, ' ');
+
+    setNewComment(nextValue);
+
+    requestAnimationFrame(() => {
+      if (commentInputRef.current) {
+        const nextCursor = `${before}@${insertionLabel} `.length;
+        commentInputRef.current.focus();
+        commentInputRef.current.setSelectionRange(nextCursor, nextCursor);
+        setCommentSelectionStart(nextCursor);
+      }
+    });
+  };
 
   const showNotification = (type, message) => {
     setNotification({ type, message });
@@ -560,6 +695,80 @@ const TaskDetailModal = ({
       outline: 'none',
       boxShadow: 'none',
     },
+    commentComposer: {
+      position: 'relative',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '10px',
+      flex: 1,
+      minWidth: 0,
+    },
+    mentionDropdown: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      top: 'calc(100% + 8px)',
+      zIndex: 20,
+      backgroundColor: theme.bgCard,
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
+      borderRadius: '12px',
+      boxShadow: theme.shadows.float,
+      overflow: 'hidden',
+      maxHeight: '220px',
+      overflowY: 'auto',
+    },
+    mentionDropdownHeader: {
+      padding: '10px 12px',
+      fontSize: '11px',
+      fontWeight: '700',
+      letterSpacing: '0.08em',
+      textTransform: 'uppercase',
+      color: theme.textMuted,
+      borderBottom: `1px solid ${theme.borderSubtle || theme.border}`,
+      backgroundColor: theme.bgRaised,
+    },
+    mentionOption: {
+      width: '100%',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '12px',
+      padding: '12px',
+      backgroundColor: 'transparent',
+      border: 'none',
+      cursor: 'pointer',
+      textAlign: 'left',
+    },
+    mentionAvatar: {
+      width: '34px',
+      height: '34px',
+      borderRadius: '50%',
+      backgroundColor: `${theme.primary}18`,
+      color: theme.primary,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontWeight: '800',
+      flexShrink: 0,
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
+    },
+    mentionName: {
+      margin: 0,
+      fontSize: '14px',
+      fontWeight: '700',
+      color: theme.textPrimary,
+      lineHeight: 1.3,
+    },
+    mentionMeta: {
+      margin: '2px 0 0',
+      fontSize: '12px',
+      color: theme.textMuted,
+      lineHeight: 1.3,
+    },
+    mentionEmpty: {
+      padding: '12px',
+      fontSize: '13px',
+      color: theme.textSecondary,
+    },
     shareInputContainer: {
       display: 'flex',
       gap: '12px',
@@ -837,6 +1046,12 @@ const TaskDetailModal = ({
     }
   };
 
+  const getProjectLabel = (project) => {
+    if (!project) return '';
+    if (typeof project === 'string') return project;
+    return project.title || project.name || project.projectTitle || project.projectName || project.label || '';
+  };
+
   const formatDate = (date) => {
     if (!date) return 'No deadline';
     return new Date(date).toLocaleDateString('en-US', {
@@ -881,19 +1096,28 @@ const TaskDetailModal = ({
       showNotification('error', 'You do not have permission to comment on this task.');
       return;
     }
-    if (!newComment.trim()) return;
+    const draftComment = newComment.trim();
+    if (!draftComment || isSendingComment) return;
+
+    setIsSendingComment(true);
+    setNewComment('');
+    setCommentSelectionStart(0);
+
     try {
-      const response = await tasksAPI.addComment(task._id, newComment);
+      const response = await tasksAPI.addComment(task._id, draftComment);
       if (response.data.success) {
+        const createdComment = response.data.data?.comment;
         onTaskUpdated({
           ...task,
-          comments: [...(task.comments || []), response.data.comment]
+          comments: [...(task.comments || []), createdComment]
         });
-        setNewComment('');
       }
     } catch (error) {
       console.error('Comment error:', error);
+      setNewComment(draftComment);
       showNotification('error', 'Failed to add comment');
+    } finally {
+      setIsSendingComment(false);
     }
   };
 
@@ -907,10 +1131,19 @@ const TaskDetailModal = ({
     try {
       const response = await tasksAPI.shareTask(task._id, shareEmail);
       if (response.data.success) {
-        showNotification('success', `Task shared with ${response.data.user.email}`);
+        const sharedUser = response.data.data?.user;
+        showNotification('success', `Task shared with ${sharedUser?.email || shareEmail}`);
         onTaskUpdated({
           ...task,
-          sharedWith: [...(task.sharedWith || []), response.data.user.id]
+          sharedWith: [...(task.sharedWith || []), sharedUser ? {
+            _id: sharedUser._id || sharedUser.id,
+            name: sharedUser.name,
+            email: sharedUser.email || shareEmail,
+          } : {
+            _id: shareEmail,
+            name: shareEmail.split('@')[0],
+            email: shareEmail,
+          }]
         });
         setShareEmail('');
       }
@@ -1126,18 +1359,6 @@ const TaskDetailModal = ({
         }
       `}</style>
       <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-        {notification && (
-          <div
-            style={{
-              ...styles.notification,
-              backgroundColor: notification.type === 'error' ? `${theme.error}22` : `${theme.success}22`,
-              color: notification.type === 'error' ? theme.error : theme.success,
-            }}
-          >
-            {notification.message}
-          </div>
-        )}
-
         {/* Header */}
         <div style={styles.header}>
           <div style={styles.headerLeft}>
@@ -1170,7 +1391,6 @@ const TaskDetailModal = ({
               <>
                 <button
                   onClick={handleUpdate}
-                  style={styles.saveButton}
                   disabled={loading}
                 >
                   {loading ? 'Saving...' : <><FaSave /> Save</>}
@@ -1235,6 +1455,11 @@ const TaskDetailModal = ({
           )}
           <span style={styles.badgeSecondary}>{formData.status}</span>
           <span style={styles.badgeSecondary}>{formData.category}</span>
+          {task.projectId && (
+            <span style={styles.badgeSecondary}>
+              {getProjectLabel(task.projectId) || 'Project'}
+            </span>
+          )}
           {task.aiPriorityScore && (
             <span style={{
               ...styles.badge,
@@ -1511,22 +1736,71 @@ const TaskDetailModal = ({
           <div style={styles.commentsList}>
             {task.comments?.map((comment, i) => (
               <div key={i} style={styles.commentItem}>
-                <p style={styles.commentText}>{comment.text}</p>
+                <p style={{ ...styles.commentText, marginBottom: '6px', fontWeight: '600', color: theme.textPrimary }}>
+                  {typeof comment.user === 'object' ? (comment.user.name || comment.user.email || 'User') : 'User'}
+                </p>
+                <p style={styles.commentText}>{renderTextWithMentions(comment.text)}</p>
                 <span style={styles.commentDate}>{new Date(comment.createdAt).toLocaleString()}</span>
               </div>
             ))}
           </div>
           {canComment ? (
             <div style={styles.addComment}>
-              <input
-                type="text"
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                placeholder="Add a comment..."
-                style={styles.commentInput}
-                onKeyPress={(e) => e.key === 'Enter' && handleAddComment()}
-              />
-              <button onClick={handleAddComment} style={styles.sendButton}><FaPaperPlane /> Send</button>
+              <div style={styles.commentComposer}>
+                <input
+                  ref={commentInputRef}
+                  type="text"
+                  value={newComment}
+                  onChange={(e) => {
+                    setNewComment(e.target.value);
+                    setCommentSelectionStart(e.target.selectionStart || e.target.value.length);
+                  }}
+                  onClick={(e) => setCommentSelectionStart(e.target.selectionStart || e.target.value.length)}
+                  onKeyUp={(e) => setCommentSelectionStart(e.target.selectionStart || e.target.value.length)}
+                  onBlur={() => {
+                    setTimeout(() => {
+                      if (commentInputRef.current && document.activeElement !== commentInputRef.current) {
+                        setCommentSelectionStart(0);
+                      }
+                    }, 120);
+                  }}
+                  placeholder="Add a comment... Type @ to mention a collaborator"
+                  style={styles.commentInput}
+                  onKeyPress={(e) => e.key === 'Enter' && handleAddComment()}
+                  autoComplete="off"
+                />
+                {mentionContext && (
+                  <div style={styles.mentionDropdown}>
+                    <div style={styles.mentionDropdownHeader}>
+                      Mention a collaborator
+                    </div>
+                    {filteredMentionSuggestions.length > 0 ? (
+                      filteredMentionSuggestions.map((person) => (
+                        <button
+                          key={person.id}
+                          type="button"
+                          style={styles.mentionOption}
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => insertMention(person)}
+                        >
+                          <div style={styles.mentionAvatar}>{person.initial}</div>
+                          <div style={{ minWidth: 0 }}>
+                            <p style={styles.mentionName}>{person.name}</p>
+                            <p style={styles.mentionMeta}>{person.email || 'Collaborator'}</p>
+                          </div>
+                        </button>
+                      ))
+                    ) : (
+                      <div style={styles.mentionEmpty}>
+                        No collaborators match this mention.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              <button type="button" onClick={handleAddComment} style={styles.sendButton} disabled={isSendingComment}>
+                <FaPaperPlane /> {isSendingComment ? 'Sending...' : 'Send'}
+              </button>
             </div>
           ) : (
             <p style={styles.description}>You do not have permission to add comments.</p>
@@ -1547,6 +1821,18 @@ const TaskDetailModal = ({
               />
               <button onClick={handleShare} style={styles.shareButton}><FaUserPlus /> Invite</button>
             </div>
+            {notification && (
+              <div
+                style={{
+                  ...styles.notification,
+                  marginTop: '10px',
+                  backgroundColor: notification.type === 'error' ? `${theme.error}22` : `${theme.success}22`,
+                  color: notification.type === 'error' ? theme.error : theme.success,
+                }}
+              >
+                {notification.message}
+              </div>
+            )}
             {task.sharedWith?.length > 0 && (
               <p style={styles.sharedInfo}>Shared with {task.sharedWith.length} users</p>
             )}

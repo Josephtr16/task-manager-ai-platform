@@ -4,6 +4,7 @@ import { FaTimes, FaCalendarAlt, FaTag, FaFlag, FaPlus, FaPaperclip, FaCheckCirc
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 import { useTheme } from '../../context/ThemeContext';
+import { useTranslation } from 'react-i18next';
 import { borderRadius } from '../../theme';
 import CustomSelect from '../common/CustomSelect';
 import aiService from '../../services/aiService';
@@ -24,6 +25,7 @@ const INITIAL_FORM_DATA = {
 
 const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
   const TIME_DEFAULT = '09:00';
@@ -158,7 +160,7 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
       setNewSubtask('');
       setTagInput('');
     } catch (error) {
-      showNotification(error.response?.data?.message || 'Failed to create task. Please check your inputs and try again.', 'error');
+      showNotification(error.response?.data?.message || t('tasks.createFailed', 'Failed to create task. Please check your inputs and try again.'), 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -336,7 +338,7 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
 
     if (isAssistingWrite || !hasEnoughContext) {
       if (!isAssistingWrite) {
-        showNotification('Add at least a short title or description so AI can generate quality suggestions.', 'error');
+        showNotification(t('ai.assistShortContext', 'Add at least a short title or description so AI can generate quality suggestions.'), 'error');
       }
       return;
     }
@@ -366,9 +368,9 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
       const summary = buildAIDiffSummary(previousFormData, nextFormData);
       setAiDiffSummary(summary);
 
-      showNotification(summary || 'AI suggestions added beautifully to your task.', 'info');
+      showNotification(summary || t('ai.suggestionsAdded', 'AI suggestions added to your task.'), 'info');
     } catch (error) {
-      showNotification(error.response?.data?.message || 'Failed to generate AI task details. Please try again.', 'error');
+      showNotification(error.response?.data?.message || t('ai.generateFailed', 'Failed to generate AI task details. Please try again.'), 'error');
     } finally {
       setIsAssistingWrite(false);
     }
@@ -601,25 +603,25 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
   };
 
   const priorityOptions = [
-    { value: 'low', label: 'Low', color: theme.low },
-    { value: 'medium', label: 'Medium', color: theme.medium },
-    { value: 'high', label: 'High', color: theme.high },
-    { value: 'urgent', label: 'Urgent', color: theme.urgent },
+    { value: 'low', label: t('tasks.priorityLabels.low', 'Low'), color: theme.low },
+    { value: 'medium', label: t('tasks.priorityLabels.medium', 'Medium'), color: theme.medium },
+    { value: 'high', label: t('tasks.priorityLabels.high', 'High'), color: theme.high },
+    { value: 'urgent', label: t('tasks.priorityLabels.urgent', 'Urgent'), color: theme.urgent },
   ];
 
   const categoryOptions = [
-    { value: 'Personal', label: 'Personal' },
-    { value: 'Work', label: 'Work' },
-    { value: 'Shopping', label: 'Shopping' },
-    { value: 'Health', label: 'Health' },
-    { value: 'Learning', label: 'Learning' },
-    { value: 'Family', label: 'Family' }
+    { value: 'Personal', label: t('tasks.categoryLabels.personal', 'Personal') },
+    { value: 'Work', label: t('tasks.categoryLabels.work', 'Work') },
+    { value: 'Shopping', label: t('tasks.categoryLabels.shopping', 'Shopping') },
+    { value: 'Health', label: t('tasks.categoryLabels.health', 'Health') },
+    { value: 'Learning', label: t('tasks.categoryLabels.learning', 'Learning') },
+    { value: 'Family', label: t('tasks.categoryLabels.family', 'Family') }
   ];
 
   const recurrenceOptions = [
-    { value: 'daily', label: 'Daily' },
-    { value: 'weekly', label: 'Weekly' },
-    { value: 'monthly', label: 'Monthly' },
+    { value: 'daily', label: t('recurrence.daily', 'Daily') },
+    { value: 'weekly', label: t('recurrence.weekly', 'Weekly') },
+    { value: 'monthly', label: t('recurrence.monthly', 'Monthly') },
   ];
 
   const styles = {
@@ -1276,8 +1278,8 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
         }
       `}</style>
       <div style={styles.modal} onClick={e => e.stopPropagation()}>
-        <div style={styles.header}>
-          <h2 style={styles.title}>Create New Task</h2>
+          <div style={styles.header}>
+          <h2 style={styles.title}>{t('tasks.createTask', 'Create New Task')}</h2>
           <button style={styles.closeButton} onClick={onClose} className="close-btn">
             <FaTimes />
           </button>
@@ -1315,13 +1317,13 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
 
         <form onSubmit={handleSubmit}>
           <div style={styles.formGroup}>
-            <label style={styles.label}>Task Title</label>
+            <label style={styles.label}>{t('tasks.taskTitle')}</label>
             <input
               type="text"
               name="title"
               value={formData.title}
               onChange={handleInputChange}
-              placeholder="e.g., Redesign Homepage"
+              placeholder={t('tasks.titlePlaceholder', 'e.g., Redesign Homepage')}
               style={styles.input}
               required
               autoFocus
@@ -1333,7 +1335,7 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
                 disabled={isAssistingWrite || !(formData.title.trim().length >= 3 || formData.description.trim().length >= 10)}
               >
                   {isAssistingWrite ? <span style={styles.spinner} /> : <FaRobot size={12} />}
-                {isAssistingWrite ? 'Generating...' : 'AI Writing Assistant'}
+                {isAssistingWrite ? t('ai.generating', 'Generating...') : t('ai.aiAssistant', 'AI Writing Assistant')}
               </button>
 
               {aiDiffSummary && (
@@ -1345,14 +1347,14 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
                       style={styles.aiDiffActionButton}
                       onClick={handleUndoAIAssistChanges}
                     >
-                      Undo
+                      {t('common.undo', 'Undo')}
                     </button>
                     <button
                       type="button"
                       style={styles.aiDiffActionButton}
                       onClick={() => setAiDiffSummary('')}
                     >
-                      Dismiss
+                      {t('common.dismiss', 'Dismiss')}
                     </button>
                   </div>
                 </div>
@@ -1360,12 +1362,12 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
           </div>
 
           <div style={styles.formGroup}>
-            <label style={styles.label}>Description</label>
+            <label style={styles.label}>{t('tasks.description')}</label>
             <textarea
               name="description"
               value={formData.description}
               onChange={handleInputChange}
-              placeholder="Add details about the task..."
+              placeholder={t('tasks.descriptionPlaceholder', 'Add details about the task...')}
               style={styles.textarea}
             />
           </div>
@@ -1373,13 +1375,13 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
           <div style={styles.row}>
             <div style={styles.col}>
               <div style={styles.dueDateHeader}>
-                <label style={{ ...styles.label, marginBottom: 0 }}><FaCalendarAlt /> Due Date</label>
+                <label style={{ ...styles.label, marginBottom: 0 }}><FaCalendarAlt /> {t('tasks.dueDate')}</label>
                 <button
                   type="button"
                   onClick={handleSpecificTimeToggle}
                   style={styles.timeToggleButton}
                 >
-                  {isSpecificTimeEnabled ? 'Use end of day' : 'Add specific time'}
+                  {isSpecificTimeEnabled ? t('tasks.useEndOfDay', 'Use end of day') : t('tasks.addSpecificTime', 'Add specific time')}
                 </button>
               </div>
               <DatePicker
@@ -1414,7 +1416,7 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
                           commitTypedDueTime();
                         }
                       }}
-                      placeholder="09:00 AM"
+                      placeholder={t('tasks.timePlaceholder', '09:00 AM')}
                       style={styles.timePickerInput}
                       aria-label="Type due time"
                     />
@@ -1423,7 +1425,7 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
                     <div style={styles.timePickerPanel}>
                       <div style={styles.timePartsRow}>
                         <div style={styles.timeListColumn}>
-                          <div style={styles.timeListTitle}>Hour</div>
+                          <div style={styles.timeListTitle}>{t('time.hour', 'Hour')}</div>
                           <div style={styles.timeList}>
                             {hourOptions.map((option) => (
                               <button
@@ -1438,7 +1440,7 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
                           </div>
                         </div>
                         <div style={styles.timeListColumn}>
-                          <div style={styles.timeListTitle}>Minute</div>
+                          <div style={styles.timeListTitle}>{t('time.minute', 'Minute')}</div>
                           <div style={styles.timeList}>
                             {minuteOptions.map((option) => (
                               <button
@@ -1453,7 +1455,7 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
                           </div>
                         </div>
                         <div style={styles.timeListColumn}>
-                          <div style={styles.timeListTitle}>AM/PM</div>
+                          <div style={styles.timeListTitle}>{t('time.ampm', 'AM/PM')}</div>
                           <div style={styles.timeList}>
                             {periodOptions.map((option) => (
                               <button
@@ -1561,7 +1563,7 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
                 value={newSubtask}
                 onChange={(e) => setNewSubtask(e.target.value)}
                 onKeyDown={handleAddSubtask}
-                placeholder="Add a subtask..."
+                placeholder={t('tasks.addSubtaskPlaceholder', 'Add a subtask...')}
                 style={styles.input}
               />
               <button
@@ -1595,7 +1597,7 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
               value={tagInput}
               onChange={(e) => setTagInput(e.target.value)}
               onKeyDown={handleAddTag}
-              placeholder="Press Enter to add tags"
+              placeholder={t('tasks.tagsPlaceholder', 'Press Enter to add tags')}
               style={styles.input}
             />
             <div style={styles.tagsContainer}>
@@ -1620,7 +1622,7 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
               style={styles.cancelButton}
               className="cancel-btn"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
@@ -1628,7 +1630,7 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
               className="create-btn"
               disabled={isSubmitting}
             >
-              <FaPlus /> {isSubmitting ? 'Creating...' : 'Create Task'}
+              <FaPlus /> {isSubmitting ? t('common.creating', 'Creating...') : t('tasks.createTaskButton', 'Create Task')}
             </button>
           </div>
         </form>

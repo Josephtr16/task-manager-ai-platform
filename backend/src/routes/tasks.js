@@ -11,7 +11,9 @@ const {
   addAttachment,
   removeAttachment,
   addComment,
+  getPendingInvites,
   shareTask,
+  respondToShareInvite,
   getProjectTasks
 } = require('../controllers/taskController');
 const { protect } = require('../middleware/auth');
@@ -23,12 +25,14 @@ router.use(protect);
 
 router.get('/statistics', getStatistics);
 router.get('/upcoming', getUpcoming);
+router.get('/invites', getPendingInvites);
 router.get('/project/:projectId', getProjectTasks);
 
 router.post('/:id/attachments', upload.single('file'), addAttachment);
 router.delete('/:id/attachments/:attachmentId', removeAttachment);
 router.post('/:id/comments', addComment);
 router.post('/:id/share', shareTask);
+router.post('/:id/respond-share', respondToShareInvite);
 
 router
   .route('/')

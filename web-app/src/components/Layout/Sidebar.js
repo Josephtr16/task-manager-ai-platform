@@ -1,5 +1,6 @@
 // src/components/Layout/Sidebar.js
 import React, { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -33,13 +34,13 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 232
   const prevUnreadCountRef = useRef(0);
 
   const menuItems = [
-    { icon: <FaHome />, label: 'Dashboard', path: '/dashboard' },
-    { icon: <FaTasks />, label: 'Tasks', path: '/tasks' },
-    { icon: <FaFolder />, label: 'Projects', path: '/projects' },
-    { icon: <FaBullseye />, label: 'Focus', path: '/focus' },
-    { icon: <FaClipboardList />, label: 'Kanban', path: '/kanban' },
-    { icon: <FaRegCalendarAlt />, label: 'Calendar', path: '/calendar' },
-    { icon: <FaRobot />, label: 'AI Insights', path: '/insights' },
+    { icon: <FaHome />, key: 'nav.dashboard', path: '/dashboard' },
+    { icon: <FaTasks />, key: 'nav.tasks', path: '/tasks' },
+    { icon: <FaFolder />, key: 'nav.projects', path: '/projects' },
+    { icon: <FaBullseye />, key: 'navExtras.focus', path: '/focus' },
+    { icon: <FaClipboardList />, key: 'navExtras.kanban', path: '/kanban' },
+    { icon: <FaRegCalendarAlt />, key: 'nav.calendar', path: '/calendar' },
+    { icon: <FaRobot />, key: 'navExtras.aiInsights', path: '/insights' },
   ];
 
   const isActive = (path) => location.pathname === path;
@@ -136,6 +137,36 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 232
 
     return () => clearInterval(intervalId);
   }, []);
+
+  const { t } = useTranslation();
+  const tt = (key, fallback, options = {}) => t(key, { defaultValue: fallback, ...options });
+  const menuLabelFallbacks = {
+    'nav.dashboard': 'Dashboard',
+    'nav.tasks': 'Tasks',
+    'nav.projects': 'Projects',
+    'nav.calendar': 'Calendar',
+    'nav.settings': 'Settings',
+    'navExtras.focus': 'Focus',
+    'navExtras.kanban': 'Kanban',
+    'navExtras.aiInsights': 'AI Insights',
+  };
+
+  const renderTextWithMentions = (text) => {
+    const rawText = String(text || '');
+    const parts = rawText.split(/(@[A-Za-z0-9_.-]+)/g);
+
+    return parts.map((part, index) => {
+      if (/^@[A-Za-z0-9_.-]+$/.test(part)) {
+        return (
+          <span key={`${part}-${index}`} style={{ color: theme.primary, fontWeight: 800 }}>
+            {part}
+          </span>
+        );
+      }
+
+      return <React.Fragment key={`notification-text-${index}`}>{part}</React.Fragment>;
+    });
+  };
 
   const styles = {
     sidebar: {
@@ -591,19 +622,19 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 232
 
       {/* Logo */}
       <div style={styles.logo}>
-        <div style={styles.logoLeft}>
-          <div style={styles.logoIcon}>
-            TF
-          </div>
-          {!isCollapsed && <span style={styles.logoText}>TaskFlow</span>}
-        </div>
+            <div style={styles.logoLeft}>
+              <div style={styles.logoIcon}>
+                TF
+              </div>
+              {!isCollapsed && <span style={styles.logoText}>{tt('app.name', 'TaskFlow AI')}</span>}
+            </div>
       </div>
 
       <button
         onClick={onToggle}
         style={styles.collapseButton}
         className="icon-btn sidebar-edge-toggle"
-        title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        title={isCollapsed ? tt('ui.expandSidebar', 'Expand sidebar') : tt('ui.collapseSidebar', 'Collapse sidebar')}
       >
         {isCollapsed ? <FaChevronRight size={12} /> : <FaChevronLeft size={12} />}
       </button>
@@ -615,7 +646,7 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 232
             key={item.path}
             onClick={() => navigate(item.path)}
             className={`sidebar-menu-item ${isActive(item.path) ? 'active' : ''}`}
-            title={isCollapsed ? item.label : ''}
+            title={isCollapsed ? tt(item.key, menuLabelFallbacks[item.key] || 'Menu item') : ''}
             style={{
               ...styles.menuItem,
               ...(isActive(item.path) ? styles.menuItemActive : styles.menuItemInactive),
@@ -630,7 +661,7 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 232
             >
               {item.icon}
             </span>
-            <span style={styles.menuLabel}>{item.label}</span>
+            <span style={styles.menuLabel}>{tt(item.key, menuLabelFallbacks[item.key] || 'Menu item')}</span>
           </button>
         ))}
       </nav>
@@ -651,7 +682,7 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 232
               onClick={() => setIsNotificationOpen((prev) => !prev)}
               style={styles.iconButton}
               className="icon-btn"
-              title="Notifications"
+              title={tt('notifications.title', 'Notifications')}
             >
               <span style={styles.bellWrapper}>
                 <FaBell />
@@ -664,7 +695,7 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 232
               onClick={() => navigate('/settings')}
               style={styles.iconButton}
               className="icon-btn"
-              title="Settings"
+              title={tt('nav.settings', 'Settings')}
             >
               <FaCog />
             </button>
@@ -672,7 +703,7 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 232
               onClick={handleLogout}
               style={styles.iconButton}
               className="icon-btn logout"
-              title="Logout"
+              title={tt('auth.logout', 'Log out')}
             >
               <FaSignOutAlt />
             </button>
@@ -689,15 +720,15 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 232
         <div style={styles.notificationHeader}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <FaBell color={theme.primary} />
-            <strong style={{ color: theme.textPrimary, fontSize: '15px' }}>Notifications</strong>
+            <strong style={{ color: theme.textPrimary, fontSize: '15px' }}>{tt('notifications.title', 'Notifications')}</strong>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <button onClick={handleMarkAllRead} style={styles.markAllButton} className="notif-mark-all">Mark all read</button>
+            <button onClick={handleMarkAllRead} style={styles.markAllButton} className="notif-mark-all">{tt('notifications.markAllRead', 'Mark all read')}</button>
             <button
               onClick={() => setIsNotificationOpen(false)}
               style={styles.iconButton}
               className="icon-btn"
-              title="Close"
+              title={tt('common.close', 'Close')}
             >
               <FaTimes />
             </button>
@@ -706,7 +737,7 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 232
 
         <div style={styles.notificationList}>
           {notifications.length === 0 ? (
-            <div style={styles.emptyState}>No notifications yet.</div>
+            <div style={styles.emptyState}>{tt('notifications.empty', 'No notifications yet')}</div>
           ) : (
             notifications.map((notification, index) => (
               <div
@@ -723,7 +754,7 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 232
                   }
                 }}
               >
-                <p style={styles.notificationMessage}>{notification.message}</p>
+                <p style={styles.notificationMessage}>{renderTextWithMentions(notification.message)}</p>
                 <div style={styles.notificationMeta}>{formatTimeAgo(notification.createdAt)}</div>
                 {!notification.read && <span style={styles.unreadDot} />}
               </div>

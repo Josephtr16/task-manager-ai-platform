@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { authAPI } from '../../services/api';
 import { FaCheckCircle, FaEnvelope, FaExclamationTriangle, FaLock, FaArrowRight } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
 import AuthLayout from './AuthLayout';
 
 const Login = () => {
@@ -17,10 +18,12 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const { login } = useAuth();
   const { theme, isDarkMode } = useTheme();
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   const location = useLocation();
   const [successMessage, setSuccessMessage] = useState(location.state?.message || '');
+  const tt = (key, fallback, options = {}) => t(key, { defaultValue: fallback, ...options });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -71,8 +74,8 @@ const Login = () => {
               <span style={styles.logoText}>TF</span>
             </div>
           </div>
-          <h1 style={styles.title}>Welcome Back</h1>
-          <p style={styles.subtitle}>Sign in to continue to TaskFlow AI</p>
+          <h1 style={styles.title}>{tt('auth.welcomeBack', 'Welcome back')}</h1>
+          <p style={styles.subtitle}>{tt('authExtras.signInPrompt', 'Sign in to continue')}</p>
         </div>
 
         {/* Messages */}
@@ -90,7 +93,7 @@ const Login = () => {
                   style={styles.resendLink}
                   disabled={resending}
                 >
-                  {resending ? 'Sending...' : 'Resend verification email →'}
+                  {resending ? tt('authExtras.sending', 'Sending...') : 'Resend verification email →'}
                 </button>
               )}
             </div>
@@ -119,14 +122,14 @@ const Login = () => {
         <form onSubmit={handleSubmit} style={styles.form}>
           {/* Email Input */}
           <div style={styles.inputGroup}>
-            <label htmlFor="email" style={styles.label}>Email Address</label>
+            <label htmlFor="email" style={styles.label}>{tt('auth.email', 'Email Address')}</label>
             <div style={styles.inputWrapper}>
               <input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
+                placeholder={tt('authExtras.emailPlaceholder', 'your.email@example.com')}
                 style={styles.input}
                 required
               />
@@ -136,9 +139,9 @@ const Login = () => {
           {/* Password Input */}
           <div style={styles.inputGroup}>
             <div style={styles.labelRow}>
-              <label htmlFor="password" style={styles.label}>Password</label>
+              <label htmlFor="password" style={styles.label}>{tt('auth.password', 'Password')}</label>
               <Link to="/forgot-password" style={styles.forgotLink}>
-                Forgot?
+                {tt('authExtras.forgotShort', 'Forgot?')}
               </Link>
             </div>
             <div style={styles.inputWrapper}>
@@ -147,7 +150,7 @@ const Login = () => {
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••••"
+                placeholder={tt('authExtras.passwordPlaceholder', 'Enter your password')}
                 style={styles.input}
                 required
               />
@@ -158,7 +161,7 @@ const Login = () => {
                 tabIndex="-1"
               >
                 <span style={styles.togglePasswordText}>
-                  {showPassword ? 'Hide' : 'Show'}
+                  {showPassword ? tt('common.hide', 'Hide') : tt('common.show', 'Show')}
                 </span>
               </button>
             </div>
@@ -177,11 +180,11 @@ const Login = () => {
               {loading ? (
                 <>
                   <span style={styles.spinner}></span>
-                  Signing in...
+                  {tt('authExtras.signingIn', 'Signing in...')}
                 </>
               ) : (
                 <>
-                  Sign In
+                  {tt('authExtras.signIn', 'Sign in')}
                   <FaArrowRight size={16} style={styles.arrowIcon} />
                 </>
               )}
@@ -192,9 +195,9 @@ const Login = () => {
         {/* Footer */}
         <div style={styles.footer}>
           <p style={styles.footerText}>
-            Don't have an account?{' '}
+            {tt('authExtras.alreadyHaveAccount', 'Already have an account?')} {' '}
             <Link to="/register" style={styles.signupLink}>
-              Create one
+              {tt('auth.createAccount', 'Create account')}
             </Link>
           </p>
         </div>

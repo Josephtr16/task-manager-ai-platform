@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { tasksAPI } from '../services/api';
 import aiService from '../services/aiService';
 import { useTheme } from '../context/ThemeContext';
+import { useTranslation } from 'react-i18next';
 import { borderRadius } from '../theme';
 import { formatTaskDuration } from '../utils/formatTaskDuration';
 import CreateTaskModal from '../components/Tasks/CreateTaskModal';
@@ -21,6 +22,7 @@ const AI_SCORABLE_STATUSES = ['todo', 'in-progress', 'review'];
 const TasksPage = () => {
   const cachedTasksState = readCache(TASKS_CACHE_KEY, 60000);
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const [tasks, setTasks] = useState(cachedTasksState?.tasks || []);
   const [filteredTasks, setFilteredTasks] = useState(cachedTasksState?.filteredTasks || []);
   const [loading, setLoading] = useState(!cachedTasksState);
@@ -32,6 +34,7 @@ const TasksPage = () => {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [projectFilter, setProjectFilter] = useState('all');
   const [sortBy, setSortBy] = useState(cachedTasksState?.sortBy || 'aiPriorityScore');
+  const [pendingTaskInvites, setPendingTaskInvites] = useState(cachedTasksState?.pendingTaskInvites || []);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -137,13 +140,25 @@ const TasksPage = () => {
         setLoading(true);
       }
 
-      const response = await tasksAPI.getTasks(params);
+      const [tasksResult, invitesResult] = await Promise.allSettled([
+        tasksAPI.getTasks(params),
+        tasksAPI.getPendingInvites(),
+      ]);
+
+      if (tasksResult.status !== 'fulfilled') {
+        throw tasksResult.reason;
+      }
+
       // The interceptor already unwraps one data layer, so consume the payload before reading task keys.
-      const tasksPayload = response.data;
+      const tasksPayload = tasksResult.value.data;
       const responseTasks = tasksPayload.tasks || [];
       const pagination = tasksPayload.pagination || {};
+      const invites = invitesResult.status === 'fulfilled'
+        ? (invitesResult.value.data.tasks || [])
+        : [];
 
       setTasks(responseTasks);
+      setPendingTaskInvites(invites);
       setTotalPages(pagination.totalPages || 1);
 
       const displayedTasks = projectFilter === 'project'
@@ -190,6 +205,7 @@ const TasksPage = () => {
       writeCache(TASKS_CACHE_KEY, {
         tasks: responseTasks,
         filteredTasks: finalOrderedTasks,
+        pendingTaskInvites: invites,
         totalPages: pagination.totalPages || 1,
         sortBy,
       });
@@ -339,9 +355,16 @@ const TasksPage = () => {
     triggerAutoReprioritize();
   };
 
-  const handleTaskClick = (task) => {
-    setSelectedTask(task);
+  const handleTaskClick = async (task) => {
     setShowDetailModal(true);
+
+    try {
+      const response = await tasksAPI.getTask(task._id || task.id);
+      setSelectedTask(response.data.task || task);
+    } catch (error) {
+      console.error('Error loading task details:', error);
+      setSelectedTask(task);
+    }
   };
 
   const handleTaskUpdated = async (updatedTask) => {
@@ -359,11 +382,22 @@ const TasksPage = () => {
     triggerAutoReprioritize();
   };
 
+  const handleRespondToTaskInvite = async (taskId, action) => {
+    try {
+      await tasksAPI.respondToShareInvite(taskId, action);
+      await loadTasks();
+      showNotification(action === 'accept' ? 'Task invite accepted.' : 'Task invite declined.', 'success');
+    } catch (error) {
+      console.error(`Error trying to ${action} task invite:`, error);
+      showNotification(error.response?.data?.message || 'Failed to respond to task invite.', 'error');
+    }
+  };
+
   const handleAIPrioritize = async () => {
     const tasksToPrioritize = tasks.filter(task => AI_SCORABLE_STATUSES.includes(task.status));
 
     if (tasksToPrioritize.length === 0) {
-      showNotification('No pending or in-progress tasks available for AI prioritization.', 'warning');
+      showNotification(t('ai.noTasksToPrioritize'), 'warning');
       return;
     }
 
@@ -391,7 +425,7 @@ const TasksPage = () => {
       setAiPriorityScores(scoreMap);
       setFilteredTasks(sortTasksByPriorityScore(filteredTasks, scoreMap));
     } catch (error) {
-      showNotification(error.response?.data?.message || 'Failed to prioritize tasks with AI. Please try again.', 'error');
+      showNotification(error.response?.data?.message || t('ai.prioritizeFailed'), 'error');
     } finally {
       setIsAIPrioritizing(false);
     }
@@ -404,7 +438,7 @@ const TasksPage = () => {
     });
 
     if (riskEligibleTasks.length === 0) {
-      showNotification('No active tasks available for risk detection.', 'warning');
+      showNotification(t('risk.noActiveTasks'), 'warning');
       return;
     }
 
@@ -432,10 +466,10 @@ const TasksPage = () => {
       );
       setRiskTaskIds(nextRiskTaskIds);
       setRiskOverallStatus(result?.overall_status || 'ok');
-      setRiskSummary(result?.summary || 'Risk analysis complete.');
-      showNotification('Risk analysis complete. Review the alerts below.', 'success');
+      setRiskSummary(result?.summary || t('risk.analysisComplete'));
+      showNotification(t('risk.analysisCompleteNotify'), 'success');
     } catch (error) {
-      showNotification(error.response?.data?.message || 'Failed to detect risks. Please try again.', 'error');
+      showNotification(error.response?.data?.message || t('risk.detectFailed'), 'error');
     } finally {
       setIsDetectingRisks(false);
     }
@@ -482,7 +516,7 @@ const TasksPage = () => {
     if (!date) return null;
 
     if (isCompleted) {
-      return { text: 'Completed', color: theme.success };
+      return { text: t('tasks.statusLabels.done', 'Done'), color: theme.success };
     }
 
     const d = new Date(date);
@@ -493,10 +527,10 @@ const TasksPage = () => {
     const deadlineMidnight = new Date(d.getFullYear(), d.getMonth(), d.getDate());
     const diff = Math.floor((deadlineMidnight - todayMidnight) / (1000 * 60 * 60 * 24));
 
-    if (diff < 0) return { text: 'Overdue', color: theme.error };
-    if (diff === 0) return { text: 'Today', color: theme.warning };
-    if (diff === 1) return { text: 'Tomorrow', color: theme.warning };
-    if (diff < 7) return { text: `${diff} days`, color: theme.textSecondary };
+    if (diff < 0) return { text: t('tasks.deadlineStatus.overdue', 'Overdue'), color: theme.error };
+    if (diff === 0) return { text: t('tasks.deadlineStatus.today', 'Today'), color: theme.warning };
+    if (diff === 1) return { text: t('tasks.deadlineStatus.tomorrow', 'Tomorrow'), color: theme.warning };
+    if (diff < 7) return { text: t('tasks.deadlineStatus.days', { days: diff, defaultValue: `in ${diff} days` }), color: theme.textSecondary };
     return {
       text: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
       color: theme.textMuted,
@@ -697,22 +731,145 @@ const TasksPage = () => {
       boxShadow: theme.shadows.card,
       border: `1px solid ${theme.borderSubtle || theme.border}`,
     },
+    invitePanel: {
+      background: `linear-gradient(180deg, ${theme.bgCard} 0%, ${theme.bgSurface} 100%)`,
+      borderRadius: borderRadius.lg,
+      padding: '22px',
+      marginBottom: '24px',
+      boxShadow: theme.shadows.card,
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
+      position: 'relative',
+      overflow: 'hidden',
+    },
+    invitePanelGlow: {
+      position: 'absolute',
+      inset: 'auto -30% -55% auto',
+      width: '220px',
+      height: '220px',
+      borderRadius: '50%',
+      background: `radial-gradient(circle, ${theme.primary}18 0%, transparent 68%)`,
+      pointerEvents: 'none',
+    },
+    inviteHeader: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      gap: '16px',
+      alignItems: 'flex-start',
+      marginBottom: '16px',
+      position: 'relative',
+      zIndex: 1,
+    },
     riskStatusBanner: {
       display: 'flex',
       alignItems: 'center',
       fontSize: '14px',
-      fontWeight: '600',
+      fontWeight: '700',
+      letterSpacing: '0.02em',
+      color: theme.textPrimary,
+      gap: '10px',
+    },
+    inviteCountBadge: {
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minWidth: '28px',
+      height: '28px',
+      padding: '0 10px',
+      borderRadius: '999px',
+      backgroundColor: `${theme.primary}14`,
+      color: theme.primary,
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
+      fontSize: '12px',
+      fontWeight: '800',
+    },
+    inviteSubtext: {
+      margin: '8px 0 0',
+      color: theme.textSecondary,
+      fontSize: '13px',
+      lineHeight: 1.5,
+      position: 'relative',
+      zIndex: 1,
     },
     alertsList: {
       display: 'flex',
       flexDirection: 'column',
-      gap: '12px',
+      gap: '14px',
+      position: 'relative',
+      zIndex: 1,
     },
     alertItem: {
-      backgroundColor: theme.bgCard,
+      backgroundColor: theme.bgRaised,
       borderRadius: borderRadius.md,
       boxShadow: 'none',
       border: `1px solid ${theme.borderSubtle || theme.border}`,
+      padding: '16px 18px',
+      transition: 'transform 150ms ease, box-shadow 150ms ease, border-color 150ms ease',
+    },
+    inviteCardHeader: {
+      display: 'flex',
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+      gap: '16px',
+      flexWrap: 'wrap',
+    },
+    inviteTitle: {
+      margin: 0,
+      fontWeight: '800',
+      color: theme.textPrimary,
+      fontSize: '16px',
+      lineHeight: 1.35,
+      letterSpacing: '-0.01em',
+    },
+    inviteMetaRow: {
+      display: 'flex',
+      flexWrap: 'wrap',
+      gap: '8px',
+      marginTop: '10px',
+    },
+    inviteMetaPill: {
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '6px',
+      padding: '6px 10px',
+      borderRadius: '999px',
+      backgroundColor: theme.bgCard,
+      color: theme.textSecondary,
+      border: `1px solid ${theme.borderSubtle || theme.border}`,
+      fontSize: '12px',
+      fontWeight: '600',
+      maxWidth: '100%',
+    },
+    inviteActions: {
+      display: 'flex',
+      gap: '10px',
+      flexWrap: 'wrap',
+      justifyContent: 'flex-end',
+      alignItems: 'center',
+      marginLeft: 'auto',
+    },
+    inviteActionButton: {
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '8px',
+      minWidth: '116px',
+      padding: '10px 16px',
+      borderRadius: '10px',
+      fontWeight: '800',
+      fontSize: '13px',
+      cursor: 'pointer',
+      transition: 'transform 150ms ease, box-shadow 150ms ease, border-color 150ms ease',
+      boxShadow: 'none',
+    },
+    inviteAcceptButton: {
+      border: 'none',
+      background: `linear-gradient(135deg, ${theme.success} 0%, ${theme.success}cc 100%)`,
+      color: '#0A0908',
+    },
+    inviteDeclineButton: {
+      border: `1px solid ${theme.borderMedium || theme.border}`,
+      backgroundColor: theme.bgCard,
+      color: theme.textSecondary,
     },
     taskList: {
       display: 'flex',
@@ -848,9 +1005,13 @@ const TasksPage = () => {
         {/* Header */}
         <div style={styles.header}>
           <div>
-            <h1 style={styles.title}>All Tasks</h1>
+            <h1 style={styles.title}>{t('tasks.allTasks', 'All Tasks')}</h1>
             <p style={styles.subtitle}>
-              {activeTasks.length} active · {completedTasks.length} completed
+              {t('tasks.counts', {
+                active: activeTasks.length,
+                completed: completedTasks.length,
+                defaultValue: `${activeTasks.length} active · ${completedTasks.length} completed`,
+              })}
             </p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -863,7 +1024,7 @@ const TasksPage = () => {
             >
               {isAIPrioritizing && <span style={styles.buttonSpinner} />}
               <FaRobot style={{ marginRight: '8px', fontSize: '12px' }} />
-              {isAIPrioritizing ? 'Prioritizing...' : 'AI Prioritize'}
+              {isAIPrioritizing ? t('ai.prioritizing', 'Prioritizing...') : t('ai.prioritize', 'AI Prioritize')}
             </button>
             <button
               type="button"
@@ -874,13 +1035,13 @@ const TasksPage = () => {
             >
               {isDetectingRisks && <span style={styles.buttonSpinner} />}
               <FaExclamationTriangle style={{ marginRight: '8px', fontSize: '12px' }} />
-              {isDetectingRisks ? 'Detecting...' : 'Detect Risks'}
+              {isDetectingRisks ? t('risk.detecting', 'Detecting...') : t('risk.detect', 'Detect Risks')}
             </button>
             <button
               style={styles.createButton}
               onClick={() => setShowCreateModal(true)}
             >
-              <FaPlus style={{ marginRight: '8px', fontSize: '12px' }} /> New Task
+              <FaPlus style={{ marginRight: '8px', fontSize: '12px' }} /> {t('tasks.newTask', 'New Task')}
             </button>
           </div>
         </div>
@@ -946,6 +1107,70 @@ const TasksPage = () => {
           </div>
         )}
 
+        {pendingTaskInvites.length > 0 && (
+          <div style={styles.invitePanel}>
+            <div style={styles.invitePanelGlow} />
+            <div style={styles.inviteHeader}>
+              <div>
+                <div style={styles.riskStatusBanner}>
+                  <span>Pending Task Invites</span>
+                  <span style={styles.inviteCountBadge}>{pendingTaskInvites.length}</span>
+                </div>
+                <p style={styles.inviteSubtext}>
+                  Accept a task to add it to your list or decline it to remove the invite.
+                </p>
+              </div>
+            </div>
+            <div style={styles.alertsList}>
+              {pendingTaskInvites.map((inviteTask) => (
+                <div key={inviteTask._id} style={styles.alertItem}>
+                  <div style={styles.inviteCardHeader}>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <p style={styles.inviteTitle}>
+                        {inviteTask.title}
+                      </p>
+                      <div style={styles.inviteMetaRow}>
+                        <span style={styles.inviteMetaPill}>
+                          From {inviteTask.owner?.name || inviteTask.owner?.email || 'Unknown'}
+                        </span>
+                        {inviteTask.projectId && (
+                          <span style={styles.inviteMetaPill}>
+                            Project {typeof inviteTask.projectId === 'object' ? inviteTask.projectId.title : String(inviteTask.projectId)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div style={styles.inviteActions}>
+                      <button
+                        type="button"
+                        onClick={() => handleRespondToTaskInvite(inviteTask._id, 'accept')}
+                        className="invite-action-accept"
+                        style={{
+                          ...styles.inviteActionButton,
+                          ...styles.inviteAcceptButton,
+                        }}
+                      >
+                        <FaCheck /> Accept
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRespondToTaskInvite(inviteTask._id, 'decline')}
+                        className="invite-action-decline"
+                        style={{
+                          ...styles.inviteActionButton,
+                          ...styles.inviteDeclineButton,
+                        }}
+                      >
+                        <FaTimes /> Decline
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Search & Filters */}
         <div style={styles.filtersContainer}>
           {/* Search */}
@@ -953,7 +1178,7 @@ const TasksPage = () => {
             <FaSearch style={styles.searchIcon} />
             <input
               type="text"
-              placeholder="Search tasks..."
+              placeholder={t('tasks.searchPlaceholder', 'Search tasks...')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={styles.searchInput}
@@ -974,16 +1199,16 @@ const TasksPage = () => {
             <div style={{ width: '200px' }}>
               <CustomSelect
                 options={[
-                  { value: 'all', label: 'All Status' },
-                  { value: 'active', label: 'Active' },
-                  { value: 'todo', label: 'To Do' },
-                  { value: 'in-progress', label: 'In Progress' },
-                  { value: 'review', label: 'Review' },
-                  { value: 'done', label: 'Done' }
+                  { value: 'all', label: t('tasks.filters.allStatus', 'All Status') },
+                  { value: 'active', label: t('tasks.filters.active', 'Active') },
+                  { value: 'todo', label: t('tasks.filters.todo', 'To Do') },
+                  { value: 'in-progress', label: t('tasks.filters.inProgress', 'In Progress') },
+                  { value: 'review', label: t('tasks.filters.review', 'Review') },
+                  { value: 'done', label: t('tasks.filters.done', 'Done') }
                 ]}
                 value={statusFilter}
                 onChange={(val) => setStatusFilter(val)}
-                placeholder="Status"
+                placeholder={t('tasks.filters.status', 'Status')}
               />
             </div>
 
@@ -991,15 +1216,15 @@ const TasksPage = () => {
             <div style={{ width: '200px' }}>
               <CustomSelect
                 options={[
-                  { value: 'all', label: 'All Priority' },
-                  { value: 'urgent', label: 'Urgent' },
-                  { value: 'high', label: 'High' },
-                  { value: 'medium', label: 'Medium' },
-                  { value: 'low', label: 'Low' }
+                  { value: 'all', label: t('tasks.filters.allPriority', 'All Priority') },
+                  { value: 'urgent', label: t('tasks.priorityLabels.urgent', 'Urgent') },
+                  { value: 'high', label: t('tasks.priorityLabels.high', 'High') },
+                  { value: 'medium', label: t('tasks.priorityLabels.medium', 'Medium') },
+                  { value: 'low', label: t('tasks.priorityLabels.low', 'Low') }
                 ]}
                 value={priorityFilter}
                 onChange={(val) => setPriorityFilter(val)}
-                placeholder="Priority"
+                placeholder={t('tasks.filters.priority', 'Priority')}
               />
             </div>
 
@@ -1007,17 +1232,17 @@ const TasksPage = () => {
             <div style={{ width: '200px' }}>
               <CustomSelect
                 options={[
-                  { value: 'all', label: 'All Categories' },
-                  { value: 'Work', label: 'Work' },
-                  { value: 'Personal', label: 'Personal' },
-                  { value: 'Health', label: 'Health' },
-                  { value: 'Shopping', label: 'Shopping' },
-                  { value: 'Learning', label: 'Learning' },
-                  { value: 'Family', label: 'Family' }
+                  { value: 'all', label: t('tasks.filters.allCategories', 'All Categories') },
+                  { value: 'Work', label: t('tasks.categoryLabels.work', 'Work') },
+                  { value: 'Personal', label: t('tasks.categoryLabels.personal', 'Personal') },
+                  { value: 'Health', label: t('tasks.categoryLabels.health', 'Health') },
+                  { value: 'Shopping', label: t('tasks.categoryLabels.shopping', 'Shopping') },
+                  { value: 'Learning', label: t('tasks.categoryLabels.learning', 'Learning') },
+                  { value: 'Family', label: t('tasks.categoryLabels.family', 'Family') }
                 ]}
                 value={categoryFilter}
                 onChange={(val) => setCategoryFilter(val)}
-                placeholder="Category"
+                placeholder={t('tasks.filters.category', 'Category')}
               />
             </div>
 
@@ -1025,13 +1250,13 @@ const TasksPage = () => {
             <div style={{ width: '200px' }}>
               <CustomSelect
                 options={[
-                  { value: 'all', label: 'All Tasks' },
-                  { value: 'standalone', label: 'Standalone Only' },
-                  { value: 'project', label: 'Project-Linked Only' }
+                  { value: 'all', label: t('tasks.filters.allTasks', 'All Tasks') },
+                  { value: 'standalone', label: t('tasks.filters.standaloneOnly', 'Standalone Only') },
+                  { value: 'project', label: t('tasks.filters.projectLinkedOnly', 'Project-Linked Only') }
                 ]}
                 value={projectFilter}
                 onChange={(val) => setProjectFilter(val)}
-                placeholder="Scope"
+                placeholder={t('tasks.filters.scope', 'Scope')}
               />
             </div>
 
@@ -1039,15 +1264,15 @@ const TasksPage = () => {
             <div style={{ width: '200px' }}>
               <CustomSelect
                 options={[
-                  { value: 'aiPriorityScore', label: 'AI Score' },
-                  { value: 'createdAt', label: 'Date Created' },
-                  { value: 'deadline', label: 'Due Date' },
-                  { value: 'priority', label: 'Priority' },
-                  { value: 'title', label: 'Title' }
+                  { value: 'aiPriorityScore', label: t('tasks.sort.aiScore', 'AI Score') },
+                  { value: 'createdAt', label: t('tasks.sort.createdAt', 'Date Created') },
+                  { value: 'deadline', label: t('tasks.sort.deadline', 'Due Date') },
+                  { value: 'priority', label: t('tasks.sort.priority', 'Priority') },
+                  { value: 'title', label: t('tasks.sort.title', 'Title') }
                 ]}
                 value={sortBy}
                 onChange={(val) => setSortBy(val)}
-                placeholder="Sort By"
+                placeholder={t('tasks.sort.placeholder', 'Sort By')}
               />
             </div>
           </div>
@@ -1058,7 +1283,7 @@ const TasksPage = () => {
           {filteredTasks.length === 0 ? (
             <div style={styles.emptyState}>
               <p style={styles.emptyText}>
-                {searchQuery ? 'No tasks match your search.' : 'No tasks yet. Create one!'}
+                {searchQuery ? t('tasks.empty.searchNoMatch', 'No tasks match your search.') : t('tasks.empty.noTasks', 'No tasks yet. Create one!')}
               </p>
             </div>
           ) : (
@@ -1074,6 +1299,7 @@ const TasksPage = () => {
                   formatDate={formatDate}
                   completed={task.status === 'done'}
                   riskTaskIds={riskTaskIds}
+                  t={t}
                 />
               ))}
             </div>
@@ -1092,10 +1318,10 @@ const TasksPage = () => {
                 cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
               }}
             >
-              Previous
+              {t('common.back')}
             </button>
             <span style={{ alignSelf: 'center', color: theme.textSecondary, fontWeight: '600' }}>
-              Page {currentPage} of {totalPages}
+              {t('common.pageOf', { current: currentPage, total: totalPages })}
             </span>
             <button
               type="button"
@@ -1107,7 +1333,7 @@ const TasksPage = () => {
                 cursor: currentPage >= totalPages ? 'not-allowed' : 'pointer',
               }}
             >
-              Next
+              {t('common.next')}
             </button>
           </div>
         )}
@@ -1136,11 +1362,45 @@ const TasksPage = () => {
 };
 
 // Task Card Component
-const TaskCard = ({ task, aiPriorityScore, onClick, getPriorityColor, getStatusColor, formatDate, completed, riskTaskIds }) => {
+const TaskCard = ({ task, aiPriorityScore, onClick, getPriorityColor, getStatusColor, formatDate, completed, riskTaskIds, t }) => {
   const { theme } = useTheme();
   const deadline = formatDate(task.deadline, completed);
   const taskId = task?._id != null ? task._id.toString() : String(task?.id || '');
   const isRiskTask = riskTaskIds?.has(taskId);
+
+  const formatLabel = (value, fallback = '') => {
+    const normalized = String(value || '').trim();
+    if (!normalized) return fallback;
+    return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+  };
+
+  const getPriorityLabel = (priority) => {
+    const normalized = String(priority || 'medium').toLowerCase();
+    return t(`tasks.priority.${normalized}`, formatLabel(normalized, 'Medium'));
+  };
+
+  const getCategoryLabel = (category) => {
+    const normalized = String(category || '').toLowerCase();
+    const fallbackMap = {
+      personal: 'Personal',
+      work: 'Work',
+      shopping: 'Shopping',
+      health: 'Health',
+      learning: 'Learning',
+      family: 'Family',
+    };
+
+    return t(
+      `tasks.categoryLabels.${normalized}`,
+      fallbackMap[normalized] || formatLabel(normalized, 'General')
+    );
+  };
+
+  const getProjectLabel = (project) => {
+    if (!project) return '';
+    if (typeof project === 'string') return project;
+    return project.title || project.name || project.projectTitle || project.projectName || project.label || '';
+  };
 
   const styles = {
     taskCard: {
@@ -1430,7 +1690,7 @@ const TaskCard = ({ task, aiPriorityScore, onClick, getPriorityColor, getStatusC
             border: `1px solid ${getPriorityColor(task.priority)}22`,
           }}>
             <FaFlag size={10} style={{ marginRight: '4px' }} />
-            {task.priority.toUpperCase()}
+            {getPriorityLabel(task.priority)}
           </span>
           <span style={{
             ...styles.categoryBadge,
@@ -1438,12 +1698,12 @@ const TaskCard = ({ task, aiPriorityScore, onClick, getPriorityColor, getStatusC
             color: theme.textSecondary,
             border: `1px solid ${theme.borderSubtle || theme.border}`,
           }}>
-            {task.category}
+            {getCategoryLabel(task.category)}
           </span>
           {task.projectId && (
             <div style={styles.projectBadge}>
               <FaClipboardList size={10} />
-              {typeof task.projectId === 'object' ? task.projectId.title : 'Project'}
+              {getProjectLabel(task.projectId) || t('projects.project', 'Project')}
             </div>
           )}
           {task.tags && task.tags.map((tag, index) => (
@@ -1456,7 +1716,7 @@ const TaskCard = ({ task, aiPriorityScore, onClick, getPriorityColor, getStatusC
 
       {/* Description */}
       <div style={styles.taskDescriptionBlock}>
-        <p style={styles.taskDescription}>{task.description || 'No description provided.'}</p>
+        <p style={styles.taskDescription}>{task.description || t('tasks.noDescription', 'No description')}</p>
       </div>
 
       {/* Metadata Row (Footer) */}
@@ -1475,7 +1735,7 @@ const TaskCard = ({ task, aiPriorityScore, onClick, getPriorityColor, getStatusC
             </span>
           )}
           {!task.estimatedDuration && !(task.subtasks?.length > 0) && (
-            <span style={styles.metaItem}>No estimates</span>
+            <span style={styles.metaItem}>{t('tasks.noEstimates', 'No estimates')}</span>
           )}
         </div>
       </div>

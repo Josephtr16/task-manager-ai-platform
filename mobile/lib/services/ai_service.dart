@@ -7,9 +7,25 @@ class AiService {
 
   final Dio _dio;
 
+  Map<String, dynamic> _asMap(dynamic data) {
+    if (data is Map<String, dynamic>) {
+      return data;
+    }
+
+    if (data is Map) {
+      return Map<String, dynamic>.from(data);
+    }
+
+    if (data is List && data.isNotEmpty && data.first is Map) {
+      return Map<String, dynamic>.from(data.first as Map);
+    }
+
+    return <String, dynamic>{};
+  }
+
   Future<Map<String, dynamic>> prioritize(List<Map<String, dynamic>> tasks) async {
     final res = await _dio.post('/ai/prioritize', data: <String, dynamic>{'tasks': tasks});
-    return Map<String, dynamic>.from(res.data as Map);
+    return _asMap(res.data);
   }
 
   Future<Map<String, dynamic>> assistWrite({String? title, String? category, String? description}) async {
@@ -18,12 +34,12 @@ class AiService {
       'category': category,
       'description': description,
     });
-    return Map<String, dynamic>.from(res.data as Map);
+    return _asMap(res.data);
   }
 
   Future<Map<String, dynamic>> predictTime(Map<String, dynamic> task) async {
     final res = await _dio.post('/ai/predict-time', data: <String, dynamic>{'task': task});
-    return Map<String, dynamic>.from(res.data as Map);
+    return _asMap(res.data);
   }
 
   Future<Map<String, dynamic>> planDay(
@@ -36,17 +52,17 @@ class AiService {
       'work_start': workStart,
       'work_end': workEnd,
     });
-    return Map<String, dynamic>.from(res.data as Map);
+    return _asMap(res.data);
   }
 
   Future<Map<String, dynamic>> detectRisks(List<Map<String, dynamic>> tasks) async {
     final res = await _dio.post('/ai/detect-risks', data: <String, dynamic>{'tasks': tasks});
-    return Map<String, dynamic>.from(res.data as Map);
+    return _asMap(res.data);
   }
 
   Future<Map<String, dynamic>> generateReport(Map<String, dynamic> stats) async {
     final res = await _dio.post('/ai/reports', data: stats);
-    return Map<String, dynamic>.from(res.data as Map);
+    return _asMap(res.data);
   }
 
   Future<Map<String, dynamic>> projectBreakdown(
@@ -68,7 +84,7 @@ class AiService {
     };
     if (deadline != null && deadline.isNotEmpty) payload['project_deadline'] = deadline;
     final res = await _dio.post('/ai/project-breakdown', data: payload);
-    return Map<String, dynamic>.from(res.data as Map);
+    return _asMap(res.data);
   }
 
   Future<Map<String, dynamic>> generateSubtasks(
@@ -87,7 +103,7 @@ class AiService {
       'phase': phase,
       'estimated_minutes': estimatedMinutes,
     });
-    return Map<String, dynamic>.from(res.data as Map);
+    return _asMap(res.data);
   }
 
   Future<Map<String, dynamic>> enhanceProject(String name, String description) async {
@@ -95,6 +111,6 @@ class AiService {
       'name': name,
       'description': description,
     });
-    return Map<String, dynamic>.from(res.data as Map);
+    return _asMap(res.data);
   }
 }

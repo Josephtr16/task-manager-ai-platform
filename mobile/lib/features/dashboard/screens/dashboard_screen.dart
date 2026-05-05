@@ -7,6 +7,7 @@ import '../../auth/providers/auth_provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/tf_page_header.dart';
 import '../providers/dashboard_provider.dart';
 import '../widgets/ai_recommends_section.dart';
 import '../widgets/daily_plan_section.dart';
@@ -44,95 +45,83 @@ class DashboardScreen extends ConsumerWidget {
               return CustomScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 slivers: <Widget>[
-                  SliverAppBar(
-                    pinned: true,
-                    floating: false,
-                    snap: false,
-                    elevation: 0,
-                    backgroundColor: Colors.transparent,
-                    automaticallyImplyLeading: false,
-                    expandedHeight: 108,
-                    flexibleSpace: FlexibleSpaceBar(
-                      background: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: <Widget>[
-                            RichText(
-                              text: TextSpan(
-                                children: <InlineSpan>[
-                                  TextSpan(
-                                    text: '${_greeting()}, ',
-                                    style: AppTextStyles.greetingItalic.copyWith(
-                                      color: tokens.textSecondary,
-                                      fontSize: 30,
-                                      fontWeight: FontWeight.w400,
-                                    ),
-                                  ),
-                                  TextSpan(
-                                    text: firstName,
-                                    style: AppTextStyles.greetingName.copyWith(
-                                      color: tokens.textPrimary,
-                                      fontSize: 32,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            _greeting(),
+                            style: AppTextStyles.labelSmall.copyWith(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: tokens.textMuted,
                             ),
-                            const SizedBox(height: 4),
-                            RichText(
-                              text: TextSpan(
-                                children: <InlineSpan>[
-                                  TextSpan(
-                                    text: 'You have ',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 15,
-                                      color: tokens.textSecondary,
-                                    ),
+                          ),
+                          const SizedBox(height: 2),
+                          RichText(
+                            text: TextSpan(
+                              children: <InlineSpan>[
+                                TextSpan(
+                                  text: _greeting(),
+                                  style: GoogleFonts.dmSerifDisplay(
+                                    fontSize: 21,
+                                    fontStyle: FontStyle.italic,
+                                    color: tokens.textSecondary,
                                   ),
-                                  TextSpan(
-                                    text: '${dueToday.toInt()}',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w800,
-                                      color: tokens.textPrimary,
-                                    ),
+                                ),
+                                const TextSpan(text: ' '),
+                                TextSpan(
+                                  text: firstName,
+                                  style: GoogleFonts.dmSerifDisplay(
+                                    fontSize: 21,
+                                    fontWeight: FontWeight.w700,
+                                    color: tokens.textPrimary,
                                   ),
-                                  TextSpan(
-                                    text: ' tasks due today and ',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 15,
-                                      color: tokens.textSecondary,
-                                    ),
-                                  ),
-                                  TextSpan(
-                                    text: '${dueTomorrow.toInt()}',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w800,
-                                      color: tokens.textPrimary,
-                                    ),
-                                  ),
-                                  TextSpan(
-                                    text: ' tomorrow.',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 15,
-                                      color: tokens.textSecondary,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
+                          ),
+                          const SizedBox(height: 2),
+                          RichText(
+                            text: TextSpan(
+                              children: <InlineSpan>[
+                                TextSpan(
+                                  text: 'You have ',
+                                  style: AppTextStyles.bodySmall.copyWith(
+                                    fontSize: 13,
+                                    color: tokens.textSecondary,
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: '${dueToday.toInt()}',
+                                  style: AppTextStyles.bodySmall.copyWith(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: tokens.textPrimary,
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: ' tasks due today.',
+                                  style: AppTextStyles.bodySmall.copyWith(
+                                    fontSize: 13,
+                                    color: tokens.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                       child: GridView.count(
                         crossAxisCount: 2,
                         shrinkWrap: true,
@@ -147,7 +136,8 @@ class DashboardScreen extends ConsumerWidget {
                             subtitle: 'Action required',
                             icon: Icons.today_rounded,
                             iconColor: AppSemanticColors.rose,
-                            progress: (dueToday.toDouble() / 10).clamp(0.0, 1.0),
+                            progress:
+                                (dueToday.toDouble() / 10).clamp(0.0, 1.0),
                             progressColor: AppSemanticColors.rose,
                             compact: true,
                           ),
@@ -195,15 +185,18 @@ class DashboardScreen extends ConsumerWidget {
                             report: data.standupReport!,
                             onDismiss: () {},
                           ),
-                        if (data.standupReport != null) const SizedBox(height: 16),
+                        if (data.standupReport != null)
+                          const SizedBox(height: 16),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: DailyPlanSection(
                             plan: data.dailyPlan,
-                            onGenerate: () => _showPlanConfirmationDialog(context, ref),
+                            onGenerate: () =>
+                                _showPlanConfirmationDialog(context, ref),
                             onDelete: data.dailyPlan == null
                                 ? null
-                                : () => _showDeletePlanConfirmationDialog(context, ref),
+                                : () => _showDeletePlanConfirmationDialog(
+                                    context, ref),
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -214,13 +207,10 @@ class DashboardScreen extends ConsumerWidget {
                         const SizedBox(height: 16),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: UpcomingTasksSection(tasks: data.upcomingTasks),
-                        ),
-                        const SizedBox(height: 16),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: QuickStatsSection(stats: data.stats),
                         ),
+                        const SizedBox(height: 16),
+                        UpcomingTasksSection(tasks: data.upcomingTasks),
                         const SizedBox(height: 120),
                       ],
                     ),
@@ -267,7 +257,8 @@ class DashboardScreen extends ConsumerWidget {
                 padding: const EdgeInsets.all(16),
                 child: Text(
                   err.toString(),
-                  style: AppTextStyles.bodyMedium.copyWith(color: tokens.textSecondary),
+                  style: AppTextStyles.bodyMedium
+                      .copyWith(color: tokens.textSecondary),
                 ),
               ),
             ),
@@ -379,16 +370,22 @@ Future<void> _showPlanConfirmationDialog(
                       Expanded(
                         child: _TimeField(
                           label: 'Start time',
-                          value: MaterialLocalizations.of(context).formatTimeOfDay(startTime),
-                          onTap: isLoading ? null : () async => pickTime(isStart: true),
+                          value: MaterialLocalizations.of(context)
+                              .formatTimeOfDay(startTime),
+                          onTap: isLoading
+                              ? null
+                              : () async => pickTime(isStart: true),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: _TimeField(
                           label: 'End time',
-                          value: MaterialLocalizations.of(context).formatTimeOfDay(endTime),
-                          onTap: isLoading ? null : () async => pickTime(isStart: false),
+                          value: MaterialLocalizations.of(context)
+                              .formatTimeOfDay(endTime),
+                          onTap: isLoading
+                              ? null
+                              : () async => pickTime(isStart: false),
                         ),
                       ),
                     ],
@@ -398,7 +395,8 @@ Future<void> _showPlanConfirmationDialog(
             ),
             actions: <Widget>[
               TextButton(
-                onPressed: isLoading ? null : () => Navigator.of(dialogContext).pop(),
+                onPressed:
+                    isLoading ? null : () => Navigator.of(dialogContext).pop(),
                 child: Text(
                   'Cancel',
                   style: AppTextStyles.bodyMedium.copyWith(
@@ -412,7 +410,8 @@ Future<void> _showPlanConfirmationDialog(
                 style: FilledButton.styleFrom(
                   backgroundColor: AppSemanticColors.primary,
                   foregroundColor: tokens.bgSurface,
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
@@ -423,7 +422,8 @@ Future<void> _showPlanConfirmationDialog(
                         height: 18,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(tokens.bgSurface),
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(tokens.bgSurface),
                         ),
                       )
                     : Text(
@@ -583,7 +583,8 @@ String _busiestDayLabel(
   if (raw.isNotEmpty) return raw;
 
   final data = _weekdayLoad(tasks);
-  final index = data.indexWhere((v) => v == data.reduce((a, b) => a > b ? a : b));
+  final index =
+      data.indexWhere((v) => v == data.reduce((a, b) => a > b ? a : b));
   const names = <String>['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   if (index < 0 || index >= names.length) return 'Mon';
   return names[index];
@@ -634,8 +635,8 @@ class _BusiestDayChart extends StatelessWidget {
               barRods: <BarChartRodData>[
                 BarChartRodData(
                   toY: capped[i],
-                    width: 6,
-                    borderRadius: BorderRadius.circular(4),
+                  width: 6,
+                  borderRadius: BorderRadius.circular(4),
                   color: AppSemanticColors.sky,
                 ),
               ],

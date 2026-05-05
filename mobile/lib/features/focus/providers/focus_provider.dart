@@ -1,4 +1,5 @@
 ﻿import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -15,6 +16,8 @@ class FocusState {
     this.pomodoroPhase = PomodoroPhase.work,
     this.pomodoroSecondsLeft = 1500,
     this.pomodoroCompleted = 0,
+    this.selectedTask,
+    this.sessionQuote,
   });
 
   final bool isFocusMode;
@@ -25,6 +28,8 @@ class FocusState {
   final PomodoroPhase pomodoroPhase;
   final int pomodoroSecondsLeft;
   final int pomodoroCompleted;
+  final Map? selectedTask;
+  final String? sessionQuote;
 
   FocusState copyWith({
     bool? isFocusMode,
@@ -35,6 +40,8 @@ class FocusState {
     PomodoroPhase? pomodoroPhase,
     int? pomodoroSecondsLeft,
     int? pomodoroCompleted,
+    Map? selectedTask,
+    String? sessionQuote,
   }) {
     return FocusState(
       isFocusMode: isFocusMode ?? this.isFocusMode,
@@ -45,6 +52,8 @@ class FocusState {
       pomodoroPhase: pomodoroPhase ?? this.pomodoroPhase,
       pomodoroSecondsLeft: pomodoroSecondsLeft ?? this.pomodoroSecondsLeft,
       pomodoroCompleted: pomodoroCompleted ?? this.pomodoroCompleted,
+      selectedTask: selectedTask ?? this.selectedTask,
+      sessionQuote: sessionQuote ?? this.sessionQuote,
     );
   }
 }
@@ -52,6 +61,13 @@ class FocusState {
 final focusProvider = NotifierProvider<FocusNotifier, FocusState>(FocusNotifier.new);
 
 class FocusNotifier extends Notifier<FocusState> {
+  static const List<String> _sessionQuotes = <String>[
+    'Consistency compounds faster than intensity.',
+    'One task at a time.',
+    'Progress over perfection.',
+  ];
+
+  final Random _random = Random();
   Timer? _timer;
 
   @override
@@ -60,32 +76,42 @@ class FocusNotifier extends Notifier<FocusState> {
     return const FocusState();
   }
 
+  void selectTask(Map? task) {
+    state = state.copyWith(selectedTask: task);
+  }
+
   void setTechnique(FocusTechnique technique) {
     state = state.copyWith(technique: technique);
   }
 
   void start() {
-    state = state.copyWith(sessionActive: true, sessionPaused: false, isFocusMode: true);
     _timer?.cancel();
+    state = state.copyWith(
+      sessionActive: true,
+      sessionPaused: false,
+      isFocusMode: true,
+      elapsedSeconds: 0,
+      pomodoroPhase: PomodoroPhase.work,
+      pomodoroSecondsLeft: 1500,
+      pomodoroCompleted: 0,
+      sessionQuote: _sessionQuotes[_random.nextInt(_sessionQuotes.length)],
+    );
+
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (state.sessionPaused) return;
+      if (!state.sessionActive || state.sessionPaused) {
+        return;
+      }
+
       if (state.technique == FocusTechnique.simpleTimer) {
         state = state.copyWith(elapsedSeconds: state.elapsedSeconds + 1);
+        return;
+      }
+
+      final next = state.pomodoroSecondsLeft - 1;
+      if (next <= 0) {
+        _advancePomodoroPhase();
       } else {
-        final next = state.pomodoroSecondsLeft - 1;
-        if (next <= 0) {
-          if (state.pomodoroPhase == PomodoroPhase.work) {
-            state = state.copyWith(
-              pomodoroPhase: PomodoroPhase.breakTime,
-              pomodoroSecondsLeft: 300,
-              pomodoroCompleted: state.pomodoroCompleted + 1,
-            );
-          } else {
-            state = state.copyWith(pomodoroPhase: PomodoroPhase.work, pomodoroSecondsLeft: 1500);
-          }
-        } else {
-          state = state.copyWith(pomodoroSecondsLeft: next);
-        }
+        state = state.copyWith(pomodoroSecondsLeft: next);
       }
     });
   }
@@ -94,8 +120,45 @@ class FocusNotifier extends Notifier<FocusState> {
 
   void resume() => state = state.copyWith(sessionPaused: false);
 
+  void skipPhase() {
+    if (!state.sessionActive) {
+      return;
+    }
+
+    if (state.technique == FocusTechnique.simpleTimer) {
+      state = state.copyWith(elapsedSeconds: 0);
+      return;
+    }
+
+    _advancePomodoroPhase();
+  }
+
+  void _advancePomodoroPhase() {
+    if (state.pomodoroPhase == PomodoroPhase.work) {
+      state = state.copyWith(
+        pomodoroPhase: PomodoroPhase.breakTime,
+        pomodoroSecondsLeft: 300,
+        pomodoroCompleted: state.pomodoroCompleted + 1,
+      );
+    } else {
+      state = state.copyWith(
+        pomodoroPhase: PomodoroPhase.work,
+        pomodoroSecondsLeft: 1500,
+      );
+    }
+  }
+
   void stop() {
     _timer?.cancel();
-    state = const FocusState();
+    state = state.copyWith(
+      sessionActive: false,
+      sessionPaused: false,
+      isFocusMode: false,
+      elapsedSeconds: 0,
+      pomodoroPhase: PomodoroPhase.work,
+      pomodoroSecondsLeft: 1500,
+      pomodoroCompleted: 0,
+      sessionQuote: null,
+    );
   }
 }

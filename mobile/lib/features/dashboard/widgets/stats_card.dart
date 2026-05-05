@@ -38,111 +38,90 @@ class StatsCard extends StatelessWidget {
     final numericValue =
         double.tryParse(value.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0;
     final isProductivity = label.toLowerCase().contains('productivity');
+    final hasSlash = value.contains('/');
     final displayValue =
       (isProductivity && !value.contains('%')) ? '$value%' : value;
-    final valueFontSize = compact ? 24.0 : 40.0;
-    final subtitleFontSize = compact ? 10.0 : 12.0;
-    final indicatorRadius = compact ? 18.0 : 28.0;
     final isChartOnlyCard = compact && customContent != null && progress == null;
-    final topSpacing = isChartOnlyCard ? 2.0 : (compact ? 4.0 : 10.0);
-    final middleSpacing = isChartOnlyCard ? 2.0 : (compact ? 4.0 : 10.0);
-    final afterValueSpacing = isChartOnlyCard ? 2.0 : (compact ? 4.0 : 12.0);
-    final afterCustomSpacing = isChartOnlyCard ? 0.0 : (compact ? 6.0 : 10.0);
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: tokens.bgSurface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border(
-          left: BorderSide(color: accentColor, width: 3.5),
-        ),
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: tokens.textPrimary.withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: tokens.borderSubtle, width: 0.5),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Container(
-                width: 34,
-                height: 34,
-                padding: const EdgeInsets.all(8),
+                width: 28,
+                height: 28,
                 decoration: BoxDecoration(
                   color: accentColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
                   icon,
-                  size: 18,
+                  size: 16,
                   color: accentColor,
                 ),
               ),
+              const Spacer(),
               if (numericValue > 80)
                 Container(
-                  width: 8,
-                  height: 8,
+                  width: 6,
+                  height: 6,
                   decoration: BoxDecoration(
                     color: AppSemanticColors.sage,
                     shape: BoxShape.circle,
-                    boxShadow: <BoxShadow>[
-                      BoxShadow(
-                        color: AppSemanticColors.sage.withValues(alpha: 0.5),
-                        blurRadius: 6,
-                        spreadRadius: 1,
-                      ),
-                    ],
                   ),
                 ),
             ],
           ),
-          SizedBox(height: topSpacing),
+          const SizedBox(height: 10),
           Text(
             label.toUpperCase(),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.labelCaps.copyWith(
-              color: tokens.textSecondary,
-              fontSize: compact ? 10 : 11,
-              letterSpacing: compact ? 0.55 : 0.88,
+            style: AppTextStyles.labelSmall.copyWith(
+              color: tokens.textMuted,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.08,
             ),
           ),
           if (subtitle != null) ...<Widget>[
-            SizedBox(height: compact ? 1 : 4),
+            const SizedBox(height: 4),
             Text(
               subtitle!,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: AppTextStyles.bodySmall.copyWith(
-                color: tokens.textMuted,
-                fontSize: subtitleFontSize,
+                color: tokens.textSecondary,
+                fontSize: 11,
               ),
             ),
           ],
-          SizedBox(height: middleSpacing),
+          const SizedBox(height: 6),
           if (!isProductivity)
             Text(
               displayValue,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: AppTextStyles.statValueMd.copyWith(
-                fontSize: valueFontSize,
+                fontSize: hasSlash ? 20 : 28,
                 fontWeight: FontWeight.w800,
                 height: 1,
                 color: tokens.textPrimary,
               ),
             ),
-          if (!isProductivity) SizedBox(height: afterValueSpacing),
+          if (!isProductivity) const SizedBox(height: 10),
           if (customContent != null) ...<Widget>[
             customContent!,
-            SizedBox(height: afterCustomSpacing),
+            const SizedBox(height: 8),
           ],
           if (progress != null) ...<Widget>[
             if (isProductivity)
@@ -155,7 +134,7 @@ class StatsCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.statValueMd.copyWith(
-                        fontSize: valueFontSize,
+                        fontSize: hasSlash ? 20 : 28,
                         fontWeight: FontWeight.w800,
                         height: 1,
                         color: tokens.textPrimary,
@@ -164,7 +143,7 @@ class StatsCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   CircularPercentIndicator(
-                    radius: compact ? 18 : indicatorRadius,
+                    radius: 18,
                     lineWidth: 6,
                     percent: progressValue,
                     center: const SizedBox.shrink(),
@@ -177,12 +156,12 @@ class StatsCard extends StatelessWidget {
               )
             else
               ClipRRect(
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(99),
                 child: LinearProgressIndicator(
                   value: progressValue,
-                  backgroundColor: accentColor.withValues(alpha: 0.12),
+                  backgroundColor: tokens.bgOverlay,
                   valueColor: AlwaysStoppedAnimation<Color>(accentColor),
-                  minHeight: 5,
+                  minHeight: 3,
                 ),
               ),
           ],

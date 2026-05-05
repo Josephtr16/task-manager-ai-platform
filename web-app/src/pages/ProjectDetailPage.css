@@ -1,0 +1,142 @@
+/* Task Item Hover Effects */
+.task-item {
+  animation: slideIn 0.35s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.task-item:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12) !important;
+  border-color: var(--primary-color, #FF6B35) !important;
+}
+
+.task-item:active {
+  transform: translateY(-1px);
+}
+
+/* Checkbox Animation */
+.task-item .checkbox-wrapper {
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.task-item:hover .checkbox-wrapper {
+  transform: scale(1.08);
+}
+
+/* Task Tag Hover */
+.task-tag {
+  transition: all 0.2s ease;
+  cursor: default;
+}
+
+.task-tag:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Back Button Hover */
+.back-btn:hover {
+  color: var(--primary-color, #FF6B35) !important;
+  transform: translateX(-4px);
+  transition: all 0.2s ease;
+}
+
+/* Add Task Button Hover */
+.add-btn {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.add-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15) !important;
+}
+
+.add-btn:active {
+  transform: translateY(0);
+}
+
+/* Settings Button Hover */
+.settings-btn {
+  transition: all 0.2s ease;
+}
+
+.settings-btn:hover {
+  transform: rotate(90deg);
+  background-color: var(--bg-elevated) !important;
+}
+
+/* Delete Button Hover */
+.delete-btn {
+  transition: all 0.2s ease;
+}
+
+.delete-btn:hover {
+  transform: scale(1.02);
+  opacity: 0.9;
+}
+
+/* Collaborator Row Hover */
+.collaborator-row {
+  transition: all 0.2s ease;
+}
+
+.collaborator-row:hover {
+  background-color: rgba(255, 107, 53, 0.05);
+  border-color: rgba(255, 107, 53, 0.2) !important;
+  transform: translateX(4px);
+}
+
+/* Section Header Animation */
+.section-title {
+  font-weight: 700;
+  transition: all 0.2s ease;
+}
+
+/* Empty State Styling */
+.empty-state {
+  padding: 48px 32px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(255, 107, 53, 0.03) 0%, rgba(255, 107, 53, 0.01) 100%);
+  border: 1px dashed rgba(255, 107, 53, 0.2);
+}
+
+/* Focus Visible */
+.task-item:focus-visible,
+.add-btn:focus-visible,
+.delete-btn:focus-visible {
+  outline: 2px solid var(--primary-color, #FF6B35);
+  outline-offset: 2px;
+}
+
+/* Smooth transitions for all interactive elements */
+button {
+  transition: all 0.25s ease;
+}
+
+input[type="email"],
+input[type="text"],
+input[type="date"],
+select {
+  transition: all 0.2s ease;
+}
+
+input:focus,
+select:focus {
+  transform: scale(1.01);
+}

@@ -8,12 +8,13 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { borderRadius } from '../theme';
 import { formatTaskDuration } from '../utils/formatTaskDuration';
-import { FaArrowLeft, FaCalendarAlt, FaTrash, FaPlus, FaCheck, FaClock, FaFlag, FaTag, FaShare, FaUserPlus, FaRobot } from 'react-icons/fa';
+import { FaArrowLeft, FaCalendarAlt, FaTrash, FaPlus, FaCheck, FaClock, FaFlag, FaTag, FaShare, FaUserPlus, FaRobot, FaEllipsisV } from 'react-icons/fa';
 import AddTaskToProjectModal from '../components/Projects/AddTaskToProjectModal';
 import TaskDetailModal from '../components/Tasks/TaskDetailModal';
 import AIProjectBreakdownModal from '../components/Projects/AIProjectBreakdownModal';
 import TaskDependencyGraph from '../components/Projects/TaskDependencyGraph';
 import CustomPermissionSelect from '../components/common/CustomPermissionSelect';
+import './ProjectDetailPage.css';
 
 const ProjectDetailPage = () => {
     const { id } = useParams();
@@ -29,6 +30,15 @@ const ProjectDetailPage = () => {
     const [showTaskDetailModal, setShowTaskDetailModal] = useState(false);
     const [showAIProjectBreakdown, setShowAIProjectBreakdown] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [showProjectSettings, setShowProjectSettings] = useState(false);
+    const [projectNameDraft, setProjectNameDraft] = useState('');
+    const [projectDescriptionDraft, setProjectDescriptionDraft] = useState('');
+    const [projectCategoryDraft, setProjectCategoryDraft] = useState('Work');
+    const [projectPriorityDraft, setProjectPriorityDraft] = useState('medium');
+    const [projectStatusDraft, setProjectStatusDraft] = useState('not-started');
+    const [projectDueDateDraft, setProjectDueDateDraft] = useState('');
+    const [projectEstimatedHoursDraft, setProjectEstimatedHoursDraft] = useState('');
+    const [isSavingProjectSettings, setIsSavingProjectSettings] = useState(false);
     const [shareEmail, setShareEmail] = useState('');
     const [showDependencyGraph, setShowDependencyGraph] = useState(false);
     const [isGeneratingDependencies, setIsGeneratingDependencies] = useState(false);
@@ -36,6 +46,13 @@ const ProjectDetailPage = () => {
     const showNotification = (type, message) => {
         setNotification({ type, message });
         setTimeout(() => setNotification(null), 3000);
+    };
+
+    const toDateInputValue = (value) => {
+        if (!value) return '';
+        const parsed = new Date(value);
+        if (Number.isNaN(parsed.getTime())) return '';
+        return parsed.toISOString().split('T')[0];
     };
 
     useEffect(() => {
@@ -81,6 +98,56 @@ const ProjectDetailPage = () => {
 
     const confirmDelete = () => {
         setShowDeleteConfirm(true);
+    };
+
+    const handleOpenProjectSettings = () => {
+        setProjectNameDraft(project?.title || '');
+        setProjectDescriptionDraft(project?.description || '');
+        setProjectCategoryDraft(project?.category || 'Work');
+        setProjectPriorityDraft(project?.priority || 'medium');
+        setProjectStatusDraft(project?.status || 'not-started');
+        setProjectDueDateDraft(toDateInputValue(project?.dueDate));
+        setProjectEstimatedHoursDraft(project?.estimatedTotalHours?.toString?.() || '');
+        setShowProjectSettings(true);
+    };
+
+    const handleSaveProjectSettings = async () => {
+        const nextTitle = projectNameDraft.trim();
+        const nextDescription = projectDescriptionDraft.trim();
+        const nextEstimatedHours = projectEstimatedHoursDraft.trim() === ''
+            ? 0
+            : Number(projectEstimatedHoursDraft);
+
+        if (!nextTitle) {
+            showNotification('error', 'Project name cannot be empty.');
+            return;
+        }
+
+        if (Number.isNaN(nextEstimatedHours)) {
+            showNotification('error', 'Estimated total hours must be a number.');
+            return;
+        }
+
+        setIsSavingProjectSettings(true);
+        try {
+            await projectService.updateProject(id, {
+                title: nextTitle,
+                description: nextDescription,
+                category: projectCategoryDraft,
+                priority: projectPriorityDraft,
+                status: projectStatusDraft,
+                dueDate: projectDueDateDraft ? new Date(`${projectDueDateDraft}T00:00:00`).toISOString() : null,
+                estimatedTotalHours: nextEstimatedHours,
+            });
+            await loadProjectDetails();
+            setShowProjectSettings(false);
+            showNotification('success', 'Project settings updated.');
+        } catch (error) {
+            console.error('Error updating project settings:', error);
+            showNotification('error', error.response?.data?.message || 'Failed to update project settings.');
+        } finally {
+            setIsSavingProjectSettings(false);
+        }
     };
 
     const handleTaskCreated = async (newTaskData) => {
@@ -403,6 +470,12 @@ const ProjectDetailPage = () => {
             alignItems: 'flex-start',
             marginBottom: '16px',
         },
+        headerActions: {
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            flexShrink: 0,
+        },
         title: {
             fontSize: '32px',
             fontWeight: '800',
@@ -419,16 +492,30 @@ const ProjectDetailPage = () => {
         deleteButton: {
             background: theme.bgMain,
             color: theme.error,
-            border: 'none',
+            border: `1.2px solid ${theme.error}40`,
             borderRadius: borderRadius.md,
             padding: '10px 16px',
             fontSize: '14px',
-            fontWeight: '600',
+            fontWeight: '700',
             cursor: 'pointer',
-            boxShadow: theme.shadows.neumorphic,
+            boxShadow: `0 2px 8px ${theme.error}20`,
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
+            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+        },
+        settingsButton: {
+            width: '44px',
+            height: '44px',
+            borderRadius: borderRadius.md,
+            background: theme.bgMain,
+            color: theme.textSecondary,
+            border: `1px solid ${theme.border}`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            boxShadow: theme.shadows.neumorphic,
         },
         metaGrid: {
             display: 'grid',
@@ -500,14 +587,15 @@ const ProjectDetailPage = () => {
             color: '#fff',
             border: 'none',
             borderRadius: borderRadius.md,
-            padding: '10px 20px',
+            padding: '11px 20px',
             fontSize: '14px',
-            fontWeight: '600',
+            fontWeight: '700',
             cursor: 'pointer',
-            boxShadow: theme.shadows.neumorphic,
+            boxShadow: `0 4px 12px ${theme.primary}40`,
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
+            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
         },
         notification: {
             marginBottom: '16px',
@@ -519,23 +607,27 @@ const ProjectDetailPage = () => {
         taskList: {
             display: 'flex',
             flexDirection: 'column',
-            gap: '16px',
+            gap: '14px',
         },
         taskItem: {
             backgroundColor: theme.bgMain,
-            borderRadius: borderRadius.lg,
-            padding: '20px',
-            boxShadow: theme.shadows.neumorphic,
+            borderRadius: '16px',
+            padding: '24px',
+            boxShadow: `0 2px 12px ${theme.border}40`,
             display: 'flex',
-            alignItems: 'center',
-            gap: '16px',
+            alignItems: 'flex-start',
+            gap: '18px',
             cursor: 'pointer',
-            border: `1px solid ${theme.border}`,
-            transition: 'all 0.2s ease',
+            border: `1.2px solid ${theme.border}`,
+            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+            position: 'relative',
+            overflow: 'hidden',
         },
         checkbox: (checked) => ({
-            width: '24px',
-            height: '24px',
+            width: '26px',
+            height: '26px',
+            minWidth: '26px',
+            minHeight: '26px',
             borderRadius: '8px',
             border: `2px solid ${checked ? theme.success : theme.border}`,
             backgroundColor: checked ? theme.success : theme.bgMain,
@@ -543,43 +635,50 @@ const ProjectDetailPage = () => {
             alignItems: 'center',
             justifyContent: 'center',
             cursor: 'pointer',
-            boxShadow: checked ? 'none' : theme.shadows.neumorphicInset,
+            boxShadow: checked ? `0 4px 8px ${theme.success}30` : 'none',
+            transition: 'all 0.2s ease',
+            marginTop: '2px',
         }),
         taskTitle: (checked) => ({
             fontSize: '16px',
-            fontWeight: '600',
+            fontWeight: '700',
+            letterSpacing: '-0.3px',
             color: checked ? theme.textMuted : theme.textPrimary,
             textDecoration: checked ? 'line-through' : 'none',
-            margin: '0 0 4px 0',
+            margin: '0 0 6px 0',
         }),
         taskDescription: (checked) => ({
-            fontSize: '13px',
+            fontSize: '14px',
             color: checked ? theme.textMuted : theme.textSecondary,
-            margin: '0 0 8px 0',
-            lineHeight: '1.5',
+            margin: '0 0 10px 0',
+            lineHeight: '1.6',
             whiteSpace: 'pre-wrap',
+            opacity: checked ? 0.7 : 1,
         }),
         taskMeta: {
             fontSize: '13px',
             color: theme.textSecondary,
             display: 'flex',
             alignItems: 'center',
-            gap: '12px',
+            gap: '16px',
+            flexWrap: 'wrap',
+            fontWeight: '500',
         },
         taskTags: {
             display: 'flex',
             gap: '8px',
             flexWrap: 'wrap',
-            marginTop: '8px',
+            marginTop: '10px',
         },
         taskTag: {
-            fontSize: '11px',
+            fontSize: '12px',
             fontWeight: '700',
-            padding: '4px 8px',
-            borderRadius: '999px',
+            padding: '5px 10px',
+            borderRadius: '6px',
             backgroundColor: `${theme.primary}15`,
             color: theme.primary,
-            border: `1px solid ${theme.primary}25`,
+            border: `1px solid ${theme.primary}35`,
+            transition: 'all 0.2s ease',
         },
         confirmOverlay: {
             position: 'fixed',
@@ -757,6 +856,89 @@ const ProjectDetailPage = () => {
             transition: 'all 0.2s ease',
             boxShadow: 'none',
         },
+        settingsOverlay: {
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.62)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1600,
+            padding: '16px',
+        },
+        settingsDialog: {
+            width: '100%',
+            maxWidth: '560px',
+            backgroundColor: theme.bgMain,
+            borderRadius: borderRadius.lg,
+            border: `1px solid ${theme.border}`,
+            boxShadow: '0 20px 50px rgba(0,0,0,0.35)',
+            padding: '24px',
+        },
+        settingsTitle: {
+            margin: 0,
+            fontSize: '20px',
+            fontWeight: '700',
+            color: theme.textPrimary,
+        },
+        settingsText: {
+            margin: '8px 0 18px 0',
+            color: theme.textSecondary,
+            fontSize: '14px',
+            lineHeight: '1.55',
+        },
+        settingsField: {
+            width: '100%',
+            border: `1px solid ${theme.border}`,
+            borderRadius: borderRadius.md,
+            backgroundColor: theme.bgMain,
+            color: theme.textPrimary,
+            padding: '12px 14px',
+            fontSize: '14px',
+            outline: 'none',
+            boxShadow: theme.shadows.neumorphicInset,
+            marginBottom: '12px',
+            resize: 'vertical',
+        },
+        settingsGrid: {
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+            gap: '12px',
+        },
+        settingsLabel: {
+            display: 'block',
+            marginBottom: '6px',
+            fontSize: '13px',
+            fontWeight: '700',
+            color: theme.textSecondary,
+        },
+        settingsActions: {
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: '10px',
+            flexWrap: 'wrap',
+            marginTop: '8px',
+        },
+        settingsSecondaryBtn: {
+            border: `1px solid ${theme.border}`,
+            backgroundColor: theme.bgMain,
+            color: theme.textPrimary,
+            borderRadius: borderRadius.md,
+            padding: '10px 16px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            boxShadow: theme.shadows.neumorphic,
+        },
+        settingsPrimaryBtn: {
+            border: 'none',
+            backgroundColor: theme.primary,
+            color: '#fff',
+            borderRadius: borderRadius.md,
+            padding: '10px 16px',
+            fontWeight: '700',
+            cursor: 'pointer',
+            boxShadow: theme.shadows.neumorphic,
+        },
         readOnlyNotice: {
             marginTop: '12px',
             fontSize: '13px',
@@ -849,15 +1031,29 @@ const ProjectDetailPage = () => {
                                 <p style={styles.description}>{project.description}</p>
                             )}
                         </div>
-                        {isOwner && (
-                            <button 
-                                style={styles.deleteButton} 
-                                onClick={confirmDelete}
-                                className="delete-btn"
-                            >
-                                <FaTrash /> Delete Project
-                            </button>
-                        )}
+                        <div style={styles.headerActions}>
+                            {isOwner && (
+                                <button
+                                    type="button"
+                                    style={styles.settingsButton}
+                                    onClick={handleOpenProjectSettings}
+                                    className="settings-btn"
+                                    aria-label="Open project settings"
+                                    title="Project settings"
+                                >
+                                    <FaEllipsisV />
+                                </button>
+                            )}
+                            {isOwner && (
+                                <button 
+                                    style={styles.deleteButton} 
+                                    onClick={confirmDelete}
+                                    className="delete-btn"
+                                >
+                                    <FaTrash /> Delete Project
+                                </button>
+                            )}
+                        </div>
                     </div>
 
                     <div style={styles.metaGrid}>
@@ -1005,8 +1201,14 @@ const ProjectDetailPage = () => {
 
                 <div style={styles.taskList}>
                     {sortedTasks.length === 0 ? (
-                        <div style={{ padding: '32px', textAlign: 'center', color: theme.textSecondary }}>
-                            No tasks for this project yet. Add one to get started!
+                        <div className="empty-state" style={{ padding: '48px 32px', textAlign: 'center', color: theme.textSecondary }}>
+                            <div style={{ 
+                                fontSize: '48px', 
+                                marginBottom: '12px',
+                                opacity: 0.6
+                            }}>📋</div>
+                            <p style={{ margin: '0', fontSize: '18px', fontWeight: '600', color: theme.textPrimary }}>No Tasks Yet</p>
+                            <p style={{ margin: '8px 0 0 0', fontSize: '14px', color: theme.textSecondary }}>Create one to get started!</p>
                         </div>
                     ) : (
                         sortedTasks.map(task => {
@@ -1021,7 +1223,7 @@ const ProjectDetailPage = () => {
                                         setShowTaskDetailModal(true);
                                     }}
                                 >
-                                    <div 
+                                    <div className="checkbox-wrapper"
                                         style={styles.checkbox(isDone)}
                                         onClick={(e) => canToggleTaskStatus && toggleTaskComplete(task, e)}
                                     >
@@ -1030,20 +1232,30 @@ const ProjectDetailPage = () => {
                                         </div>
                                     </div>
                                     
-                                    <div style={{ flex: 1 }}>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
                                         <h4 style={styles.taskTitle(isDone)}>{task.title}</h4>
                                         {task.description && (
                                             <p style={styles.taskDescription(isDone)}>{task.description}</p>
                                         )}
                                         <div style={styles.taskMeta}>
-                                            <span style={{ color: getPriorityColor(task.priority) }}>{task.priority.toUpperCase()}</span>
-                                            {task.deadline && <span>Due: {formatDate(task.deadline)}</span>}
-                                            {task.estimatedDuration && <span>{formatTaskDuration(task.estimatedDuration)}</span>}
+                                            <span style={{ color: getPriorityColor(task.priority), fontWeight: '700', fontSize: '12px' }}>
+                                                {task.priority.toUpperCase()}
+                                            </span>
+                                            {task.deadline && (
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                    <FaCalendarAlt size={12} /> {formatDate(task.deadline)}
+                                                </span>
+                                            )}
+                                            {task.estimatedDuration && (
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                    <FaClock size={12} /> {formatTaskDuration(task.estimatedDuration)}
+                                                </span>
+                                            )}
                                         </div>
                                         {Array.isArray(task.tags) && task.tags.length > 0 && (
                                             <div style={styles.taskTags}>
                                                 {task.tags.map((tag, idx) => (
-                                                    <span key={`${task._id}-tag-${idx}`} style={styles.taskTag}>
+                                                    <span key={`${task._id}-tag-${idx}`} style={styles.taskTag} className="task-tag">
                                                         #{tag}
                                                     </span>
                                                 ))}
@@ -1201,6 +1413,105 @@ const ProjectDetailPage = () => {
                                     }}
                                 >
                                     Delete Project + Tasks
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {showProjectSettings && (
+                    <div style={styles.settingsOverlay} onClick={() => setShowProjectSettings(false)}>
+                        <div style={styles.settingsDialog} onClick={(e) => e.stopPropagation()}>
+                            <h3 style={styles.settingsTitle}>Project settings</h3>
+                            <p style={styles.settingsText}>Edit the project title, description, category, priority, status, due date, and estimated hours.</p>
+                            <input
+                                type="text"
+                                value={projectNameDraft}
+                                onChange={(e) => setProjectNameDraft(e.target.value)}
+                                placeholder="Project title"
+                                style={styles.settingsField}
+                            />
+                            <textarea
+                                value={projectDescriptionDraft}
+                                onChange={(e) => setProjectDescriptionDraft(e.target.value)}
+                                placeholder="Project description"
+                                rows={5}
+                                style={styles.settingsField}
+                            />
+                            <div style={styles.settingsGrid}>
+                                <div>
+                                    <label style={styles.settingsLabel}>Category</label>
+                                    <select
+                                        value={projectCategoryDraft}
+                                        onChange={(e) => setProjectCategoryDraft(e.target.value)}
+                                        style={styles.settingsField}
+                                    >
+                                        {['Work', 'Personal', 'Health', 'Shopping', 'Learning', 'Family'].map((category) => (
+                                            <option key={category} value={category}>{category}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style={styles.settingsLabel}>Priority</label>
+                                    <select
+                                        value={projectPriorityDraft}
+                                        onChange={(e) => setProjectPriorityDraft(e.target.value)}
+                                        style={styles.settingsField}
+                                    >
+                                        {['low', 'medium', 'high', 'urgent'].map((priority) => (
+                                            <option key={priority} value={priority}>{priority}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style={styles.settingsLabel}>Status</label>
+                                    <select
+                                        value={projectStatusDraft}
+                                        onChange={(e) => setProjectStatusDraft(e.target.value)}
+                                        style={styles.settingsField}
+                                    >
+                                        {['not-started', 'in-progress', 'completed'].map((status) => (
+                                            <option key={status} value={status}>{status}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style={styles.settingsLabel}>Due date</label>
+                                    <input
+                                        type="date"
+                                        value={projectDueDateDraft}
+                                        onChange={(e) => setProjectDueDateDraft(e.target.value)}
+                                        style={styles.settingsField}
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label style={styles.settingsLabel}>Estimated total hours</label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="0.5"
+                                    value={projectEstimatedHoursDraft}
+                                    onChange={(e) => setProjectEstimatedHoursDraft(e.target.value)}
+                                    placeholder="e.g. 12"
+                                    style={styles.settingsField}
+                                />
+                            </div>
+                            <div style={styles.settingsActions}>
+                                <button
+                                    type="button"
+                                    style={styles.settingsSecondaryBtn}
+                                    onClick={() => setShowProjectSettings(false)}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="button"
+                                    style={styles.settingsPrimaryBtn}
+                                    onClick={handleSaveProjectSettings}
+                                    disabled={isSavingProjectSettings}
+                                >
+                                    {isSavingProjectSettings ? 'Saving...' : 'Save changes'}
                                 </button>
                             </div>
                         </div>

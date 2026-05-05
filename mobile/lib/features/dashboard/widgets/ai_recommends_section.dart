@@ -418,11 +418,11 @@ class _AiTaskCardState extends State<_AiTaskCard> {
               decoration: BoxDecoration(
                 border: Border(
                   left: BorderSide(
-                    color: const Color(0xFFD4A574),
+                    color: tokens.accent,
                     width: 3,
                   ),
                 ),
-                color: const Color(0xFFFBF4ED),
+                color: tokens.accent.withValues(alpha: 0.08),
                 borderRadius: const BorderRadius.only(
                   topRight: Radius.circular(8),
                   bottomRight: Radius.circular(8),
@@ -434,7 +434,7 @@ class _AiTaskCardState extends State<_AiTaskCard> {
                   Icon(
                     Icons.lightbulb_outline_rounded,
                     size: 16,
-                    color: const Color(0xFFD4A574),
+                    color: tokens.accent,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -442,7 +442,7 @@ class _AiTaskCardState extends State<_AiTaskCard> {
                       aiInsight,
                       style: AppTextStyles.bodySmall.copyWith(
                         fontSize: 11,
-                        color: const Color(0xFF6B5344),
+                        color: tokens.textSecondary,
                         fontStyle: FontStyle.italic,
                       ),
                     ),

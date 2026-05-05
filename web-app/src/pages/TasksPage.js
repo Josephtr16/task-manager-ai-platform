@@ -397,7 +397,7 @@ const TasksPage = () => {
     const tasksToPrioritize = tasks.filter(task => AI_SCORABLE_STATUSES.includes(task.status));
 
     if (tasksToPrioritize.length === 0) {
-      showNotification(t('ai.noTasksToPrioritize'), 'warning');
+      showNotification(t('ai.noTasksToPrioritize', 'No tasks available to prioritize'), 'warning');
       return;
     }
 
@@ -425,7 +425,7 @@ const TasksPage = () => {
       setAiPriorityScores(scoreMap);
       setFilteredTasks(sortTasksByPriorityScore(filteredTasks, scoreMap));
     } catch (error) {
-      showNotification(error.response?.data?.message || t('ai.prioritizeFailed'), 'error');
+      showNotification(error.response?.data?.message || t('ai.prioritizeFailed', 'Failed to prioritize tasks'), 'error');
     } finally {
       setIsAIPrioritizing(false);
     }
@@ -438,7 +438,7 @@ const TasksPage = () => {
     });
 
     if (riskEligibleTasks.length === 0) {
-      showNotification(t('risk.noActiveTasks'), 'warning');
+      showNotification(t('risk.noActiveTasks', 'No active tasks to analyze'), 'warning');
       return;
     }
 
@@ -466,10 +466,10 @@ const TasksPage = () => {
       );
       setRiskTaskIds(nextRiskTaskIds);
       setRiskOverallStatus(result?.overall_status || 'ok');
-      setRiskSummary(result?.summary || t('risk.analysisComplete'));
-      showNotification(t('risk.analysisCompleteNotify'), 'success');
+      setRiskSummary(result?.summary || t('risk.analysisComplete', 'Analysis Complete'));
+      showNotification(t('risk.analysisCompleteNotify', 'Risk analysis completed'), 'success');
     } catch (error) {
-      showNotification(error.response?.data?.message || t('risk.detectFailed'), 'error');
+      showNotification(error.response?.data?.message || t('risk.detectFailed', 'Failed to detect risks'), 'error');
     } finally {
       setIsDetectingRisks(false);
     }
@@ -1318,7 +1318,7 @@ const TasksPage = () => {
                 cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
               }}
             >
-              {t('common.back')}
+              {t('common.back', 'Back')}
             </button>
             <span style={{ alignSelf: 'center', color: theme.textSecondary, fontWeight: '600' }}>
               {t('common.pageOf', { current: currentPage, total: totalPages })}
@@ -1333,7 +1333,7 @@ const TasksPage = () => {
                 cursor: currentPage >= totalPages ? 'not-allowed' : 'pointer',
               }}
             >
-              {t('common.next')}
+              {t('common.next', 'Next')}
             </button>
           </div>
         )}
@@ -1398,7 +1398,9 @@ const TaskCard = ({ task, aiPriorityScore, onClick, getPriorityColor, getStatusC
 
   const getProjectLabel = (project) => {
     if (!project) return '';
-    if (typeof project === 'string') return project;
+    // If it's a string ID (populate failed), don't show it
+    if (typeof project === 'string') return '';
+    // Return the project title from the populated object
     return project.title || project.name || project.projectTitle || project.projectName || project.label || '';
   };
 

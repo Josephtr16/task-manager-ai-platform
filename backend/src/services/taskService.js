@@ -840,7 +840,9 @@ class TaskService extends BaseService {
     }
 
     async getStatistics(userId) {
-        const accessOr = await this.getTaskAccessOrConditions(userId, { includeArchived: true });
+        // Keep statistics consistent with the tasks listing by excluding archived tasks
+        // (getTasks uses getTaskAccessOrConditions without includeArchived).
+        const accessOr = await this.getTaskAccessOrConditions(userId);
         const tasks = await this.model.find({ $or: accessOr });
 
         const now = new Date();
@@ -914,6 +916,36 @@ class TaskService extends BaseService {
             focusTime,
             streak,
         };
+    }
+
+    /**
+     * Clean up broken task-project references
+     * Finds tasks with projectId references to non-existent projects and clears them
+     */
+    async cleanupBrokenProjectReferences() {
+        try {
+            // Get all tasks with projectId
+            const tasksWithProjectId = await this.model.find({ projectId: { $ne: null } });
+            
+            let cleanedCount = 0;
+            for (const task of tasksWithProjectId) {
+                // Check if the project exists
+                const project = await Project.findById(task.projectId);
+                if (!project) {
+                    // Clear the projectId if the project doesn't exist
+                    await this.model.findByIdAndUpdate(task._id, { projectId: null });
+                    cleanedCount++;
+                }
+            }
+
+            return {
+                success: true,
+                message: `Cleaned up ${cleanedCount} broken task-project references`,
+                cleanedCount,
+            };
+        } catch (error) {
+            throw new AppError(`Failed to cleanup broken references: ${error.message}`, 500);
+        }
     }
 }
 

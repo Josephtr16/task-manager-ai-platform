@@ -66,7 +66,7 @@ const Register = () => {
       <div style={styles.header}>
         <div style={styles.logoContainer}>
           <div style={styles.logo}>TF</div>
-          <h1 style={styles.title}>{t('app.name')}</h1>
+          <h1 style={styles.title}>{t('app.name', 'TaskFlow AI')}</h1>
         </div>
         <p style={styles.subtitle}>{tt('auth.createAccount', 'Create your account')}</p>
       </div>

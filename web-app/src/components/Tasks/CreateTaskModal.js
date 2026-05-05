@@ -1317,7 +1317,7 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
 
         <form onSubmit={handleSubmit}>
           <div style={styles.formGroup}>
-            <label style={styles.label}>{t('tasks.taskTitle')}</label>
+            <label style={styles.label}>{t('tasks.taskTitle', 'Task Title')}</label>
             <input
               type="text"
               name="title"
@@ -1362,7 +1362,7 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
           </div>
 
           <div style={styles.formGroup}>
-            <label style={styles.label}>{t('tasks.description')}</label>
+            <label style={styles.label}>{t('tasks.description', 'Description')}</label>
             <textarea
               name="description"
               value={formData.description}
@@ -1375,7 +1375,7 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
           <div style={styles.row}>
             <div style={styles.col}>
               <div style={styles.dueDateHeader}>
-                <label style={{ ...styles.label, marginBottom: 0 }}><FaCalendarAlt /> {t('tasks.dueDate')}</label>
+                <label style={{ ...styles.label, marginBottom: 0 }}><FaCalendarAlt /> {t('tasks.dueDate', 'Due Date')}</label>
                 <button
                   type="button"
                   onClick={handleSpecificTimeToggle}
@@ -1622,7 +1622,7 @@ const CreateTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
               style={styles.cancelButton}
               className="cancel-btn"
             >
-              {t('common.cancel')}
+              {t('common.cancel', 'Cancel')}
             </button>
             <button
               type="submit"

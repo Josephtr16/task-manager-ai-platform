@@ -323,7 +323,7 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
             child: Text(
               'No subtasks yet',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: tokens.textMuted,
+                    color: tokens.textSecondary,
               ),
             ),
           )
@@ -368,7 +368,7 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                       child: Text(
                         title,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: completed ? tokens.textMuted : tokens.textPrimary,
+                              color: completed ? tokens.textSecondary : tokens.textPrimary,
                               decoration: completed ? TextDecoration.lineThrough : null,
                             ),
                       ),
@@ -451,15 +451,8 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                         ),
                 ),
                 const SizedBox(width: 8),
-                if (!_isEditing) ...<Widget>[
-                  TfButton(
-                    label: 'Edit',
-                    icon: Icons.edit_outlined,
-                    variant: TfButtonVariant.accent,
-                    onPressed: () => setState(() => _isEditing = true),
-                  ),
-                  const SizedBox(width: 8),
-                ],
+                // top edit button removed to avoid duplicate edit controls;
+                // editing is handled in the action bar at the bottom
                 TfButton(
                   label: 'Delete',
                   icon: Icons.delete_outline,
@@ -478,7 +471,7 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                 TfBadge(label: _status, uppercase: true),
                 TfBadge(label: widget.task.category),
                 if ((widget.task.aiPriorityScore ?? 0) > 0)
-                  TfBadge(label: 'AI ${widget.task.aiPriorityScore}%', color: AppColors.aiPurple, uppercase: true),
+                  TfBadge(label: 'AI ${widget.task.aiPriorityScore}%', color: AppColorsShared.accent, uppercase: true),
               ],
             ),
             const SizedBox(height: 16),

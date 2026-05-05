@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useTheme } from '../../context/ThemeContext';
 import { useNavigate } from 'react-router-dom';
 import { tasksAPI, timeTrackingAPI, subtasksAPI } from '../../services/api';
+import { aiService } from '../../services/aiService';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import {
@@ -28,7 +29,10 @@ const TaskDetailModal = ({
   canToggleSubtasks = true,
   mentionUsers = [],
 }) => {
-  const { theme } = useTheme();
+  const { theme: themeFromContext } = useTheme();
+  const theme = themeFromContext || {};
+  const successColor = theme.success || '#5E8A6E';
+  const errorColor = theme.error || '#B85C5C';
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({});
@@ -42,6 +46,12 @@ const TaskDetailModal = ({
   const [loadingDependencies, setLoadingDependencies] = useState(false);
   const [commentSelectionStart, setCommentSelectionStart] = useState(0);
   const [isSendingComment, setIsSendingComment] = useState(false);
+  const [isGeneratingSubtasks, setIsGeneratingSubtasks] = useState(false);
+  const [pendingSubtasks, setPendingSubtasks] = useState([]);
+  const [showSubtasksReview, setShowSubtasksReview] = useState(false);
+  const [reviewSubtaskEdits, setReviewSubtaskEdits] = useState({});
+  const [editingSubtaskId, setEditingSubtaskId] = useState(null);
+  const [editingSubtaskTitle, setEditingSubtaskTitle] = useState('');
   const commentInputRef = useRef(null);
 
   const renderTextWithMentions = (text) => {
@@ -433,6 +443,87 @@ const TaskDetailModal = ({
       cursor: 'pointer',
       fontWeight: '700',
       boxShadow: 'none',
+    },
+    subtasksReviewList: {
+      maxHeight: '400px',
+      overflowY: 'auto',
+      marginBottom: '20px',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '12px',
+    },
+    subtaskReviewItem: {
+      backgroundColor: theme.bgBase,
+      border: `1px solid ${theme.borderLight}`,
+      borderRadius: '8px',
+      padding: '12px',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '8px',
+    },
+    subtaskItemLabel: {
+      fontSize: '11px',
+      fontWeight: '600',
+      color: theme.textSecondary,
+      textTransform: 'uppercase',
+      letterSpacing: '0.5px',
+    },
+    subtaskReviewInput: {
+      width: '100%',
+      padding: '8px 10px',
+      borderRadius: '6px',
+      border: `1px solid ${theme.borderMedium}`,
+      backgroundColor: theme.bgCard,
+      color: theme.textPrimary,
+      fontSize: '13px',
+      fontFamily: 'inherit',
+      boxSizing: 'border-box',
+      transition: 'border-color 0.2s',
+    },
+    subtaskEstimate: {
+      fontSize: '12px',
+      color: theme.textSecondary,
+      fontWeight: '500',
+    },
+    subtasksEditList: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '10px',
+    },
+    subtaskEditItem: {
+      backgroundColor: theme.bgBase,
+      border: `1px solid ${theme.borderLight}`,
+      borderRadius: '8px',
+      padding: '12px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+    },
+    subtaskEditInput: {
+      flex: 1,
+      padding: '8px 10px',
+      borderRadius: '6px',
+      border: `1px solid ${theme.borderMedium}`,
+      backgroundColor: theme.bgCard,
+      color: theme.textPrimary,
+      fontSize: '13px',
+      fontFamily: 'inherit',
+      boxSizing: 'border-box',
+      transition: 'border-color 0.2s',
+    },
+    subtaskActionBtn: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      width: '32px',
+      height: '32px',
+      border: 'none',
+      borderRadius: '6px',
+      cursor: 'pointer',
+      color: '#0A0908',
+      fontSize: '13px',
+      fontWeight: '600',
+      transition: 'opacity 150ms ease',
     },
     badges: {
       display: 'flex',
@@ -1230,6 +1321,143 @@ const TaskDetailModal = ({
     }
   };
 
+  const handleGenerateSubtasks = async () => {
+    if (isGeneratingSubtasks || loading) return;
+    
+    setIsGeneratingSubtasks(true);
+    try {
+      const projectContext = formData.projectId?.title || task.projectId?.title || 'General';
+      const taskTitle = formData.title || task.title;
+      const taskDescription = formData.description || task.description;
+      const category = formData.category || task.category;
+      const estimatedMinutes = formData.estimatedDuration || task.estimatedDuration || 60;
+
+      // Call AI service to generate subtasks
+      const result = await aiService.generateSubtasks(
+        projectContext,
+        taskTitle,
+        taskDescription,
+        category,
+        'execution',
+        estimatedMinutes
+      );
+
+      if (!result?.subtasks || result.subtasks.length === 0) {
+        showNotification('info', 'No subtasks were generated. Try updating the task description.');
+        return;
+      }
+
+      // Store generated subtasks for review
+      setPendingSubtasks(result.subtasks.map((s, idx) => ({ ...s, id: idx })));
+      setReviewSubtaskEdits({});
+      setShowSubtasksReview(true);
+      showNotification('success', `Generated ${result.subtasks.length} subtasks ready for review!`);
+    } catch (error) {
+      console.error('Generate subtasks error:', error);
+      showNotification('error', error.response?.data?.message || 'Failed to generate subtasks. Please try again.');
+    } finally {
+      setIsGeneratingSubtasks(false);
+    }
+  };
+
+  const handleAcceptSubtasks = async () => {
+    if (!pendingSubtasks.length) return;
+
+    try {
+      const newSubtasks = [];
+      
+      for (const subtask of pendingSubtasks) {
+        const editedTitle = reviewSubtaskEdits[subtask.id]?.title || subtask.title;
+        
+        if (!editedTitle.trim()) continue;
+
+        try {
+          const response = await subtasksAPI.addSubtask(task._id, {
+            title: editedTitle,
+            completed: false,
+          });
+          
+          if (response?.data?.subtask) {
+            newSubtasks.push(response.data.subtask);
+          }
+        } catch (error) {
+          console.error('Failed to add subtask:', error);
+        }
+      }
+
+      // Update form data with new subtasks
+      setFormData((prev) => ({
+        ...prev,
+        subtasks: [
+          ...(Array.isArray(prev.subtasks) ? prev.subtasks : []),
+          ...newSubtasks,
+        ],
+      }));
+
+      setShowSubtasksReview(false);
+      setPendingSubtasks([]);
+      setReviewSubtaskEdits({});
+      showNotification('success', `Added ${newSubtasks.length} subtasks successfully!`);
+    } catch (error) {
+      console.error('Accept subtasks error:', error);
+      showNotification('error', 'Failed to add some subtasks. Please try again.');
+    }
+  };
+
+  const handleDenySubtasks = () => {
+    setShowSubtasksReview(false);
+    setPendingSubtasks([]);
+    setReviewSubtaskEdits({});
+    showNotification('info', 'Subtasks discarded.');
+  };
+
+  const handleEditSubtask = async (subtaskId, newTitle) => {
+    if (!newTitle.trim()) {
+      showNotification('error', 'Subtask title cannot be empty');
+      return;
+    }
+
+    try {
+      await subtasksAPI.updateSubtask(task._id, subtaskId, { title: newTitle });
+      
+      // Update form data
+      setFormData((prev) => ({
+        ...prev,
+        subtasks: Array.isArray(prev.subtasks)
+          ? prev.subtasks.map((s) =>
+              s._id === subtaskId ? { ...s, title: newTitle } : s
+            )
+          : [],
+      }));
+
+      setEditingSubtaskId(null);
+      setEditingSubtaskTitle('');
+      showNotification('success', 'Subtask updated successfully!');
+    } catch (error) {
+      console.error('Failed to update subtask:', error);
+      showNotification('error', 'Failed to update subtask. Please try again.');
+    }
+  };
+
+  const handleDeleteSubtask = async (subtaskId) => {
+    try {
+      await subtasksAPI.deleteSubtask(task._id, subtaskId);
+      
+      // Update form data
+      setFormData((prev) => ({
+        ...prev,
+        subtasks: Array.isArray(prev.subtasks)
+          ? prev.subtasks.filter((s) => s._id !== subtaskId)
+          : [],
+      }));
+
+      showNotification('success', 'Subtask deleted successfully!');
+    } catch (error) {
+      console.error('Failed to delete subtask:', error);
+      showNotification('error', 'Failed to delete subtask. Please try again.');
+    }
+  };
+
   const displayedSubtasks = Array.isArray(formData.subtasks)
     ? formData.subtasks
     : Array.isArray(task.subtasks)
@@ -1357,6 +1585,15 @@ const TaskDetailModal = ({
           color: #0A0908 !important;
           font-weight: 700;
         }
+
+        @keyframes spin {
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
+        }
       `}</style>
       <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
         {/* Header */}
@@ -1392,6 +1629,7 @@ const TaskDetailModal = ({
                 <button
                   onClick={handleUpdate}
                   disabled={loading}
+                  style={styles.saveButton}
                 >
                   {loading ? 'Saving...' : <><FaSave /> Save</>}
                 </button>
@@ -1429,6 +1667,23 @@ const TaskDetailModal = ({
           </div>
         </div>
 
+        {/* Notification */}
+        {notification && (
+          <div
+            style={{
+              ...styles.notification,
+              marginBottom: '16px',
+              backgroundColor: notification.type === 'error' ? `${errorColor}22` : `${successColor}22`,
+              color: notification.type === 'error' ? errorColor : successColor,
+              borderLeft: `4px solid ${notification.type === 'error' ? errorColor : successColor}`,
+              padding: '12px 16px',
+              borderRadius: '8px',
+            }}
+          >
+            {notification.message}
+          </div>
+        )}
+
         {showDeleteConfirm && (
           <div style={styles.confirmOverlay} onClick={() => setShowDeleteConfirm(false)}>
             <div style={styles.confirmDialog} onClick={(e) => e.stopPropagation()}>
@@ -1437,6 +1692,43 @@ const TaskDetailModal = ({
               <div style={styles.confirmActions}>
                 <button type="button" style={styles.confirmCancelBtn} onClick={() => setShowDeleteConfirm(false)}>Cancel</button>
                 <button type="button" style={styles.confirmDeleteBtn} onClick={handleDelete}>Delete</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showSubtasksReview && (
+          <div style={styles.confirmOverlay} onClick={() => handleDenySubtasks()}>
+            <div style={styles.confirmDialog} onClick={(e) => e.stopPropagation()}>
+              <h3 style={styles.confirmTitle}>Review Generated Subtasks</h3>
+              <p style={styles.confirmText}>Edit the subtasks below and accept or deny them.</p>
+              
+              <div style={styles.subtasksReviewList}>
+                {pendingSubtasks.map((subtask, idx) => (
+                  <div key={subtask.id} style={styles.subtaskReviewItem}>
+                    <div style={styles.subtaskItemLabel}>Subtask {idx + 1}</div>
+                    <input
+                      type="text"
+                      value={reviewSubtaskEdits[subtask.id]?.title || subtask.title}
+                      onChange={(e) => setReviewSubtaskEdits(prev => ({
+                        ...prev,
+                        [subtask.id]: { ...prev[subtask.id], title: e.target.value }
+                      }))}
+                      style={styles.subtaskReviewInput}
+                      placeholder="Subtask title"
+                    />
+                    {subtask.estimated_minutes && (
+                      <div style={styles.subtaskEstimate}>
+                        ⏱️ ~{subtask.estimated_minutes} min
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div style={styles.confirmActions}>
+                <button type="button" style={styles.confirmCancelBtn} onClick={() => handleDenySubtasks()}>Deny</button>
+                <button type="button" style={{...styles.confirmDeleteBtn, backgroundColor: successColor}} onClick={handleAcceptSubtasks}>Accept</button>
               </div>
             </div>
           </div>
@@ -1554,6 +1846,123 @@ const TaskDetailModal = ({
             </p>
           )}
         </div>
+
+        {/* Generate Subtasks Button */}
+        {isEditing && (
+          <div style={{ ...styles.section, marginTop: '16px' }}>
+            <button
+              onClick={handleGenerateSubtasks}
+              disabled={isGeneratingSubtasks || loading}
+              style={{
+                width: '100%',
+                backgroundColor: isGeneratingSubtasks ? theme.textMuted : theme.accent,
+                color: '#0A0908',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '12px 16px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: isGeneratingSubtasks ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                opacity: isGeneratingSubtasks ? 0.6 : 1,
+                transition: 'all 150ms ease',
+              }}
+              title="Generate AI-powered subtasks for this task"
+            >
+              {isGeneratingSubtasks ? (
+                <>
+                  <FaClock style={{ animation: 'spin 1s linear infinite' }} /> Generating Subtasks...
+                </>
+              ) : (
+                <>
+                  <FaRobot /> Generate Subtasks
+                </>
+              )}
+            </button>
+          </div>
+        )}
+
+        {/* Edit Subtasks Section */}
+        {isEditing && displayedSubtasks.length > 0 && (
+          <div style={styles.section}>
+            <h3 style={styles.sectionTitle}>
+              <FaCheck style={{ fontSize: '16px' }} /> Subtasks ({displayedSubtasks.length})
+            </h3>
+            <div style={styles.subtasksEditList}>
+              {displayedSubtasks.map((subtask) => (
+                <div key={subtask._id} style={styles.subtaskEditItem}>
+                  {editingSubtaskId === subtask._id ? (
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', width: '100%' }}>
+                      <input
+                        type="text"
+                        value={editingSubtaskTitle}
+                        onChange={(e) => setEditingSubtaskTitle(e.target.value)}
+                        style={styles.subtaskEditInput}
+                        placeholder="Subtask title"
+                        autoFocus
+                      />
+                      <button
+                        onClick={() => handleEditSubtask(subtask._id, editingSubtaskTitle)}
+                        style={{
+                          ...styles.subtaskActionBtn,
+                          backgroundColor: theme.success,
+                        }}
+                        title="Save"
+                      >
+                        <FaCheck />
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditingSubtaskId(null);
+                          setEditingSubtaskTitle('');
+                        }}
+                        style={{
+                          ...styles.subtaskActionBtn,
+                          backgroundColor: theme.borderMedium,
+                        }}
+                        title="Cancel"
+                      >
+                        <FaTimes />
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', width: '100%' }}>
+                      <span style={{ flex: 1, color: theme.textPrimary, fontSize: '13px' }}>
+                        {subtask.title}
+                      </span>
+                      <button
+                        onClick={() => {
+                          setEditingSubtaskId(subtask._id);
+                          setEditingSubtaskTitle(subtask.title);
+                        }}
+                        style={{
+                          ...styles.subtaskActionBtn,
+                          backgroundColor: theme.accent,
+                        }}
+                        title="Edit"
+                      >
+                        <FaEdit />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteSubtask(subtask._id)}
+                        style={{
+                          ...styles.subtaskActionBtn,
+                          backgroundColor: theme.error,
+                        }}
+                        title="Delete"
+                      >
+                        <FaTrash />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Dependencies */}
         <div style={styles.section}>
@@ -1821,18 +2230,6 @@ const TaskDetailModal = ({
               />
               <button onClick={handleShare} style={styles.shareButton}><FaUserPlus /> Invite</button>
             </div>
-            {notification && (
-              <div
-                style={{
-                  ...styles.notification,
-                  marginTop: '10px',
-                  backgroundColor: notification.type === 'error' ? `${theme.error}22` : `${theme.success}22`,
-                  color: notification.type === 'error' ? theme.error : theme.success,
-                }}
-              >
-                {notification.message}
-              </div>
-            )}
             {task.sharedWith?.length > 0 && (
               <p style={styles.sharedInfo}>Shared with {task.sharedWith.length} users</p>
             )}

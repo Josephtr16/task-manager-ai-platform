@@ -592,6 +592,7 @@ const KanbanPage = () => {
                         onDragEnd={handleDragEnd}
                         getPriorityColor={getPriorityColor}
                         formatDeadline={formatDeadline}
+                        getProjectLabel={getProjectLabel}
                         isDragging={draggedTask?._id === task._id}
                         styles={styles}
                       />
@@ -658,6 +659,7 @@ const KanbanCard = ({
   onDragEnd,
   getPriorityColor,
   formatDeadline,
+  getProjectLabel,
   isDragging,
   styles, // Passed from parent styles
 }) => {

@@ -130,7 +130,7 @@ const DailyStandupBanner = ({ report, standupCounts, onDismiss, theme }) => {
                 fontWeight: '700',
                 marginBottom: '10px',
               }}>
-                {t('ai.aiAssistant')}
+                {t('ai.aiAssistant', 'AI Assistant')}
               </div>
               <h2 style={{
                 margin: '0 0 8px 0',
@@ -378,13 +378,13 @@ const PlanDayModal = ({
                 fontWeight: '700',
                 marginBottom: '10px',
               }}>
-                <FaPlay /> {t('ai.planMyDay')}
+                <FaPlay /> Plan My Day
               </div>
               <h2 style={{ margin: 0, color: theme.textPrimary, fontSize: '24px', fontWeight: '800' }}>
-                {t('dashboard.buildSchedule', { scope: planningScopeLabel })}
+                {planningScopeLabel === 'tomorrow' ? "Build Tomorrow's Schedule" : "Build Today's Schedule"}
               </h2>
               <p style={{ margin: '8px 0 0', color: theme.textSecondary, fontSize: '14px', lineHeight: 1.6 }}>
-                {t('dashboard.planDescription')}
+                Choose your working hours to generate a focused plan for the day.
               </p>
               {targetDateLabel && (
                 <p style={{ margin: '8px 0 0', color: theme.textMuted, fontSize: '12px', fontWeight: '600' }}>
@@ -430,7 +430,7 @@ const PlanDayModal = ({
             marginBottom: '24px',
           }}>
             <label style={{ display: 'grid', gap: '10px', color: theme.textSecondary, fontSize: '13px', fontWeight: '680' }}>
-              {t('dashboard.startTime')}
+              Start time
               <input
                 type="time"
                 value={workStart}
@@ -456,7 +456,7 @@ const PlanDayModal = ({
               />
             </label>
             <label style={{ display: 'grid', gap: '10px', color: theme.textSecondary, fontSize: '13px', fontWeight: '680' }}>
-              {t('dashboard.endTime')}
+              End time
               <input
                 type="time"
                 value={workEnd}
@@ -514,7 +514,7 @@ const PlanDayModal = ({
                   e.currentTarget.style.boxShadow = `0 4px 16px ${theme.primary}35`;
                 }}
               >
-                <FaClock style={{ fontSize: '13px' }} /> {loading ? t('ai.generating') : t('ai.planMyDay')}
+                <FaClock style={{ fontSize: '13px' }} /> {loading ? 'Generating...' : 'Plan My Day'}
               </button>
             </div>
           </div>
@@ -544,7 +544,7 @@ const PlanDayModal = ({
               }}>
                 <div style={{ padding: '20px', borderRadius: '14px', backgroundColor: theme.bgElevated, border: `1.5px solid ${theme.border}` }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: theme.primary, marginBottom: '12px', fontWeight: '800', fontSize: '13px' }}>
-                    <FaListOl /> {t('dashboard.focusTask')}
+                    <FaListOl /> {t('dashboard.focusTask', 'Focus Task')}
                   </div>
                   <div style={{ color: theme.textPrimary, fontSize: '15px', lineHeight: 1.6, fontWeight: '700' }}>
                     {focusTaskLabel}
@@ -552,16 +552,16 @@ const PlanDayModal = ({
                 </div>
                 <div style={{ padding: '20px', borderRadius: '14px', backgroundColor: theme.bgElevated, border: `1.5px solid ${theme.border}` }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: theme.primary, marginBottom: '12px', fontWeight: '800', fontSize: '13px' }}>
-                    <FaClock /> {t('dashboard.advice')}
+                    <FaClock /> {t('dashboard.advice', 'Advice')}
                   </div>
                   <div style={{ color: theme.textPrimary, fontSize: '15px', lineHeight: 1.6 }}>
-                    {result.advice || t('common.noData')}
+                    {result.advice || t('common.noData', 'No Data')}
                   </div>
                 </div>
               </div>
 
               <div style={{ padding: '20px', borderRadius: '14px', backgroundColor: theme.bgElevated, border: `1.5px solid ${theme.border}` }}>
-                <h3 style={{ margin: '0 0 16px 0', color: theme.textPrimary, fontSize: '16px', fontWeight: '800', letterSpacing: '-0.005em' }}>{t('dashboard.suggestedSchedule')}</h3>
+                <h3 style={{ margin: '0 0 16px 0', color: theme.textPrimary, fontSize: '16px', fontWeight: '800', letterSpacing: '-0.005em' }}>{t('dashboard.suggestedSchedule', 'Suggested Schedule')}</h3>
                 {schedule.length > 0 ? (
                   <div style={{ display: 'grid', gap: '12px' }}>
                     {schedule.map((item) => (
@@ -594,7 +594,7 @@ const PlanDayModal = ({
                     ))}
                   </div>
                 ) : (
-                  <div style={{ color: theme.textSecondary, fontSize: '14px' }}>{t('common.noData')}</div>
+                  <div style={{ color: theme.textSecondary, fontSize: '14px' }}>{t('common.noData', 'No Data')}</div>
                 )}
               </div>
             </div>
@@ -1264,35 +1264,8 @@ const Dashboard = () => {
   }, []);
 
   useEffect(() => {
-    // Load persisted daily plan from backend so web and mobile stay in sync.
-    let isMounted = true;
-    const loadPersistedPlan = async () => {
-      try {
-        const resp = await api.get('/daily-plan');
-        const plan = resp.data || null;
-        if (!isMounted) return;
-        if (!plan) {
-          setAcceptedDailyPlan(null);
-          return;
-        }
-
-        const todayKey = getLocalDateKey();
-        const tomorrowKey = getTomorrowDateKey();
-        const planDate = String(plan?.target_date || plan?.date || '');
-        if (planDate === todayKey || planDate === tomorrowKey || !planDate) {
-          setAcceptedDailyPlan(plan);
-        } else {
-          // Persisted plan is for another date; ignore locally.
-          setAcceptedDailyPlan(null);
-        }
-      } catch (err) {
-        console.error('Error loading persisted daily plan:', err);
-        setAcceptedDailyPlan(null);
-      }
-    };
-
-    loadPersistedPlan();
-    return () => { isMounted = false; };
+    // Keep the dashboard blank until the user generates a plan in this session.
+    setAcceptedDailyPlan(null);
   }, []);
 
   useEffect(() => {

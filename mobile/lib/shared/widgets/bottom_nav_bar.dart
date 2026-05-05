@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
-import '../../core/theme/neu_shadow.dart';
 
 class BottomNavBar extends StatelessWidget {
   const BottomNavBar({
@@ -21,19 +20,19 @@ class BottomNavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = Theme.of(context).extension<AppColorTokens>()!;
     final bottomInset = MediaQuery.of(context).padding.bottom;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     Widget tabItem({
-      required int index,
+      required int navIndex,
       required IconData icon,
+      required VoidCallback onTap,
     }) {
-      final active = currentIndex == index;
+      final active = currentIndex == navIndex;
       return Expanded(
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: () {
             HapticFeedback.lightImpact();
-            onTabSelected(index);
+            onTap();
           },
           child: SizedBox(
             height: 72,
@@ -47,9 +46,9 @@ class BottomNavBar extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 AnimatedContainer(
-                  duration: const Duration(milliseconds: 100),
-                  width: 6,
-                  height: 6,
+                  duration: const Duration(milliseconds: 180),
+                  width: 4,
+                  height: 4,
                   decoration: BoxDecoration(
                     color:
                         active ? AppSemanticColors.primary : Colors.transparent,
@@ -67,13 +66,23 @@ class BottomNavBar extends StatelessWidget {
       height: 72 + bottomInset,
       padding: EdgeInsets.only(bottom: bottomInset),
       decoration: BoxDecoration(
-        color: tokens.bgBase,
-        boxShadow: neuShadow(isDark),
+        color: tokens.bgSurface,
+        border: Border(
+          top: BorderSide(color: tokens.borderSubtle, width: 0.5),
+        ),
       ),
       child: Row(
         children: <Widget>[
-          tabItem(index: 0, icon: Icons.home_rounded),
-          tabItem(index: 1, icon: Icons.checklist_rounded),
+          tabItem(
+            navIndex: 0,
+            icon: Icons.home_rounded,
+            onTap: () => onTabSelected(0),
+          ),
+          tabItem(
+            navIndex: 1,
+            icon: Icons.checklist_rounded,
+            onTap: () => onTabSelected(1),
+          ),
           Expanded(
             child: Center(
               child: GestureDetector(
@@ -82,33 +91,36 @@ class BottomNavBar extends StatelessWidget {
                   onFabTap();
                 },
                 child: Container(
-                  width: 60,
-                  height: 60,
+                  width: 56,
+                  height: 56,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      colors: <Color>[
-                        AppSemanticColors.primary,
-                        AppSemanticColors.primaryDark,
-                      ],
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                    ),
+                    color: AppSemanticColors.primary,
                     boxShadow: <BoxShadow>[
                       BoxShadow(
-                        color: AppSemanticColors.primary.withValues(alpha: 0.4),
-                        blurRadius: 16,
+                        color: AppSemanticColors.primary.withValues(
+                          alpha: 0.35,
+                        ),
+                        blurRadius: 14,
                         offset: const Offset(0, 6),
                       ),
                     ],
                   ),
-                  child: const Icon(Icons.add, color: Colors.white, size: 30),
+                  child: const Icon(Icons.add, color: Colors.white, size: 28),
                 ),
               ),
             ),
           ),
-          tabItem(index: 3, icon: Icons.folder_rounded),
-          tabItem(index: 4, icon: Icons.psychology_rounded),
+          tabItem(
+            navIndex: 2,
+            icon: Icons.folder_rounded,
+            onTap: () => onTabSelected(2),
+          ),
+          tabItem(
+            navIndex: 4,
+            icon: Icons.more_horiz_rounded,
+            onTap: () => onTabSelected(4),
+          ),
         ],
       ),
     );

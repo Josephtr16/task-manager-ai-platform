@@ -40,7 +40,7 @@ class AppTypography {
       );
 
   static TextStyle label(Color color) => GoogleFonts.dmSans(
-        fontSize: 10,
+        fontSize: 11,
         fontWeight: FontWeight.w700,
         color: color,
         letterSpacing: 0.8,

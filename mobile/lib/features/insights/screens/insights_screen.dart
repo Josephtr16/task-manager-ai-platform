@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
@@ -336,15 +337,15 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
     required Color valueColor,
   }) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
       decoration: BoxDecoration(
         color: tokens.bgSurface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: tokens.borderSubtle, width: 0.8),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Text(
             value,
@@ -353,7 +354,7 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
             style: TextStyle(
               fontSize: 22,
               height: 1,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w700,
               color: valueColor,
             ),
           ),
@@ -361,7 +362,7 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
           Text(
             label,
             style: TextStyle(
-              fontSize: 10,
+              fontSize: 13,
               letterSpacing: 0.7,
               fontWeight: FontWeight.w700,
               color: tokens.textPrimary,
@@ -371,7 +372,7 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
           Text(
             sub,
             style: TextStyle(
-              fontSize: 11,
+              fontSize: 12,
               color: tokens.textSecondary,
             ),
           ),
@@ -389,7 +390,7 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
     if (label.contains('Overdue')) iconData = Icons.warning_rounded;
     
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
       decoration: BoxDecoration(
         color: tokens.bgSurface,
         borderRadius: BorderRadius.circular(14),
@@ -397,29 +398,30 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0,4))],
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
           Icon(
             iconData,
-            size: 18,
+            size: 14,
             color: color ?? AppSemanticColors.primary,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           Text(
             value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
               color: color ?? tokens.textPrimary,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           Text(
             label,
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 10, color: tokens.textMuted, fontWeight: FontWeight.w500),
+            style: TextStyle(fontSize: 12, color: tokens.textMuted, fontWeight: FontWeight.w500),
           ),
         ],
       ),
@@ -428,19 +430,18 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
 
   Widget _circularMetric(AppColorTokens tokens, Color color, String value, String label, double percent) {
     final clamped = percent.clamp(0, 100) / 100;
-    final IconData icon = label.contains('Completion') ? Icons.check_circle : Icons.trending_up_rounded;
     
     return Column(
       children: <Widget>[
         SizedBox(
-          width: 100,
-          height: 100,
+          width: 104,
+          height: 104,
           child: Stack(
             alignment: Alignment.center,
             children: <Widget>[
               Container(
-                width: 100,
-                height: 100,
+                width: 104,
+                height: 104,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: LinearGradient(
@@ -452,26 +453,37 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                 ),
               ),
               SizedBox(
-                width: 100,
-                height: 100,
+                width: 104,
+                height: 104,
                 child: CircularProgressIndicator(
                   value: clamped,
-                  strokeWidth: 7,
-                  backgroundColor: tokens.borderSubtle.withOpacity(0.3),
+                  strokeWidth: 7.0,
+                  backgroundColor: tokens.borderSubtle,
                   valueColor: AlwaysStoppedAnimation<Color>(color),
                 ),
               ),
               Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
-                  Icon(icon, size: 20, color: color),
-                  const SizedBox(height: 4),
                   Text(
                     value,
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.fraunces(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w700,
                       color: tokens.textPrimary,
+                      height: 1.0,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    label.contains('Completion') ? 'completion' : 'productivity',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.dmSans(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                      color: tokens.textMuted,
+                      height: 1.0,
                     ),
                   ),
                 ],
@@ -530,6 +542,10 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
             final int timeLabelStep = 2;
             final bestDays = _listOfMaps(data['bestDays']);
             final aiInsights = _listOfMaps(data['aiInsights']);
+            final topAiInsights = aiInsights.where((ins) {
+              final title = _getString(_asMap(ins), 'title').toLowerCase();
+              return !title.contains('best days') && !title.contains('best');
+            }).toList();
 
             final productivityScore = _toNum(performanceMetrics['productivityScore']);
             final completionRate = _toNum(performanceMetrics['completionRate']);
@@ -541,67 +557,74 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
             return ListView(
               padding: EdgeInsets.fromLTRB(16, 12, 16, bottomInset),
               children: <Widget>[
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Text(
-                            'AI Insights',
-                            style: TextStyle(
-                              fontSize: 26,
-                              fontWeight: FontWeight.w800,
-                              color: tokens.textPrimary,
-                              height: 1.05,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            'Smart analytics powered by your task data',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: tokens.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    InkWell(
-                      onTap: () => ref.invalidate(insightsProvider),
-                      borderRadius: BorderRadius.circular(999),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: tokens.bgSurface,
-                          borderRadius: BorderRadius.circular(999),
-                          border: Border.all(color: tokens.borderSubtle, width: 0.6),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: <Widget>[
-                            Icon(Icons.refresh, size: 14, color: tokens.textPrimary),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Refresh',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: tokens.textPrimary,
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
+                  child: SafeArea(
+                    top: true,
+                    bottom: false,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Text(
+                                'AI Insights',
+                                style: GoogleFonts.fraunces(
+                                  fontSize: 34,
+                                  fontWeight: FontWeight.w700,
+                                  color: tokens.textPrimary,
+                                  height: 1.05,
+                                ),
                               ),
-                            ),
-                          ],
+                              const SizedBox(height: 6),
+                              Text(
+                                'Smart analytics powered by your task data',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 14,
+                                  color: tokens.textMuted,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
+                        const SizedBox(width: 12),
+                        InkWell(
+                          onTap: () => ref.invalidate(insightsProvider),
+                          borderRadius: BorderRadius.circular(999),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: tokens.bgSurface,
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(color: tokens.borderSubtle, width: 0.6),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: <Widget>[
+                                Icon(Icons.refresh, size: 16, color: tokens.textPrimary),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Refresh',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: tokens.textPrimary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
                 const SizedBox(height: 20),
 
-                if (aiInsights.isNotEmpty) ...[
-                  ...aiInsights.map((insight) {
+                if (topAiInsights.isNotEmpty) ...[
+                  ...topAiInsights.map((insight) {
                     final item = _asMap(insight);
                     final title = _getString(item, 'title').isNotEmpty ? _getString(item, 'title') : 'AI Insight';
                     final description = _getString(item, 'description').isNotEmpty
@@ -649,7 +672,7 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                                         title,
                                         style: TextStyle(
                                           fontSize: 16,
-                                          fontWeight: FontWeight.w800,
+                                          fontWeight: FontWeight.w600,
                                           color: tokens.textPrimary,
                                         ),
                                       ),
@@ -657,7 +680,7 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                                       Text(
                                         description,
                                         style: TextStyle(
-                                          fontSize: 13,
+                                          fontSize: 14,
                                           height: 1.5,
                                           color: tokens.textSecondary,
                                         ),
@@ -667,9 +690,9 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                                 ),
                                 const SizedBox(width: 10),
                                 Text(
-                                  '$confidence%',
+                                  '$confidence% ',
                                   style: TextStyle(
-                                    fontSize: 12,
+                                    fontSize: 13,
                                     fontWeight: FontWeight.w700,
                                     color: confidence > 80
                                         ? AppSemanticColors.sage
@@ -687,44 +710,7 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                   }),
                 ],
 
-                GridView.count(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 10,
-                  childAspectRatio: 1.16,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  children: <Widget>[
-                    _metricTile(
-                      tokens: tokens,
-                      value: '${productivityScore.round()}%',
-                      label: 'PRODUCTIVITY',
-                      sub: 'Overall score',
-                      valueColor: AppSemanticColors.primary,
-                    ),
-                    _metricTile(
-                      tokens: tokens,
-                      value: '${completionRate.round()}%',
-                      label: 'COMPLETION',
-                      sub: '${performanceMetrics['tasksCompleted'] ?? 0} tasks',
-                      valueColor: AppSemanticColors.sage,
-                    ),
-                    _metricTile(
-                      tokens: tokens,
-                      value: '${onTimeRate.round()}%',
-                      label: 'ON-TIME RATE',
-                      sub: 'This week',
-                      valueColor: AppSemanticColors.sky,
-                    ),
-                    _metricTile(
-                      tokens: tokens,
-                      value: _formatDuration(avgDuration),
-                      label: 'AVG DURATION',
-                      sub: 'Per task',
-                      valueColor: tokens.textPrimary,
-                    ),
-                  ],
-                ),
+                // Top metric grid removed — duplicates removed as requested.
 
                 const SizedBox(height: 14),
 
@@ -872,7 +858,7 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                                             padding: const EdgeInsets.only(right: 6),
                                             child: Text(
                                               value.toInt().toString(),
-                                              style: TextStyle(fontSize: 10, color: tokens.textMuted),
+                                              style: TextStyle(fontSize: 12, color: tokens.textMuted),
                                             ),
                                           );
                                         },
@@ -892,7 +878,7 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                                             padding: const EdgeInsets.only(top: 10),
                                             child: Text(
                                               label,
-                                              style: TextStyle(fontSize: 10, color: tokens.textMuted),
+                                              style: TextStyle(fontSize: 12, color: tokens.textMuted),
                                             ),
                                           );
                                         },
@@ -970,9 +956,9 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                       Text(
                         'CATEGORY DISTRIBUTION',
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 13,
                           fontWeight: FontWeight.w700,
-                          letterSpacing: 0.5,
+                          letterSpacing: 0.8,
                           color: tokens.textMuted,
                         ),
                       ),
@@ -1006,9 +992,9 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                       Text(
                         'TIME OF DAY ANALYSIS',
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 13,
                           fontWeight: FontWeight.w700,
-                          letterSpacing: 0.5,
+                          letterSpacing: 0.8,
                           color: tokens.textMuted,
                         ),
                       ),
@@ -1077,7 +1063,7 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                                       bottom: BorderSide(color: tokens.borderSubtle, width: 1),
                                     ),
                                   ),
-                                  groupsSpace: 12,
+                                  groupsSpace: 24,
                                   barGroups: List.generate(timeOfDay.length, (index) {
                                     final item = _asMap(timeOfDay[index]);
                                     final value = _numFromMap(item, const <String>['count']).toDouble();
@@ -1086,7 +1072,7 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                                       barRods: <BarChartRodData>[
                                         BarChartRodData(
                                           toY: value,
-                                          width: 18,
+                                          width: 14,
                                           borderRadius: const BorderRadius.only(
                                             topLeft: Radius.circular(4),
                                             topRight: Radius.circular(4),
@@ -1107,14 +1093,14 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                                         interval: timeInterval.toDouble(),
                                         getTitlesWidget: (value, meta) => Text(
                                           value.toInt().toString(),
-                                          style: TextStyle(fontSize: 11, color: tokens.textMuted),
+                                          style: TextStyle(fontSize: 12, color: tokens.textMuted),
                                         ),
                                       ),
                                     ),
                                     bottomTitles: AxisTitles(
                                       sideTitles: SideTitles(
                                         showTitles: true,
-                                        reservedSize: 32,
+                                        reservedSize: 36,
                                         interval: 1,
                                         getTitlesWidget: (value, meta) {
                                           final index = value.toInt();
@@ -1125,7 +1111,7 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                                             padding: const EdgeInsets.only(top: 8),
                                             child: Text(
                                               label,
-                                              style: TextStyle(fontSize: 10, color: tokens.textMuted),
+                                              style: TextStyle(fontSize: 12, color: tokens.textMuted),
                                             ),
                                           );
                                         },
@@ -1157,9 +1143,9 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                       Text(
                         'BEST DAYS',
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 13,
                           fontWeight: FontWeight.w700,
-                          letterSpacing: 0.5,
+                          letterSpacing: 0.8,
                           color: tokens.textMuted,
                         ),
                       ),
@@ -1199,12 +1185,12 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                                           final count = _numFromMap(map, const <String>['count']).toInt();
                                           final label = day.isNotEmpty ? (day.length >= 3 ? day.substring(0, 3) : day) : '';
                                           return BarTooltipItem(
-                                            '$label\n',
-                                            TextStyle(
-                                              color: tokens.textPrimary,
-                                              fontWeight: FontWeight.w800,
-                                              fontSize: 12,
-                                            ),
+                                          '$label\n',
+                                          TextStyle(
+                                            color: tokens.textPrimary,
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 12,
+                                          ),
                                             children: [
                                               TextSpan(
                                                 text: 'Tasks: $count',
@@ -1266,7 +1252,7 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                                           interval: bestInterval.toDouble(),
                                           getTitlesWidget: (value, meta) => Text(
                                             value.toInt().toString(),
-                                            style: TextStyle(fontSize: 9, color: tokens.textMuted),
+                                            style: TextStyle(fontSize: 12, color: tokens.textMuted),
                                           ),
                                         ),
                                       ),
@@ -1285,7 +1271,7 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                                               padding: const EdgeInsets.only(top: 8),
                                               child: Text(
                                                 label,
-                                                style: TextStyle(fontSize: 10, color: tokens.textMuted),
+                                                style: TextStyle(fontSize: 12, color: tokens.textMuted),
                                               ),
                                             );
                                           },
@@ -1318,9 +1304,9 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                       Text(
                         'PERFORMANCE METRICS',
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 13,
                           fontWeight: FontWeight.w700,
-                          letterSpacing: 0.5,
+                          letterSpacing: 0.8,
                           color: tokens.textMuted,
                         ),
                       ),

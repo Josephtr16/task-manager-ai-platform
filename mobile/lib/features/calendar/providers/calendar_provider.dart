@@ -5,11 +5,13 @@ import '../../tasks/providers/tasks_provider.dart';
 final calendarTasksProvider = Provider<List<Map<String, dynamic>>>((ref) {
   final tasks = ref.watch(tasksProvider).valueOrNull?.tasks ?? const [];
   return tasks
-      .map((e) => <String, dynamic>{
-            'id': e.id,
-            'title': e.title,
-            'deadline': e.deadline,
-            'priority': e.priority,
-          })
+    .map((e) => <String, dynamic>{
+      'id': e.id,
+      'title': e.title,
+      'deadline': e.deadline,
+      'priority': e.priority,
+      'status': e.status,
+      'isDone': e.status.toLowerCase() == 'done',
+        })
       .toList();
 });

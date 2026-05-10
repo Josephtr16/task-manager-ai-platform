@@ -42,6 +42,7 @@ const TasksPage = () => {
   const [aiPriorityScores, setAiPriorityScores] = useState({});
   const [isDetectingRisks, setIsDetectingRisks] = useState(false);
   const [riskAlerts, setRiskAlerts] = useState([]);
+  const [riskActiveTab, setRiskActiveTab] = useState('deadline_risk');
   const [riskTaskIds, setRiskTaskIds] = useState(() => new Set());
   const [riskOverallStatus, setRiskOverallStatus] = useState(null);
   const [riskSummary, setRiskSummary] = useState('');
@@ -94,6 +95,20 @@ const TasksPage = () => {
       }
     };
   }, []);
+
+  useEffect(() => {
+    const available = ['deadline_risk', 'overload', 'dependency'].filter((t) =>
+      riskAlerts.some((a) => a.type === t)
+    );
+
+    if (available.length === 0) return;
+
+    if (!available.includes(riskActiveTab)) {
+      setRiskActiveTab(available[0]);
+    }
+    // only respond to changes in riskAlerts
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [riskAlerts]);
 
   const showNotification = (message, type = 'info') => {
     setNotification({ message, type });
@@ -364,6 +379,52 @@ const TasksPage = () => {
     } catch (error) {
       console.error('Error loading task details:', error);
       setSelectedTask(task);
+    }
+  };
+
+  const handleTaskToggleComplete = async (task) => {
+    const taskId = task?._id || task?.id;
+    if (!taskId) {
+      return;
+    }
+
+    const nextStatus = task.status === 'done' ? 'todo' : 'done';
+
+    const updateTaskStatusInList = (taskList) => (
+      Array.isArray(taskList)
+        ? taskList.map((item) => {
+            const itemId = item?._id || item?.id;
+            return itemId === taskId ? { ...item, status: nextStatus } : item;
+          })
+        : taskList
+    );
+
+    setTasks((prev) => updateTaskStatusInList(prev));
+    setFilteredTasks((prev) => updateTaskStatusInList(prev));
+
+    try {
+      const response = await tasksAPI.updateTask(taskId, { status: nextStatus });
+      const updatedTask = response?.data?.task || { ...task, status: nextStatus };
+
+      setTasks((prev) => prev.map((item) => {
+        const itemId = item?._id || item?.id;
+        return itemId === taskId ? updatedTask : item;
+      }));
+      setFilteredTasks((prev) => prev.map((item) => {
+        const itemId = item?._id || item?.id;
+        return itemId === taskId ? updatedTask : item;
+      }));
+
+      if (selectedTask && String(selectedTask._id || selectedTask.id) === String(taskId)) {
+        setSelectedTask(updatedTask);
+      }
+
+      await loadTasks();
+      triggerAutoReprioritize();
+    } catch (error) {
+      console.error('Error updating task status:', error);
+      showNotification(error.response?.data?.message || 'Failed to update task status.', 'error');
+      await loadTasks();
     }
   };
 
@@ -731,6 +792,50 @@ const TasksPage = () => {
       boxShadow: theme.shadows.card,
       border: `1px solid ${theme.borderSubtle || theme.border}`,
     },
+    riskTabCard: {
+      flex: 1,
+      padding: '12px 16px',
+      borderRadius: borderRadius.md,
+      cursor: 'pointer',
+      textAlign: 'left',
+      transition: 'all 150ms ease',
+      minWidth: 0,
+    },
+    riskTabLabel: {
+      fontSize: '12px',
+      fontWeight: '700',
+      letterSpacing: '0.05em',
+      textTransform: 'uppercase',
+      lineHeight: 1.2,
+    },
+    riskTabBadge: {
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minWidth: '24px',
+      padding: '1px 8px',
+      borderRadius: '999px',
+      fontSize: '11px',
+      fontWeight: '700',
+      lineHeight: 1.4,
+      whiteSpace: 'nowrap',
+    },
+    dismissButton: {
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      width: '36px',
+      height: '36px',
+      borderRadius: borderRadius.md,
+      backgroundColor: theme.bgRaised,
+      color: theme.textSecondary,
+      border: `1px solid ${theme.border}`,
+      cursor: 'pointer',
+      fontSize: '18px',
+      padding: 0,
+      transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+      flexShrink: 0,
+    },
     invitePanel: {
       background: `linear-gradient(180deg, ${theme.bgCard} 0%, ${theme.bgSurface} 100%)`,
       borderRadius: borderRadius.lg,
@@ -970,6 +1075,34 @@ const TasksPage = () => {
           box-shadow: ${theme.shadows.card} !important;
         }
 
+        .dismiss-btn {
+          display: inline-flex !important;
+          align-items: center;
+          justify-content: center;
+          width: 36px;
+          height: 36px;
+          border-radius: 6px;
+          background-color: ${theme.bgRaised} !important;
+          color: ${theme.textSecondary} !important;
+          border: 1px solid ${theme.border} !important;
+          cursor: pointer;
+          font-size: 18px;
+          padding: 0;
+          transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+          flex-shrink: 0;
+        }
+
+        .dismiss-btn:hover {
+          background-color: ${theme.bgCard} !important;
+          color: ${theme.textPrimary} !important;
+          transform: scale(1.12);
+          box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12) !important;
+        }
+
+        .dismiss-btn:active {
+          transform: scale(0.96);
+        }
+
         .task-card:hover {
             transform: translateY(-2px);
             box-shadow: ${theme.shadows.float} !important;
@@ -995,7 +1128,9 @@ const TasksPage = () => {
               type="button"
               onClick={() => setNotification(null)}
               style={styles.dismissButton}
+              className="dismiss-btn"
               aria-label="Dismiss message"
+              title="Dismiss message"
             >
               <FaTimes />
             </button>
@@ -1066,43 +1201,86 @@ const TasksPage = () => {
                   setRiskSummary('');
                 }}
                 style={styles.dismissButton}
+                className="dismiss-btn"
+                title="Dismiss risk alerts"
+                aria-label="Close risk alerts"
               >
                 <FaTimes />
               </button>
             </div>
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+              {[
+                { type: 'deadline_risk', label: 'Deadline Risks', color: theme.urgent },
+                { type: 'overload', label: 'Overloads', color: theme.warning },
+                { type: 'dependency', label: 'Heavy Tasks', color: theme.info },
+              ].map((tab) => {
+                const count = riskAlerts.filter((a) => a.type === tab.type).length;
+                if (count === 0) return null;
+                const isActive = riskActiveTab === tab.type;
+                const bg = isActive ? `${tab.color}15` : theme.bgRaised;
+                const borderColor = isActive ? `${tab.color}55` : (theme.borderSubtle || theme.border);
+                const labelColor = isActive ? tab.color : theme.textSecondary;
+
+                return (
+                  <button
+                    key={tab.type}
+                    type="button"
+                    onClick={() => setRiskActiveTab(tab.type)}
+                    style={{
+                      ...styles.riskTabCard,
+                      backgroundColor: bg,
+                      border: `1px solid ${borderColor}`,
+                      color: labelColor,
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ ...styles.riskTabLabel, color: labelColor }}>{tab.label}</div>
+                      </div>
+                      <div style={{ ...styles.riskTabBadge, backgroundColor: isActive ? `${tab.color}20` : theme.bgSurface, color: labelColor, border: `1px solid ${isActive ? `${tab.color}55` : (theme.borderSubtle || theme.border)}` }}>
+                        {count}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
             <div style={styles.alertsList}>
-              {riskAlerts.map((alert, idx) => (
-                <div key={idx} style={styles.alertItem}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                    <span style={{
-                      backgroundColor: getSeverityColor(alert.severity),
-                      color: '#fff',
-                      padding: '4px 8px',
-                      borderRadius: borderRadius.sm,
-                      fontSize: '11px',
-                      fontWeight: '700',
-                      minWidth: '60px',
-                      textAlign: 'center',
-                      marginTop: '2px',
-                    }}>
-                      {alert.severity?.toUpperCase()}
-                    </span>
-                    <div style={{ flex: 1 }}>
-                      <p style={{ margin: '0 0 4px 0', fontWeight: '600', color: theme.textPrimary }}>
-                        {alert.type?.replace(/_/g, ' ').toUpperCase()}
-                      </p>
-                      <p style={{ margin: '0 0 8px 0', fontSize: '13px', color: theme.textSecondary }}>
-                        {alert.message}
-                      </p>
-                      {alert.affected_task_ids && alert.affected_task_ids.length > 0 && (
-                        <div style={{ fontSize: '12px', color: theme.textMuted }}>
-                          Affected: {alert.affected_task_ids.length} task(s)
-                        </div>
-                      )}
+              {riskAlerts
+                .filter((alert) => alert.type === riskActiveTab)
+                .map((alert, idx) => (
+                  <div key={idx} style={styles.alertItem}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                      <span style={{
+                        backgroundColor: getSeverityColor(alert.severity),
+                        color: '#fff',
+                        padding: '4px 8px',
+                        borderRadius: borderRadius.sm,
+                        fontSize: '11px',
+                        fontWeight: '700',
+                        minWidth: '60px',
+                        textAlign: 'center',
+                        marginTop: '2px',
+                      }}>
+                        {alert.severity?.toUpperCase()}
+                      </span>
+                      <div style={{ flex: 1 }}>
+                        <p style={{ margin: '0 0 4px 0', fontWeight: '600', color: theme.textPrimary }}>
+                          {alert.type === 'dependency' ? 'HEAVY TASK' : alert.type?.replace(/_/g, ' ').toUpperCase()}
+                        </p>
+                        <p style={{ margin: '0 0 8px 0', fontSize: '13px', color: theme.textSecondary }}>
+                          {alert.message}
+                        </p>
+                        {alert.affected_task_ids && alert.affected_task_ids.length > 0 && (
+                          <div style={{ fontSize: '12px', color: theme.textMuted }}>
+                            Affected: {alert.affected_task_ids.length} task(s)
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
             </div>
           </div>
         )}
@@ -1290,10 +1468,11 @@ const TasksPage = () => {
             <div style={styles.grid}>
               {filteredTasks.map(task => (
                 <TaskCard
-                  key={task._id}
+                    key={task._id || task.id}
                   task={task}
                   aiPriorityScore={task.status === 'done' ? undefined : aiPriorityScores[String(task._id || task.id)]}
                   onClick={() => handleTaskClick(task)}
+                    onToggleComplete={() => handleTaskToggleComplete(task)}
                   getPriorityColor={getPriorityColor}
                   getStatusColor={getStatusColor}
                   formatDate={formatDate}
@@ -1362,7 +1541,7 @@ const TasksPage = () => {
 };
 
 // Task Card Component
-const TaskCard = ({ task, aiPriorityScore, onClick, getPriorityColor, getStatusColor, formatDate, completed, riskTaskIds, t }) => {
+const TaskCard = ({ task, aiPriorityScore, onClick, onToggleComplete, getPriorityColor, getStatusColor, formatDate, completed, riskTaskIds, t }) => {
   const { theme } = useTheme();
   const deadline = formatDate(task.deadline, completed);
   const taskId = task?._id != null ? task._id.toString() : String(task?.id || '');
@@ -1653,9 +1832,12 @@ const TaskCard = ({ task, aiPriorityScore, onClick, getPriorityColor, getStatusC
           <div
             onClick={(e) => {
               e.stopPropagation();
-              onClick();
+              onToggleComplete();
             }}
             className="task-card-checkbox"
+            role="button"
+            tabIndex={0}
+            aria-label={completed ? 'Mark task as incomplete' : 'Mark task as complete'}
           >
             <Checkbox checked={task.status === 'done'} />
           </div>

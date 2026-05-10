@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/format_duration.dart';
 import '../providers/dashboard_provider.dart';
 import '../../../../services/task_service.dart';
 
@@ -32,63 +33,41 @@ class _DailyPlanSectionState extends ConsumerState<DailyPlanSection> {
   Future<void> _handleToggleTaskCompletion(dynamic item) async {
     final taskId = '${item['task_id'] ?? ''}'.trim();
     if (taskId.isEmpty) return;
-
     final status = '${item['task_status'] ?? ''}'.toLowerCase();
-    final newStatus = (status == 'done' || status == 'completed' || status == 'complete') ? 'todo' : 'done';
-
-    // Optimistic update: toggle task status locally first
+    final newStatus =
+        (status == 'done' || status == 'completed' || status == 'complete')
+            ? 'todo'
+            : 'done';
     final oldStatus = item['task_status'];
     item['task_status'] = newStatus;
-    setState(() {
-      // trigger UI rebuild
-    });
-
+    setState(() {});
     try {
-      final resp = await _taskService.updateTask(taskId, <String, dynamic>{'status': newStatus});
-      // ignore: avoid_print
-      print('DAILY PLAN: updateTask response for $taskId -> $resp');
-      // Success: keep the local state
+      await _taskService.updateTask(taskId, <String, dynamic>{'status': newStatus});
     } catch (e) {
-      // Revert on error
       item['task_status'] = oldStatus;
       setState(() {});
-      // ignore: avoid_print
-      print('DAILY PLAN: Failed to update task status: $e');
     }
   }
 
   Future<void> _handleToggleSubtask(dynamic item, int subtaskIndex) async {
     final taskId = '${item['task_id'] ?? ''}'.trim();
     if (taskId.isEmpty) return;
-
     final subtasks = (item['subtasks'] as List?) ?? const <dynamic>[];
     if (subtaskIndex < 0 || subtaskIndex >= subtasks.length) return;
-
     final subtask = subtasks[subtaskIndex];
     if (subtask is! Map) return;
-
-    final subtaskId = '${subtask['_id'] ?? subtask['id'] ?? ''}'.trim();
+    final subtaskId =
+        '${subtask['_id'] ?? subtask['id'] ?? ''}'.trim();
     if (subtaskId.isEmpty) return;
-
-    // Optimistic update: toggle subtask locally first
     final oldCompleted = subtask['completed'];
     final newCompleted = oldCompleted != true;
     subtask['completed'] = newCompleted;
-    setState(() {
-      // trigger UI rebuild
-    });
-
+    setState(() {});
     try {
-      final resp = await _taskService.toggleSubtask(taskId, subtaskId);
-      // ignore: avoid_print
-      print('DAILY PLAN: toggleSubtask response for $taskId/$subtaskId -> $resp');
-      // Success: keep the local state
+      await _taskService.toggleSubtask(taskId, subtaskId);
     } catch (e) {
-      // Revert on error
       subtask['completed'] = oldCompleted;
       setState(() {});
-      // ignore: avoid_print
-      print('DAILY PLAN: Failed to toggle subtask: $e');
     }
   }
 
@@ -111,102 +90,94 @@ class _DailyPlanSectionState extends ConsumerState<DailyPlanSection> {
       _planMutable = null;
       return;
     }
-
     final copy = Map<String, dynamic>.from(widget.plan!);
     final scheduleRaw = (widget.plan!['schedule'] as List?) ?? <dynamic>[];
     copy['schedule'] = scheduleRaw
-        .map((e) => e is Map ? Map<String, dynamic>.from(e) : <String, dynamic>{})
+        .map((e) => e is Map
+            ? Map<String, dynamic>.from(e)
+            : <String, dynamic>{})
         .toList();
     _planMutable = copy;
   }
 
   Future<void> _loadTaskDetailsForKey(String itemKey) async {
-    final schedule = (_planMutable?['schedule'] as List?) ?? (widget.plan?['schedule'] as List?) ?? const <dynamic>[];
+    final schedule =
+        (_planMutable?['schedule'] as List?) ??
+            (widget.plan?['schedule'] as List?) ??
+            const <dynamic>[];
     for (var i = 0; i < schedule.length; i++) {
-      final item = schedule[i] is Map ? Map<String, dynamic>.from(schedule[i]) : null;
+      final item =
+          schedule[i] is Map ? Map<String, dynamic>.from(schedule[i]) : null;
       if (item == null) continue;
       final key = _scheduleItemKey(item);
       if (key != itemKey) continue;
 
       var taskId = '${item['task_id'] ?? ''}'.trim();
-
-      // If no task_id present, try to resolve from provider tasks by title match
       if (taskId.isEmpty) {
         final providerState = ref.read(dashboardProvider);
-        final tasksList = providerState.valueOrNull?.tasks ?? <Map<String, dynamic>>[];
-        final titleCandidate = '${item['title'] ?? ''}'.trim().toLowerCase();
+        final tasksList =
+            providerState.valueOrNull?.tasks ?? <Map<String, dynamic>>[];
+        final titleCandidate =
+            '${item['title'] ?? ''}'.trim().toLowerCase();
         if (titleCandidate.isNotEmpty) {
           for (final t in tasksList) {
             final tTitle = '${t['title'] ?? ''}'.trim().toLowerCase();
             if (tTitle.isNotEmpty && tTitle == titleCandidate) {
               taskId = '${t['_id'] ?? t['id'] ?? ''}';
-              // persist for subsequent calls
               schedule[i]['task_id'] = taskId;
-              // ignore: avoid_print
-              print('DAILY PLAN: resolved missing task_id for "$titleCandidate" -> $taskId');
               break;
             }
           }
         }
       }
 
-      if (taskId.isEmpty) {
-        // nothing to fetch
-        // ignore: avoid_print
-        print('DAILY PLAN: no task_id for expanded item $itemKey; cannot fetch details');
-        return;
-      }
-
-      // ignore: avoid_print
-      print('DAILY PLAN: expanding itemKey=$itemKey resolvedTaskId=$taskId');
+      if (taskId.isEmpty) return;
 
       try {
         final full = await _taskService.getTask(taskId);
-        // ignore: avoid_print
-        print('DAILY PLAN: fetched task $taskId -> $full');
         if (full != null) {
-          // API returns { task: { ... } }, unwrap it
-          final taskData = (full['task'] is Map ? Map<String, dynamic>.from(full['task'] as Map) : full);
-          // ignore: avoid_print
-          print('DAILY PLAN: unwrapped taskData keys: ${taskData.keys.toList()}');
-
+          final taskData = (full['task'] is Map
+              ? Map<String, dynamic>.from(full['task'] as Map)
+              : full);
           final subtasksRaw = taskData['subtasks'];
-          // ignore: avoid_print
-          print('DAILY PLAN: subtasksRaw=$subtasksRaw (type=${subtasksRaw.runtimeType})');
           if (subtasksRaw is List && subtasksRaw.isNotEmpty) {
             final normalized = <Map<String, dynamic>>[];
             for (final s in subtasksRaw) {
-              if (s is Map) normalized.add(Map<String, dynamic>.from(s));
-              else if (s is String) normalized.add({'title': s, 'completed': false});
-              else normalized.add({'title': s?.toString() ?? '', 'completed': false});
+              if (s is Map) {
+                normalized.add(Map<String, dynamic>.from(s));
+              } else if (s is String) {
+                normalized.add({'title': s, 'completed': false});
+              } else {
+                normalized.add({
+                  'title': s?.toString() ?? '',
+                  'completed': false
+                });
+              }
             }
-            // ignore: avoid_print
-            print('DAILY PLAN: normalized ${normalized.length} subtasks');
             setState(() {
               schedule[i]['subtasks'] = normalized;
             });
           }
 
-          // attach deadline if missing
-          final deadlineRaw = taskData['deadline'] ?? taskData['dueDate'] ?? taskData['due_date'] ?? taskData['deadline_at'];
-          // ignore: avoid_print
-          print('DAILY PLAN: deadlineRaw=$deadlineRaw');
-          if ((item['deadline_label'] == null || (item['deadline_label'] as String).isEmpty) && deadlineRaw != null) {
+          final deadlineRaw = taskData['deadline'] ??
+              taskData['dueDate'] ??
+              taskData['due_date'] ??
+              taskData['deadline_at'];
+          if ((item['deadline_label'] == null ||
+                  (item['deadline_label'] as String).isEmpty) &&
+              deadlineRaw != null) {
             final deadlineText = deadlineRaw.toString();
-            final parsed = DateTime.tryParse(deadlineText) ?? (int.tryParse(deadlineText) != null ? DateTime.fromMillisecondsSinceEpoch(int.parse(deadlineText) > 100000000000 ? int.parse(deadlineText) : int.parse(deadlineText) * 1000) : null);
+            final parsed = DateTime.tryParse(deadlineText);
             if (parsed != null) {
               setState(() {
                 schedule[i]['deadline'] = deadlineText;
-                schedule[i]['deadline_label'] = DateFormat('MMM d, yyyy').format(parsed.toLocal());
+                schedule[i]['deadline_label'] =
+                    DateFormat('MMM d, yyyy').format(parsed.toLocal());
               });
             }
           }
         }
-      } catch (e) {
-        // ignore errors
-        // ignore: avoid_print
-        print('DAILY PLAN: failed loading task $taskId -> $e');
-      }
+      } catch (_) {}
     }
   }
 
@@ -219,32 +190,20 @@ class _DailyPlanSectionState extends ConsumerState<DailyPlanSection> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(2),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: <Color>[
-            AppSemanticColors.sage,
-            AppSemanticColors.primary,
-            AppSemanticColors.rose,
-          ],
-        ),
+        color: tokens.bgSurface,
         borderRadius: BorderRadius.circular(22),
-        boxShadow: <BoxShadow>[
+        border: Border.all(color: tokens.borderMedium, width: 0.8),
+        boxShadow: [
           BoxShadow(
-            color: AppSemanticColors.primary.withValues(alpha: 0.12),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
+            color: AppSemanticColors.primary.withValues(alpha: 0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: tokens.bgSurface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: tokens.borderSubtle),
-        ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
         child: hasPlan
             ? _buildActivePlan(context, tokens, planTitle, planStatusLabel)
             : _buildEmptyPlan(context, tokens, planTitle),
@@ -264,13 +223,13 @@ class _DailyPlanSectionState extends ConsumerState<DailyPlanSection> {
           child: Column(
             children: <Widget>[
               Container(
-                width: 58,
-                height: 58,
+                width: 60,
+                height: 60,
                 decoration: BoxDecoration(
-                  color: AppSemanticColors.primary.withValues(alpha: 0.12),
+                  color: AppSemanticColors.primary.withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(18),
                   border: Border.all(
-                    color: AppSemanticColors.primary.withValues(alpha: 0.24),
+                    color: AppSemanticColors.primary.withValues(alpha: 0.20),
                   ),
                 ),
                 child: const Icon(
@@ -279,15 +238,15 @@ class _DailyPlanSectionState extends ConsumerState<DailyPlanSection> {
                   size: 28,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 9),
               Text(
                 planTitle,
                 style: AppTextStyles.titleLarge.copyWith(
                   color: tokens.textPrimary,
-                  fontSize: 22,
+                  fontSize: 20,
                 ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 9),
               Text(
                 'No AI plan is ready yet.',
                 style: AppTextStyles.bodyMedium.copyWith(
@@ -297,18 +256,13 @@ class _DailyPlanSectionState extends ConsumerState<DailyPlanSection> {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 18),
         SizedBox(
           width: double.infinity,
           height: 52,
           child: DecoratedBox(
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: <Color>[
-                  AppSemanticColors.primary,
-                  AppSemanticColors.primary.withValues(alpha: 0.82),
-                ],
-              ),
+              color: AppSemanticColors.primary,
               borderRadius: BorderRadius.circular(16),
             ),
             child: Material(
@@ -317,13 +271,21 @@ class _DailyPlanSectionState extends ConsumerState<DailyPlanSection> {
                 borderRadius: BorderRadius.circular(16),
                 onTap: widget.onGenerate,
                 child: Center(
-                  child: Text(
-                    'Generate Today\'s Plan',
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                      color: tokens.bgSurface,
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Icon(Icons.auto_awesome_rounded,
+                          size: 18, color: Colors.white.withValues(alpha: 0.9)),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Generate Today\'s Plan',
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -363,7 +325,7 @@ class _DailyPlanSectionState extends ConsumerState<DailyPlanSection> {
                     planTitle,
                     style: AppTextStyles.titleLarge.copyWith(
                       color: tokens.textPrimary,
-                      fontSize: 22,
+                      fontSize: 20,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -377,113 +339,76 @@ class _DailyPlanSectionState extends ConsumerState<DailyPlanSection> {
               ),
             ),
             const SizedBox(width: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              alignment: WrapAlignment.end,
-              children: <Widget>[
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: AppSemanticColors.sage.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    planStatusLabel,
-                    style: AppTextStyles.labelSmall.copyWith(
-                      color: AppSemanticColors.sage,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: AppSemanticColors.sage.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(
+                    color: AppSemanticColors.sage.withValues(alpha: 0.25)),
+              ),
+              child: Text(
+                planStatusLabel,
+                style: AppTextStyles.labelSmall.copyWith(
+                  color: AppSemanticColors.sage,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.4,
+                  fontSize: 10,
                 ),
-                if (widget.onDelete != null)
-                  InkWell(
-                    onTap: widget.onDelete,
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      width: 34,
-                      height: 34,
-                      decoration: BoxDecoration(
-                        color: AppSemanticColors.rose.withValues(alpha: 0.10),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: AppSemanticColors.rose.withValues(alpha: 0.28),
-                        ),
-                      ),
-                      child: const Icon(
-                        Icons.delete_outline_rounded,
-                        color: AppSemanticColors.rose,
-                        size: 18,
-                      ),
-                    ),
+              ),
+            ),
+            if (widget.onDelete != null) ...<Widget>[
+              const SizedBox(width: 8),
+              InkWell(
+                onTap: widget.onDelete,
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: AppSemanticColors.rose.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-              ],
+                  child: const Icon(Icons.delete_outline_rounded,
+                      color: AppSemanticColors.rose, size: 17),
+                ),
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 10),
+        // Focus task + Advice blocks
+        Row(
+          children: <Widget>[
+            Expanded(
+              child: _InfoBlock(
+                icon: Icons.list_alt_rounded,
+                title: 'Focus task',
+                text: focusTask,
+                accentColor: AppSemanticColors.primary,
+                backgroundColor:
+                    AppSemanticColors.primary.withValues(alpha: 0.06),
+                borderColor: AppSemanticColors.primary.withValues(alpha: 0.20),
+                textColor: tokens.textPrimary,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _InfoBlock(
+                icon: Icons.wb_sunny_rounded,
+                title: 'Advice',
+                text: advice,
+                accentColor: AppSemanticColors.primary,
+                backgroundColor:
+                    AppSemanticColors.primary.withValues(alpha: 0.06),
+                borderColor: AppSemanticColors.primary.withValues(alpha: 0.20),
+                textColor: tokens.textPrimary,
+              ),
             ),
           ],
         ),
-        const SizedBox(height: 16),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final shouldStack = constraints.maxWidth < 420;
-
-            if (shouldStack) {
-              return Column(
-                children: <Widget>[
-                  _InfoBlock(
-                    icon: Icons.list_alt_rounded,
-                    title: 'Focus task',
-                    text: focusTask,
-                    accentColor: AppSemanticColors.primary,
-                    backgroundColor: AppSemanticColors.primary.withValues(alpha: 0.08),
-                    borderColor: AppSemanticColors.primary.withValues(alpha: 0.30),
-                    textColor: tokens.textPrimary,
-                  ),
-                  const SizedBox(height: 12),
-                  _InfoBlock(
-                    icon: Icons.wb_sunny_rounded,
-                    title: 'Advice',
-                    text: advice,
-                    accentColor: AppSemanticColors.primary,
-                    backgroundColor: AppSemanticColors.primary.withValues(alpha: 0.08),
-                    borderColor: AppSemanticColors.primary.withValues(alpha: 0.30),
-                    textColor: tokens.textPrimary,
-                  ),
-                ],
-              );
-            }
-
-            return Row(
-              children: <Widget>[
-                Expanded(
-                  child: _InfoBlock(
-                    icon: Icons.list_alt_rounded,
-                    title: 'Focus task',
-                    text: focusTask,
-                    accentColor: AppSemanticColors.primary,
-                    backgroundColor: AppSemanticColors.primary.withValues(alpha: 0.08),
-                    borderColor: AppSemanticColors.primary.withValues(alpha: 0.30),
-                    textColor: tokens.textPrimary,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _InfoBlock(
-                    icon: Icons.wb_sunny_rounded,
-                    title: 'Advice',
-                    text: advice,
-                    accentColor: AppSemanticColors.primary,
-                    backgroundColor: AppSemanticColors.primary.withValues(alpha: 0.08),
-                    borderColor: AppSemanticColors.primary.withValues(alpha: 0.30),
-                    textColor: tokens.textPrimary,
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 9),
+        // Schedule
         Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
@@ -499,30 +424,29 @@ class _DailyPlanSectionState extends ConsumerState<DailyPlanSection> {
                 style: AppTextStyles.bodyMedium.copyWith(
                   fontWeight: FontWeight.w700,
                   color: tokens.textPrimary,
-                  fontSize: 15,
+                  fontSize: 14,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               if (schedule.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  child: Text(
-                    'No schedule saved.',
-                    style: AppTextStyles.bodySmall.copyWith(
-                      color: tokens.textMuted,
-                    ),
+                Text(
+                  'No schedule saved.',
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: tokens.textMuted,
                   ),
                 )
               else
                 ...schedule.take(5).map(
                       (item) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.only(bottom: 10),
                         child: _ScheduleRow(
                           item: item,
-                          expanded: _expandedScheduleKeys.contains(_scheduleItemKey(item)),
+                          expanded: _expandedScheduleKeys
+                              .contains(_scheduleItemKey(item)),
                           onToggleExpanded: _toggleExpanded,
                           onToggleCompleted: _handleToggleTaskCompletion,
-                          onSubtaskToggle: (subtaskIndex) => _handleToggleSubtask(item, subtaskIndex),
+                          onSubtaskToggle: (subtaskIndex) =>
+                              _handleToggleSubtask(item, subtaskIndex),
                         ),
                       ),
                     ),
@@ -539,7 +463,6 @@ class _DailyPlanSectionState extends ConsumerState<DailyPlanSection> {
         _expandedScheduleKeys.remove(itemKey);
       } else {
         _expandedScheduleKeys.add(itemKey);
-        // attempt to load subtasks for the expanded item
         _loadTaskDetailsForKey(itemKey);
       }
     });
@@ -552,15 +475,9 @@ class _DailyPlanSectionState extends ConsumerState<DailyPlanSection> {
   }
 
   String _planTitle(Map<String, dynamic>? plan) {
-    if (plan == null) {
-      return 'Today\'s Plan';
-    }
-
+    if (plan == null) return 'Today\'s Plan';
     final planningScope = '${plan['planning_scope'] ?? ''}'.toLowerCase();
-    if (planningScope == 'tomorrow') {
-      return 'Tomorrow\'s Plan';
-    }
-
+    if (planningScope == 'tomorrow') return 'Tomorrow\'s Plan';
     final targetDate = '${plan['target_date'] ?? ''}'.trim();
     final targetDateValue = DateTime.tryParse(targetDate);
     if (targetDateValue != null) {
@@ -571,20 +488,13 @@ class _DailyPlanSectionState extends ConsumerState<DailyPlanSection> {
         return 'Tomorrow\'s Plan';
       }
     }
-
     return 'Today\'s Plan';
   }
 
   String _planStatusLabel(Map<String, dynamic>? plan) {
-    if (plan == null) {
-      return 'ACTIVE TODAY';
-    }
-
+    if (plan == null) return 'ACTIVE TODAY';
     final planningScope = '${plan['planning_scope'] ?? ''}'.toLowerCase();
-    if (planningScope == 'tomorrow') {
-      return 'STARTS TOMORROW';
-    }
-
+    if (planningScope == 'tomorrow') return 'STARTS TOMORROW';
     final targetDate = '${plan['target_date'] ?? ''}'.trim();
     final targetDateValue = DateTime.tryParse(targetDate);
     if (targetDateValue != null) {
@@ -595,7 +505,6 @@ class _DailyPlanSectionState extends ConsumerState<DailyPlanSection> {
         return 'STARTS TOMORROW';
       }
     }
-
     return 'ACTIVE TODAY';
   }
 }
@@ -622,10 +531,10 @@ class _InfoBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: borderColor),
       ),
       child: Column(
@@ -633,35 +542,29 @@ class _InfoBlock extends StatelessWidget {
         children: <Widget>[
           Row(
             children: <Widget>[
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: accentColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(9),
-                ),
-                child: Icon(icon, size: 16, color: accentColor),
-              ),
-              const SizedBox(width: 8),
+              Icon(icon, size: 14, color: accentColor),
+              const SizedBox(width: 6),
               Text(
                 title.toUpperCase(),
                 style: AppTextStyles.labelSmall.copyWith(
                   color: accentColor,
                   fontWeight: FontWeight.w800,
-                  letterSpacing: 0.6,
+                  letterSpacing: 0.5,
+                  fontSize: 9,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Text(
             text,
             maxLines: 4,
             overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.bodyMedium.copyWith(
+            style: AppTextStyles.bodySmall.copyWith(
               fontWeight: FontWeight.w600,
               color: textColor,
-              height: 1.45,
+              height: 1.4,
+              fontSize: 12,
             ),
           ),
         ],
@@ -688,30 +591,46 @@ class _ScheduleRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = Theme.of(context).extension<AppColorTokens>()!;
-    final title = '${item['title'] ?? item['task_id'] ?? 'Untitled task'}';
+    final title =
+        '${item['title'] ?? item['task_id'] ?? 'Untitled task'}';
     final start = '${item['suggested_start'] ?? '--:--'}';
-    final estimated = item['estimated_duration'];
-    final duration = estimated is num ? '${estimated.toStringAsFixed(0)}h' : '';
+    final estimatedRaw = item['estimated_duration'] ?? item['duration_minutes'];
+    final estimatedMinutes = estimatedRaw is num
+      ? estimatedRaw.toDouble()
+      : double.tryParse('$estimatedRaw');
+    final duration = estimatedMinutes != null && estimatedMinutes > 0
+      ? formatDuration(estimatedMinutes)
+      : '';
     final deadlineLabel = '${item['deadline_label'] ?? ''}'.trim();
-    final parsed = deadlineLabel.isNotEmpty ? null : DateTime.tryParse('${item['deadline'] ?? ''}');
+    final parsed = deadlineLabel.isNotEmpty
+        ? null
+        : DateTime.tryParse('${item['deadline'] ?? ''}');
     final status = '${item['task_status'] ?? ''}'.toLowerCase();
-    final subtasksRaw = (item['subtasks'] as List? ?? const <dynamic>[]);
+    final subtasksRaw =
+        (item['subtasks'] as List? ?? const <dynamic>[]);
     final subtasks = <Map<String, dynamic>>[];
     for (final s in subtasksRaw) {
       if (s is Map) subtasks.add(Map<String, dynamic>.from(s));
     }
-    final completedSubtasks = subtasks.where((subtask) => subtask['completed'] == true).length;
+    final completedSubtasks =
+        subtasks.where((s) => s['completed'] == true).length;
     final hasSubtasks = subtasks.isNotEmpty;
-    final isCompleted = status == 'done' || status == 'completed' || status == 'complete';
+    final isCompleted = status == 'done' ||
+        status == 'completed' ||
+        status == 'complete';
     final itemKey = '${item['task_id'] ?? ''}-$title-$start';
 
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: isCompleted ? AppSemanticColors.sage.withValues(alpha: 0.08) : tokens.bgSurface,
-        borderRadius: BorderRadius.circular(16),
+        color: isCompleted
+            ? AppSemanticColors.sage.withValues(alpha: 0.06)
+            : tokens.bgSurface,
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: isCompleted ? AppSemanticColors.sage.withValues(alpha: 0.30) : tokens.borderSubtle,
+          color: isCompleted
+              ? AppSemanticColors.sage.withValues(alpha: 0.25)
+              : tokens.borderSubtle,
         ),
       ),
       child: Column(
@@ -721,27 +640,33 @@ class _ScheduleRow extends StatelessWidget {
             children: <Widget>[
               InkWell(
                 onTap: () => onToggleCompleted(item),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(7),
                 child: Container(
-                  width: 22,
-                  height: 22,
+                  width: 20,
+                  height: 20,
                   margin: const EdgeInsets.only(top: 2),
                   decoration: BoxDecoration(
-                    color: isCompleted ? AppSemanticColors.sage.withValues(alpha: 0.18) : Colors.transparent,
-                    borderRadius: BorderRadius.circular(7),
+                    color: isCompleted
+                        ? AppSemanticColors.sage.withValues(alpha: 0.15)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(6),
                     border: Border.all(
-                      color: isCompleted ? AppSemanticColors.sage.withValues(alpha: 0.70) : AppSemanticColors.primary.withValues(alpha: 0.55),
-                      width: 1.6,
+                      color: isCompleted
+                          ? AppSemanticColors.sage.withValues(alpha: 0.70)
+                          : AppSemanticColors.primary.withValues(alpha: 0.45),
+                      width: 1.5,
                     ),
                   ),
                   child: Icon(
                     Icons.check_rounded,
-                    size: 14,
-                    color: isCompleted ? AppSemanticColors.sage : Colors.transparent,
+                    size: 13,
+                    color: isCompleted
+                        ? AppSemanticColors.sage
+                        : Colors.transparent,
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -750,61 +675,73 @@ class _ScheduleRow extends StatelessWidget {
                       title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: isCompleted ? tokens.textSecondary : tokens.textPrimary,
-                        decoration: isCompleted ? TextDecoration.lineThrough : TextDecoration.none,
+                      style: AppTextStyles.bodySmall.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: isCompleted
+                            ? tokens.textSecondary
+                            : tokens.textPrimary,
+                        decoration: isCompleted
+                            ? TextDecoration.lineThrough
+                            : TextDecoration.none,
+                        fontSize: 13,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 3),
                     Text(
                       duration.isEmpty
                           ? (deadlineLabel.isNotEmpty
                               ? deadlineLabel
-                              : (parsed == null ? 'No deadline' : DateFormat('MMM d').format(parsed)))
+                              : (parsed == null
+                                  ? 'No deadline'
+                                  : DateFormat('MMM d').format(parsed)))
                           : duration,
                       style: AppTextStyles.bodySmall.copyWith(
                         color: tokens.textSecondary,
+                        fontSize: 11,
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 10),
-              TextButton(
-                onPressed: () => onToggleExpanded(itemKey),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  foregroundColor: AppSemanticColors.primary,
-                  backgroundColor: AppSemanticColors.primary.withValues(alpha: 0.08),
-                  disabledForegroundColor: AppSemanticColors.primary.withValues(alpha: 0.45),
-                  disabledBackgroundColor: AppSemanticColors.primary.withValues(alpha: 0.05),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    side: BorderSide(color: AppSemanticColors.primary.withValues(alpha: 0.22)),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () => onToggleExpanded(itemKey),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppSemanticColors.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  textStyle: AppTextStyles.labelSmall.copyWith(fontWeight: FontWeight.w700),
+                  child: Text(
+                    expanded ? 'Hide' : 'Tasks',
+                    style: AppTextStyles.labelSmall.copyWith(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: AppSemanticColors.primary,
+                    ),
+                  ),
                 ),
-                child: Text(expanded ? 'Hide subtasks' : 'Show subtasks'),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Text(
                 start,
-                style: AppTextStyles.bodyMedium.copyWith(
+                style: AppTextStyles.bodySmall.copyWith(
                   color: AppSemanticColors.primary,
                   fontWeight: FontWeight.w800,
+                  fontSize: 13,
                 ),
               ),
             ],
           ),
           if (hasSubtasks && expanded) ...<Widget>[
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: tokens.bgRaised,
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: tokens.borderSubtle),
               ),
               child: Column(
@@ -818,6 +755,7 @@ class _ScheduleRow extends StatelessWidget {
                         style: AppTextStyles.bodySmall.copyWith(
                           color: tokens.textSecondary,
                           fontWeight: FontWeight.w700,
+                          fontSize: 11,
                         ),
                       ),
                       Text(
@@ -825,43 +763,56 @@ class _ScheduleRow extends StatelessWidget {
                         style: AppTextStyles.bodySmall.copyWith(
                           color: tokens.textSecondary,
                           fontWeight: FontWeight.w700,
+                          fontSize: 11,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(999),
+                    borderRadius: BorderRadius.circular(99),
                     child: LinearProgressIndicator(
-                      minHeight: 6,
-                      value: subtasks.isEmpty ? 0 : completedSubtasks / subtasks.length,
+                      minHeight: 4,
+                      value: subtasks.isEmpty
+                          ? 0
+                          : completedSubtasks / subtasks.length,
                       backgroundColor: tokens.borderSubtle,
-                      valueColor: const AlwaysStoppedAnimation<Color>(AppSemanticColors.primary),
+                      valueColor: const AlwaysStoppedAnimation<Color>(
+                          AppSemanticColors.primary),
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 8),
                   ...subtasks.asMap().entries.map((entry) {
                     final subtaskIndex = entry.key;
                     final subtask = entry.value;
                     final subtaskCompleted = subtask['completed'] == true;
                     return Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.only(bottom: 6),
                       child: InkWell(
                         onTap: () => onSubtaskToggle(subtaskIndex),
                         child: Row(
                           children: <Widget>[
                             Icon(
-                              subtaskCompleted ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
-                              size: 16,
-                              color: subtaskCompleted ? AppSemanticColors.sage : tokens.textMuted,
+                              subtaskCompleted
+                                  ? Icons.check_circle_rounded
+                                  : Icons.radio_button_unchecked_rounded,
+                              size: 15,
+                              color: subtaskCompleted
+                                  ? AppSemanticColors.sage
+                                  : tokens.textMuted,
                             ),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
                                 '${subtask['title'] ?? 'Untitled subtask'}',
                                 style: AppTextStyles.bodySmall.copyWith(
-                                  color: subtaskCompleted ? tokens.textSecondary : tokens.textPrimary,
-                                  decoration: subtaskCompleted ? TextDecoration.lineThrough : TextDecoration.none,
+                                  fontSize: 12,
+                                  color: subtaskCompleted
+                                      ? tokens.textSecondary
+                                      : tokens.textPrimary,
+                                  decoration: subtaskCompleted
+                                      ? TextDecoration.lineThrough
+                                      : TextDecoration.none,
                                 ),
                               ),
                             ),

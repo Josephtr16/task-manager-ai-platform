@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 
 import 'api_service.dart';
@@ -83,8 +85,17 @@ class AiService {
       'task_count': taskCount,
     };
     if (deadline != null && deadline.isNotEmpty) payload['project_deadline'] = deadline;
-    final res = await _dio.post('/ai/project-breakdown', data: payload);
-    return _asMap(res.data);
+    print('PROJECT BREAKDOWN PAYLOAD: ${jsonEncode(payload)}');
+    try {
+      final res = await _dio.post('/ai/project-breakdown', data: payload);
+      return _asMap(res.data);
+    } catch (e) {
+      if (e is DioException) {
+        print('ERROR STATUS: ${e.response?.statusCode}');
+        print('ERROR DATA: ${e.response?.data}');
+      }
+      rethrow;
+    }
   }
 
   Future<Map<String, dynamic>> generateSubtasks(

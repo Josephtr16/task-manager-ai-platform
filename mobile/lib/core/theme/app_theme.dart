@@ -172,54 +172,58 @@ class AppTheme {
   static final AppColorTokens lightTokens = AppColorTokens.light();
 
   static final ThemeData darkTheme = _buildTheme(Brightness.dark, darkTokens);
-  static final ThemeData lightTheme = _buildTheme(Brightness.light, lightTokens);
+  static final ThemeData lightTheme =
+      _buildTheme(Brightness.light, lightTokens);
 
   static ThemeData _buildTheme(Brightness brightness, AppColorTokens tokens) {
     final isDark = brightness == Brightness.dark;
-    final textTheme = GoogleFonts.dmSansTextTheme().apply(
-      bodyColor: tokens.textPrimary,
-      displayColor: tokens.textPrimary,
-    ).copyWith(
-      headlineLarge: AppTextStyles.displayLarge.copyWith(
-        color: tokens.textPrimary,
-      ),
-      headlineMedium: AppTextStyles.displayMedium.copyWith(
-        color: tokens.textPrimary,
-      ),
-      headlineSmall: AppTextStyles.titleLarge.copyWith(
-        color: tokens.textPrimary,
-      ),
-      titleLarge: AppTextStyles.labelMedium.copyWith(
-        fontSize: 18,
-        fontWeight: FontWeight.w700,
-        color: tokens.textPrimary,
-      ),
-      titleMedium: AppTextStyles.labelMedium.copyWith(
-        fontSize: 15,
-        color: tokens.textPrimary,
-      ),
-      titleSmall: AppTextStyles.labelMedium.copyWith(
-        color: tokens.textPrimary,
-      ),
-      bodyLarge: AppTextStyles.bodyLarge.copyWith(
-        color: tokens.textPrimary,
-      ),
-      bodyMedium: AppTextStyles.bodyMedium.copyWith(
-        color: tokens.textPrimary,
-      ),
-      bodySmall: AppTextStyles.bodySmall.copyWith(
-        color: tokens.textSecondary,
-      ),
-      labelMedium: AppTextStyles.labelMedium.copyWith(
-        color: tokens.textSecondary,
-      ),
-      labelSmall: AppTextStyles.labelSmall.copyWith(
-        color: tokens.textSecondary,
-      ),
-    );
+    final textTheme = GoogleFonts.dmSansTextTheme()
+        .apply(
+          bodyColor: tokens.textPrimary,
+          displayColor: tokens.textPrimary,
+        )
+        .copyWith(
+          headlineLarge: AppTextStyles.displayLarge.copyWith(
+            color: tokens.textPrimary,
+          ),
+          headlineMedium: AppTextStyles.displayMedium.copyWith(
+            color: tokens.textPrimary,
+          ),
+          headlineSmall: AppTextStyles.titleLarge.copyWith(
+            color: tokens.textPrimary,
+          ),
+          titleLarge: AppTextStyles.labelMedium.copyWith(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: tokens.textPrimary,
+          ),
+          titleMedium: AppTextStyles.labelMedium.copyWith(
+            fontSize: 15,
+            color: tokens.textPrimary,
+          ),
+          titleSmall: AppTextStyles.labelMedium.copyWith(
+            color: tokens.textPrimary,
+          ),
+          bodyLarge: AppTextStyles.bodyLarge.copyWith(
+            color: tokens.textPrimary,
+          ),
+          bodyMedium: AppTextStyles.bodyMedium.copyWith(
+            color: tokens.textPrimary,
+          ),
+          bodySmall: AppTextStyles.bodySmall.copyWith(
+            color: tokens.textSecondary,
+          ),
+          labelMedium: AppTextStyles.labelMedium.copyWith(
+            color: tokens.textSecondary,
+          ),
+          labelSmall: AppTextStyles.labelSmall.copyWith(
+            color: tokens.textSecondary,
+          ),
+        );
 
     return ThemeData(
       useMaterial3: true,
+      typography: Typography.material2021(),
       brightness: brightness,
       scaffoldBackgroundColor: tokens.bgBase,
       cardColor: tokens.bgSurface,
@@ -267,9 +271,9 @@ class AppTheme {
         backgroundColor: tokens.bgRaised,
         selectedColor: tokens.accentDim,
         labelStyle: GoogleFonts.dmSans(
-            fontSize: 11,
+            fontSize: 12,
             color: tokens.textSecondary,
-            fontWeight: FontWeight.w700),
+            fontWeight: FontWeight.w600),
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: tokens.bgSurface,

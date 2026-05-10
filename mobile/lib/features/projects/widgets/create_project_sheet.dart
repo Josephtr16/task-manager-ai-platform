@@ -8,6 +8,7 @@ import '../../../../core/widgets/tf_input.dart';
 import '../../../../services/ai_service.dart';
 import '../../../../services/project_service.dart';
 import '../providers/projects_provider.dart';
+import '../../tasks/widgets/task_detail_sheet.dart';
 
 class CreateProjectSheet extends ConsumerStatefulWidget {
   const CreateProjectSheet({super.key});
@@ -200,16 +201,12 @@ class _CreateProjectSheetState extends ConsumerState<CreateProjectSheet> {
   }
 
   Future<void> _pickDueDate() async {
-    final now = DateTime.now();
-    final date = await showDatePicker(
+    final picked = await showModernDatePicker(
       context: context,
-      initialDate: _dueDate ?? now,
-      firstDate: DateTime(now.year - 1),
-      lastDate: DateTime(now.year + 5),
+      initialDate: _dueDate,
     );
-    if (date == null) return;
     if (!mounted) return;
-    setState(() => _dueDate = date);
+    setState(() => _dueDate = picked);
   }
 
   Future<void> _aiEnhance() async {
@@ -412,7 +409,7 @@ class _CreateProjectSheetState extends ConsumerState<CreateProjectSheet> {
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 10),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
@@ -491,7 +488,7 @@ class _CreateProjectSheetState extends ConsumerState<CreateProjectSheet> {
                         color: tokens.textPrimary,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     TfInput(
                       controller: _title,
                       hint: 'Project name',
@@ -528,7 +525,7 @@ class _CreateProjectSheetState extends ConsumerState<CreateProjectSheet> {
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
@@ -556,7 +553,7 @@ class _CreateProjectSheetState extends ConsumerState<CreateProjectSheet> {
                         color: tokens.textPrimary,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     Row(
                       children: <Widget>[
                         Expanded(
@@ -580,7 +577,7 @@ class _CreateProjectSheetState extends ConsumerState<CreateProjectSheet> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
@@ -597,11 +594,11 @@ class _CreateProjectSheetState extends ConsumerState<CreateProjectSheet> {
                         );
                       }).toList(),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     Text(
                       'PRIORITY',
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 11,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 1.2,
                         color: tokens.textSecondary,

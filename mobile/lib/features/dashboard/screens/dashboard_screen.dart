@@ -45,74 +45,72 @@ class DashboardScreen extends ConsumerWidget {
               return CustomScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 slivers: <Widget>[
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Text(
-                            _greeting(),
-                            style: AppTextStyles.labelSmall.copyWith(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: tokens.textMuted,
+                  SliverAppBar(
+                    expandedHeight: 116,
+                    toolbarHeight: 0,
+                    elevation: 0,
+                    scrolledUnderElevation: 0,
+                    backgroundColor: Colors.transparent,
+                    flexibleSpace: FlexibleSpaceBar(
+                      background: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            RichText(
+                              text: TextSpan(
+                                children: <InlineSpan>[
+                                  TextSpan(
+                                    text: '${_greeting()}, ',
+                                    style: AppTextStyles.greetingItalic.copyWith(
+                                      fontSize: 36,
+                                      color: tokens.textSecondary,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: firstName,
+                                    style: AppTextStyles.greetingName.copyWith(
+                                      fontSize: 38,
+                                      color: tokens.textPrimary,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 2),
-                          RichText(
-                            text: TextSpan(
-                              children: <InlineSpan>[
-                                TextSpan(
-                                  text: _greeting(),
-                                  style: GoogleFonts.dmSerifDisplay(
-                                    fontSize: 21,
-                                    fontStyle: FontStyle.italic,
-                                    color: tokens.textSecondary,
+                            const SizedBox(height: 2),
+                            RichText(
+                              text: TextSpan(
+                                children: <InlineSpan>[
+                                  TextSpan(
+                                    text: 'You have ',
+                                    style: AppTextStyles.bodySmall.copyWith(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      color: tokens.textSecondary,
+                                    ),
                                   ),
-                                ),
-                                const TextSpan(text: ' '),
-                                TextSpan(
-                                  text: firstName,
-                                  style: GoogleFonts.dmSerifDisplay(
-                                    fontSize: 21,
-                                    fontWeight: FontWeight.w700,
-                                    color: tokens.textPrimary,
+                                  TextSpan(
+                                    text: '${dueToday.toInt()}',
+                                    style: AppTextStyles.bodySmall.copyWith(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                      color: tokens.textPrimary,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                  TextSpan(
+                                    text: ' tasks due today.',
+                                    style: AppTextStyles.bodySmall.copyWith(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      color: tokens.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 2),
-                          RichText(
-                            text: TextSpan(
-                              children: <InlineSpan>[
-                                TextSpan(
-                                  text: 'You have ',
-                                  style: AppTextStyles.bodySmall.copyWith(
-                                    fontSize: 13,
-                                    color: tokens.textSecondary,
-                                  ),
-                                ),
-                                TextSpan(
-                                  text: '${dueToday.toInt()}',
-                                  style: AppTextStyles.bodySmall.copyWith(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    color: tokens.textPrimary,
-                                  ),
-                                ),
-                                TextSpan(
-                                  text: ' tasks due today.',
-                                  style: AppTextStyles.bodySmall.copyWith(
-                                    fontSize: 13,
-                                    color: tokens.textSecondary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),

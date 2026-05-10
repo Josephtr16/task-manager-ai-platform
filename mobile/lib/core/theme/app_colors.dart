@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 // ─── Legacy class — kept for backward compatibility only.
 // All new code should use AppColorsShared, AppSemanticColors, or AppPriorityColors.
 class AppColors {
-  // Dark mode backgrounds (legacy — prefer AppColorsDark)
   static const darkBgMain      = AppColorsDark.bgBase;
   static const darkBgElevated  = AppColorsDark.bgRaised;
   static const darkBgCard      = AppColorsDark.bgSurface;
@@ -12,7 +11,6 @@ class AppColors {
   static const darkTextMuted     = AppColorsDark.textMuted;
   static const darkBorder        = AppColorsDark.borderSubtle;
 
-  // Light mode backgrounds (legacy — prefer AppColorsLight)
   static const lightBgMain       = AppColorsLight.bgBase;
   static const lightBgElevated   = AppColorsLight.bgRaised;
   static const lightBgCard       = AppColorsLight.bgSurface;
@@ -21,12 +19,9 @@ class AppColors {
   static const lightTextMuted     = AppColorsLight.textMuted;
   static const lightBorder        = AppColorsLight.borderSubtle;
 
-  // ✅ Primary now points to amber — fixes AppColorTokens factories
-  // without touching app_theme.dart
   static const primary     = AppColorsShared.accent;
   static const primaryDark = AppColorsShared.accentDark;
 
-  // Semantic colours (legacy — prefer AppSemanticColors or AppPriorityColors)
   static const success = AppColorsShared.sage;
   static const warning = AppColorsShared.accent;
   static const error   = AppColorsShared.rose;
@@ -35,18 +30,16 @@ class AppColors {
   static const high    = AppColorsShared.accent;
   static const medium  = AppColorsShared.sky;
   static const low     = AppColorsShared.sage;
-
-  // Removed: aiPurple — no longer part of the design system
 }
 
 class AppColorsDark {
-  static const bgBase      = Color(0xFF0A0908);
-  static const bgSurface   = Color(0xFF121110);
-  static const bgRaised    = Color(0xFF1C1A18);
-  static const bgOverlay   = Color(0xFF242220);
-  static const borderSubtle  = Color(0x0FFFF8EB);
-  static const borderMedium  = Color(0x1CFFF8EB);
-  static const borderStrong  = Color(0x33FFF8EB);
+  static const bgBase      = Color(0xFF181614);
+  static const bgSurface   = Color(0xFF1E1E1E);
+  static const bgRaised    = Color(0xFF262626);
+  static const bgOverlay   = Color(0xFF302C28);
+  static const borderSubtle  = Color(0x20FFF8EB);
+  static const borderMedium  = Color(0x33FFF8EB);
+  static const borderStrong  = Color(0x50FFF8EB);
   static const textPrimary   = Color(0xFFF5F0E8);
   static const textSecondary = Color(0xFF8A8070);
   static const textMuted     = Color(0xFF4A4540);

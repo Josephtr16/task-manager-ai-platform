@@ -44,17 +44,12 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 232
   ];
 
   const isActive = (path) => location.pathname === path;
-
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
+  const handleLogout = () => { logout(); navigate('/login'); };
 
   const formatTimeAgo = (dateValue) => {
     const date = new Date(dateValue);
     const now = new Date();
     const diffSeconds = Math.max(1, Math.floor((now - date) / 1000));
-
     if (diffSeconds < 60) return 'just now';
     const diffMinutes = Math.floor(diffSeconds / 60);
     if (diffMinutes < 60) return `${diffMinutes}m ago`;
@@ -66,37 +61,24 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 232
 
   const fetchNotifications = async () => {
     let latestUnreadCount = prevUnreadCountRef.current;
-
     try {
       const response = await notificationsAPI.getNotifications();
       const list = response.data?.notifications || [];
       const unread = response.data?.unreadCount || 0;
-
       latestUnreadCount = unread;
-
       if (unread > prevUnreadCountRef.current) {
         const firstNewUnread = list.find((item) => !item?.read);
         const notificationBody = firstNewUnread?.message || 'You have a new unread notification.';
-
         try {
           if (typeof window !== 'undefined' && 'Notification' in window) {
             let permission = Notification.permission;
-
-            if (permission !== 'granted') {
-              permission = await Notification.requestPermission();
-            }
-
-            if (permission === 'granted') {
-              new Notification('TaskFlow AI', { body: notificationBody });
-            }
+            if (permission !== 'granted') permission = await Notification.requestPermission();
+            if (permission === 'granted') new Notification('Tudu', { body: notificationBody });
           }
         } catch (notificationError) {
           console.warn('Failed to show browser notification:', notificationError);
         }
-
-        // Audio notification beep disabled
       }
-
       setNotifications(list);
       setUnreadCount(unread);
     } catch (error) {
@@ -130,11 +112,7 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 232
 
   useEffect(() => {
     fetchNotifications();
-
-    const intervalId = setInterval(() => {
-      fetchNotifications();
-    }, 60000);
-
+    const intervalId = setInterval(() => { fetchNotifications(); }, 60000);
     return () => clearInterval(intervalId);
   }, []);
 
@@ -154,16 +132,10 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 232
   const renderTextWithMentions = (text) => {
     const rawText = String(text || '');
     const parts = rawText.split(/(@[A-Za-z0-9_.-]+)/g);
-
     return parts.map((part, index) => {
       if (/^@[A-Za-z0-9_.-]+$/.test(part)) {
-        return (
-          <span key={`${part}-${index}`} style={{ color: theme.primary, fontWeight: 800 }}>
-            {part}
-          </span>
-        );
+        return <span key={`${part}-${index}`} style={{ color: theme.primary, fontWeight: 800 }}>{part}</span>;
       }
-
       return <React.Fragment key={`notification-text-${index}`}>{part}</React.Fragment>;
     });
   };
@@ -187,42 +159,11 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 232
     logo: {
       display: 'flex',
       alignItems: 'center',
-      justifyContent: isCollapsed ? 'center' : 'flex-start',
-      gap: isCollapsed ? '0' : '12px',
-      padding: isCollapsed ? '24px 0 20px 0' : '24px 8px 20px 8px',
-      marginBottom: '12px',
-      width: '100%',
-    },
-    logoLeft: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: '12px',
-      overflow: 'visible',
-      minWidth: 0,
-    },
-    logoIcon: {
-      width: '36px',
-      height: '36px',
-      borderRadius: '10px',
-      background: theme.accent,
-      display: 'flex',
-      alignItems: 'center',
       justifyContent: 'center',
-      color: '#fff',
-      fontFamily: '"Fraunces", serif',
-      fontStyle: 'italic',
-      fontSize: '18px',
-      fontWeight: '600',
-      letterSpacing: '-0.02em',
-    },
-    logoText: {
-      fontFamily: '"Geist", sans-serif',
-      fontSize: '13px',
-      fontWeight: '500',
-      color: theme.textPrimary,
-      letterSpacing: '0.01em',
-      whiteSpace: 'nowrap',
-      lineHeight: 1,
+      width: '100%',
+      marginBottom: '30px',
+      overflow: 'hidden',
+      flexShrink: 0,
     },
     collapseButton: {
       display: 'flex',
@@ -269,7 +210,7 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 232
       position: 'relative',
       color: theme.textSecondary,
       outline: 'none',
-      backgroundColor: 'transparent', // Default transparent
+      backgroundColor: 'transparent',
     },
     menuItemActive: {
       color: theme.accent,
@@ -300,7 +241,7 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 232
     },
     userProfile: {
       display: 'flex',
-      alignItems: isCollapsed ? 'center' : 'center',
+      alignItems: 'center',
       justifyContent: isCollapsed ? 'center' : 'space-between',
       flexDirection: isCollapsed ? 'column' : 'row',
       gap: isCollapsed ? '10px' : '12px',
@@ -350,45 +291,6 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 232
       overflow: 'hidden',
       textOverflow: 'ellipsis',
     },
-    bottomActions: {
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '12px',
-    },
-    bottomButton: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: '16px',
-      padding: '0 16px',
-      height: '40px',
-      borderRadius: '8px',
-      border: 'none',
-      cursor: 'pointer',
-      width: '100%',
-      textAlign: 'left',
-      fontSize: '14px',
-      fontWeight: '500',
-      transition: 'all 150ms ease',
-      color: theme.textSecondary,
-      backgroundColor: 'transparent',
-    },
-    logoutButton: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: '16px',
-      padding: '0 16px',
-      height: '40px',
-      borderRadius: '8px',
-      border: 'none',
-      cursor: 'pointer',
-      width: '100%',
-      textAlign: 'left',
-      fontSize: '14px',
-      fontWeight: '500',
-      transition: 'all 150ms ease',
-      backgroundColor: 'transparent',
-      color: theme.error,
-    },
     userActions: {
       display: 'flex',
       gap: isCollapsed ? '8px' : '4px',
@@ -411,10 +313,7 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 232
       outline: 'none',
       fontSize: '16px',
     },
-    bellWrapper: {
-      position: 'relative',
-      display: 'inline-flex',
-    },
+    bellWrapper: { position: 'relative', display: 'inline-flex' },
     badge: {
       position: 'absolute',
       top: '-1px',
@@ -425,7 +324,6 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 232
       backgroundColor: theme.accent,
       color: 'transparent',
       fontSize: '0',
-      fontWeight: '700',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -490,21 +388,9 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 232
       transition: 'transform 150ms ease, box-shadow 150ms ease, border-color 150ms ease',
       position: 'relative',
     },
-    notificationUnread: {
-      backgroundColor: theme.bgRaised,
-    },
-    notificationMessage: {
-      fontSize: '13px',
-      color: theme.textPrimary,
-      margin: 0,
-      lineHeight: 1.45,
-      fontWeight: '500',
-    },
-    notificationMeta: {
-      marginTop: '4px',
-      fontSize: '11px',
-      color: theme.textMuted,
-    },
+    notificationUnread: { backgroundColor: theme.bgRaised },
+    notificationMessage: { fontSize: '13px', color: theme.textPrimary, margin: 0, lineHeight: 1.45, fontWeight: '500' },
+    notificationMeta: { marginTop: '4px', fontSize: '11px', color: theme.textMuted },
     markAllButton: {
       border: `1px solid ${theme.border}`,
       borderRadius: '8px',
@@ -542,7 +428,6 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 232
 
   return (
     <div style={styles.sidebar}>
-      {/* Dynamic Hover Styles */}
       <style>{`
         .sidebar-menu-item .menu-icon {
           background-color: transparent !important;
@@ -566,19 +451,6 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 232
           filter: none !important;
           display: inline !important;
         }
-        .sidebar-menu-item .menu-icon svg circle,
-        .sidebar-menu-item .menu-icon svg ellipse,
-        .sidebar-menu-item .menu-icon svg rect[rx],
-        .sidebar-menu-item .menu-icon svg rect[ry] {
-          fill: none !important;
-          stroke: none !important;
-        }
-        .sidebar-menu-item:focus .menu-icon,
-        .sidebar-menu-item:focus-visible .menu-icon {
-          background-color: transparent !important;
-          outline: none !important;
-          box-shadow: none !important;
-        }
         .sidebar-menu-item:hover {
           background-color: ${theme.bgElevated} !important;
           color: ${theme.textPrimary} !important;
@@ -589,45 +461,29 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 232
           color: ${theme.accent} !important;
           transform: none !important;
         }
-        .sidebar-menu-item:hover .menu-icon {
-          color: ${theme.textPrimary} !important;
-        }
-        .sidebar-menu-item.active .menu-icon {
-          color: ${theme.accent} !important;
-        }
-        .logout-btn:hover {
-          background-color: ${theme.error}15 !important;
-          color: ${theme.error} !important;
-        }
-        .icon-btn:hover {
-          background-color: ${theme.bgElevated} !important;
-          color: ${theme.primary} !important;
-        }
-        .icon-btn.logout:hover {
-          color: ${theme.error} !important;
-        }
-        .sidebar-edge-toggle:hover {
-          color: ${theme.primary} !important;
-          transform: translateY(-50%) scale(1.04);
-        }
-        .notif-item:hover {
-          transform: translateY(-1px);
-          box-shadow: ${theme.shadows.md} !important;
-          border-color: ${theme.borderMedium} !important;
-        }
-        .notif-mark-all:hover {
-          background-color: ${theme.type === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'} !important;
-        }
+        .sidebar-menu-item:hover .menu-icon { color: ${theme.textPrimary} !important; }
+        .sidebar-menu-item.active .menu-icon { color: ${theme.accent} !important; }
+        .logout-btn:hover { background-color: ${theme.error}15 !important; color: ${theme.error} !important; }
+        .icon-btn:hover { background-color: ${theme.bgElevated} !important; color: ${theme.primary} !important; }
+        .icon-btn.logout:hover { color: ${theme.error} !important; }
+        .sidebar-edge-toggle:hover { color: ${theme.primary} !important; transform: translateY(-50%) scale(1.04); }
+        .notif-item:hover { transform: translateY(-1px); box-shadow: ${theme.shadows.md} !important; border-color: ${theme.borderMedium} !important; }
+        .notif-mark-all:hover { background-color: ${theme.type === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'} !important; }
       `}</style>
 
       {/* Logo */}
       <div style={styles.logo}>
-            <div style={styles.logoLeft}>
-              <div style={styles.logoIcon}>
-                TF
-              </div>
-              {!isCollapsed && <span style={styles.logoText}>{tt('app.name', 'TaskFlow AI')}</span>}
-            </div>
+        <img
+          src="/tudu-logo.png"
+          alt="Tudu"
+          style={{
+            width: isCollapsed ? '32px' : '120px',
+            height: 'auto',
+            display: 'block',
+            objectFit: 'contain',
+            transition: 'width 200ms ease',
+          }}
+        />
       </div>
 
       <button
@@ -649,16 +505,10 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 232
             title={isCollapsed ? tt(item.key, menuLabelFallbacks[item.key] || 'Menu item') : ''}
             style={{
               ...styles.menuItem,
-              ...(isActive(item.path) ? styles.menuItemActive : styles.menuItemInactive),
+              ...(isActive(item.path) ? styles.menuItemActive : {}),
             }}
           >
-            <span
-              className="menu-icon"
-              style={{
-                ...styles.menuIcon,
-                color: isActive(item.path) ? theme.primary : theme.textSecondary
-              }}
-            >
+            <span className="menu-icon" style={{ ...styles.menuIcon, color: isActive(item.path) ? theme.primary : theme.textSecondary }}>
               {item.icon}
             </span>
             <span style={styles.menuLabel}>{tt(item.key, menuLabelFallbacks[item.key] || 'Menu item')}</span>
@@ -668,53 +518,30 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 232
 
       {/* Bottom Section */}
       <div style={styles.bottom}>
-        {/* User Profile */}
         <div style={styles.userProfile}>
-          <div style={styles.avatar}>
-            {user?.name?.charAt(0).toUpperCase()}
-          </div>
+          <div style={styles.avatar}>{user?.name?.charAt(0).toUpperCase()}</div>
           <div style={styles.userInfo}>
             <p style={styles.userName}>{user?.name}</p>
             <p style={styles.userEmail}>{user?.email}</p>
           </div>
           <div style={styles.userActions}>
-            <button
-              onClick={() => setIsNotificationOpen((prev) => !prev)}
-              style={styles.iconButton}
-              className="icon-btn"
-              title={tt('notifications.title', 'Notifications')}
-            >
+            <button onClick={() => setIsNotificationOpen((prev) => !prev)} style={styles.iconButton} className="icon-btn" title={tt('notifications.title', 'Notifications')}>
               <span style={styles.bellWrapper}>
                 <FaBell />
-                {unreadCount > 0 && (
-                    <span style={styles.badge} aria-hidden="true" />
-                )}
+                {unreadCount > 0 && <span style={styles.badge} aria-hidden="true" />}
               </span>
             </button>
-            <button
-              onClick={() => navigate('/settings')}
-              style={styles.iconButton}
-              className="icon-btn"
-              title={tt('nav.settings', 'Settings')}
-            >
+            <button onClick={() => navigate('/settings')} style={styles.iconButton} className="icon-btn" title={tt('nav.settings', 'Settings')}>
               <FaCog />
             </button>
-            <button
-              onClick={handleLogout}
-              style={styles.iconButton}
-              className="icon-btn logout"
-              title={tt('auth.logout', 'Log out')}
-            >
+            <button onClick={handleLogout} style={styles.iconButton} className="icon-btn logout" title={tt('auth.logout', 'Log out')}>
               <FaSignOutAlt />
             </button>
           </div>
         </div>
       </div>
 
-      <div
-        style={styles.notificationPanelBackdrop}
-        onClick={() => setIsNotificationOpen(false)}
-      />
+      <div style={styles.notificationPanelBackdrop} onClick={() => setIsNotificationOpen(false)} />
 
       <aside style={styles.notificationPanel}>
         <div style={styles.notificationHeader}>
@@ -724,17 +551,9 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 232
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <button onClick={handleMarkAllRead} style={styles.markAllButton} className="notif-mark-all">{tt('notifications.markAllRead', 'Mark all read')}</button>
-            <button
-              onClick={() => setIsNotificationOpen(false)}
-              style={styles.iconButton}
-              className="icon-btn"
-              title={tt('common.close', 'Close')}
-            >
-              <FaTimes />
-            </button>
+            <button onClick={() => setIsNotificationOpen(false)} style={styles.iconButton} className="icon-btn" title={tt('common.close', 'Close')}><FaTimes /></button>
           </div>
         </div>
-
         <div style={styles.notificationList}>
           {notifications.length === 0 ? (
             <div style={styles.emptyState}>{tt('notifications.empty', 'No notifications yet')}</div>
@@ -742,17 +561,9 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 232
             notifications.map((notification, index) => (
               <div
                 key={notification._id}
-                style={{
-                  ...styles.notificationItem,
-                  ...(notification.read ? {} : styles.notificationUnread),
-                  transitionDelay: `${Math.min(index * 20, 160)}ms`,
-                }}
+                style={{ ...styles.notificationItem, ...(notification.read ? {} : styles.notificationUnread), transitionDelay: `${Math.min(index * 20, 160)}ms` }}
                 className="notif-item"
-                onClick={() => {
-                  if (!notification.read) {
-                    handleMarkRead(notification._id);
-                  }
-                }}
+                onClick={() => { if (!notification.read) handleMarkRead(notification._id); }}
               >
                 <p style={styles.notificationMessage}>{renderTextWithMentions(notification.message)}</p>
                 <div style={styles.notificationMeta}>{formatTimeAgo(notification.createdAt)}</div>

@@ -8,7 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { borderRadius } from '../theme';
 import { formatTaskDuration } from '../utils/formatTaskDuration';
-import { FaArrowLeft, FaCalendarAlt, FaTrash, FaPlus, FaCheck, FaClock, FaFlag, FaTag, FaShare, FaUserPlus, FaRobot, FaEllipsisV } from 'react-icons/fa';
+import { FaArrowLeft, FaCalendarAlt, FaTrash, FaPlus, FaCheck, FaClock, FaFlag, FaTag, FaShare, FaUserPlus, FaRobot, FaEllipsisV, FaTimes } from 'react-icons/fa';
 import AddTaskToProjectModal from '../components/Projects/AddTaskToProjectModal';
 import TaskDetailModal from '../components/Tasks/TaskDetailModal';
 import AIProjectBreakdownModal from '../components/Projects/AIProjectBreakdownModal';
@@ -40,6 +40,7 @@ const ProjectDetailPage = () => {
     const [projectEstimatedHoursDraft, setProjectEstimatedHoursDraft] = useState('');
     const [isSavingProjectSettings, setIsSavingProjectSettings] = useState(false);
     const [shareEmail, setShareEmail] = useState('');
+    const [showSharePanel, setShowSharePanel] = useState(false);
     const [showDependencyGraph, setShowDependencyGraph] = useState(false);
     const [isGeneratingDependencies, setIsGeneratingDependencies] = useState(false);
 
@@ -352,6 +353,28 @@ const ProjectDetailPage = () => {
             }
 
             await loadProjectDetails();
+
+            // Trigger auto-prioritization so new tasks get scored immediately
+            try {
+                const tasksRes = await tasksAPI.getTasks({ status: 'all', limit: 100 });
+                const allTasks = tasksRes?.data?.tasks || [];
+                const scorable = allTasks.filter(t => !['done', 'completed'].includes(t.status));
+                if (scorable.length > 0) {
+                    const payload = scorable.map(t => ({
+                        id: String(t._id || t.id),
+                        title: t.title,
+                        priority: t.priority,
+                        status: t.status,
+                        deadline: t.deadline,
+                        estimated_minutes: t.estimatedDuration,
+                        category: t.category,
+                    }));
+                    await aiService.prioritize(payload);
+                }
+            } catch (e) {
+                console.warn('Auto-prioritization after AI task creation failed:', e);
+            }
+
             setShowAIProjectBreakdown(false);
             showNotification('success', 'Accepted AI tasks added to project successfully.');
         } catch (error) {
@@ -516,6 +539,19 @@ const ProjectDetailPage = () => {
             justifyContent: 'center',
             cursor: 'pointer',
             boxShadow: theme.shadows.neumorphic,
+        },
+        shareToggleButton: {
+            border: `1px solid ${theme.border}`,
+            backgroundColor: 'transparent',
+            color: theme.textPrimary,
+            borderRadius: borderRadius.md,
+            padding: '10px 14px',
+            fontSize: '14px',
+            fontWeight: '700',
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
         },
         metaGrid: {
             display: 'grid',
@@ -741,11 +777,37 @@ const ProjectDetailPage = () => {
             boxShadow: theme.shadows.neumorphic,
         },
         shareSection: {
-            backgroundColor: theme.bgMain,
+            backgroundColor: theme.bgCard,
             borderRadius: borderRadius.lg,
             padding: '24px',
             boxShadow: theme.shadows.neumorphic,
             marginBottom: '32px',
+            border: `1px solid ${theme.border}`,
+            position: 'relative',
+        },
+        shareModalBackdrop: {
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.6)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 1000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px',
+        },
+        shareModalCard: {
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 1001,
+            backgroundColor: theme.bgCard,
+            borderRadius: borderRadius.lg,
+            padding: '28px',
+            width: '520px',
+            maxWidth: '90vw',
+            boxShadow: theme.shadows.card || theme.shadows.neumorphic,
             border: `1px solid ${theme.border}`,
         },
         shareSectionTitle: {
@@ -787,6 +849,17 @@ const ProjectDetailPage = () => {
             alignItems: 'center',
             gap: '8px',
             whiteSpace: 'nowrap',
+        },
+        shareCloseButton: {
+            position: 'absolute',
+            top: '12px',
+            right: '12px',
+            background: 'transparent',
+            border: 'none',
+            color: theme.textSecondary,
+            cursor: 'pointer',
+            fontSize: '16px',
+            padding: '6px',
         },
         sharedInfo: {
             fontSize: '14px',
@@ -1053,6 +1126,16 @@ const ProjectDetailPage = () => {
                                     <FaTrash /> Delete Project
                                 </button>
                             )}
+                            {isOwner && (
+                                <button
+                                    type="button"
+                                    onClick={() => setShowSharePanel((s) => !s)}
+                                    style={styles.shareToggleButton}
+                                    title="Share Project"
+                                >
+                                    <FaShare /> Share Project
+                                </button>
+                            )}
                         </div>
                     </div>
 
@@ -1097,83 +1180,177 @@ const ProjectDetailPage = () => {
                     </div>
                 </div>
 
-                {isOwner ? (
-                    <div style={styles.shareSection}>
-                        <h3 style={styles.shareSectionTitle}><FaShare /> Share Project</h3>
-                        <div style={styles.shareInputContainer}>
-                            <input
-                                type="email"
-                                value={shareEmail}
-                                onChange={(e) => setShareEmail(e.target.value)}
-                                placeholder="Enter email to share with"
-                                style={styles.shareInput}
-                                onKeyPress={(e) => e.key === 'Enter' && handleShareProject()}
-                            />
-                            <button onClick={handleShareProject} style={styles.shareButton}><FaUserPlus /> Invite</button>
-                        </div>
-
-                        <>
-                            <p style={styles.sharedInfo}>Pending invites ({project.pendingInvites?.length || 0})</p>
-                            <div style={styles.collaboratorsList}>
-                                {project.pendingInvites?.length ? (
-                                    project.pendingInvites.map((invite) => (
-                                        <div key={`invite-${invite.userId}`} style={styles.collaboratorRow} className="collaborator-row">
-                                            <span>{invite.name || invite.email || 'Pending user'} ({invite.email || 'no-email'})</span>
-                                        </div>
-                                    ))
-                                ) : (
-                                    <div style={styles.collaboratorRow} className="collaborator-row">
-                                        <span>No pending invites yet.</span>
-                                    </div>
-                                )}
+                {showSharePanel && (
+                    <div
+                        style={styles.shareModalBackdrop}
+                        onClick={() => setShowSharePanel(false)}
+                        role="dialog"
+                        aria-modal="true"
+                    >
+                        <div
+                            style={styles.shareModalCard}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                                <h3 style={styles.shareSectionTitle}><FaShare /> Share Project</h3>
+                                <button
+                                    type="button"
+                                    aria-label="Close share modal"
+                                    onClick={() => setShowSharePanel(false)}
+                                    style={styles.shareCloseButton}
+                                >
+                                    <FaTimes />
+                                </button>
                             </div>
-                        </>
 
-                        <>
-                            <p style={styles.sharedInfo}>Collaborators ({project.collaborators?.length || 0})</p>
-                            <div style={styles.collaboratorsList}>
-                                {project.collaborators?.length ? (
-                                    project.collaborators.map((sharedUser) => (
-                                        <div key={`shared-${sharedUser.userId}`} style={styles.collaboratorRow} className="collaborator-row">
-                                            <span>{sharedUser.name || 'User'} ({sharedUser.email || 'no-email'})</span>
-                                            <div style={styles.collaboratorActions}>
-                                                <div style={{ flex: 1, minWidth: '120px' }}>
-                                                    <CustomPermissionSelect
-                                                        value={sharedUser.permission || 'complete'}
-                                                        onChange={(permission) => handleChangeCollaboratorPermission(sharedUser.userId, permission)}
-                                                    />
+                            {isOwner ? (
+                                <>
+                                    <div style={styles.shareInputContainer}>
+                                        <input
+                                            type="email"
+                                            value={shareEmail}
+                                            onChange={(e) => setShareEmail(e.target.value)}
+                                            placeholder="Enter email to share with"
+                                            style={styles.shareInput}
+                                            onKeyPress={(e) => e.key === 'Enter' && handleShareProject()}
+                                        />
+                                        <button onClick={handleShareProject} style={styles.shareButton}><FaUserPlus /> Invite</button>
+                                    </div>
+
+                                    <p style={styles.sharedInfo}>Pending invites ({project.pendingInvites?.length || 0})</p>
+                                    <div style={styles.collaboratorsList}>
+                                        {project.pendingInvites?.length ? (
+                                            project.pendingInvites.map((invite) => (
+                                                <div key={`invite-${invite.userId}`} style={styles.collaboratorRow} className="collaborator-row">
+                                                    <span>{invite.name || invite.email || 'Pending user'} ({invite.email || 'no-email'})</span>
                                                 </div>
-                                                {String(sharedUser.userId) !== String(user?.id) && (
-                                                    <button
-                                                        type="button"
-                                                        style={styles.removeShareButton}
-                                                        className="remove-btn"
-                                                        onClick={() => handleRemoveSharedUser(sharedUser.userId)}
-                                                    >
-                                                        Remove
-                                                    </button>
-                                                )}
+                                            ))
+                                        ) : (
+                                            <div style={styles.collaboratorRow} className="collaborator-row">
+                                                <span>No pending invites yet.</span>
                                             </div>
-                                        </div>
-                                    ))
-                                ) : (
-                                    <div style={styles.collaboratorRow} className="collaborator-row">
-                                        <span>No collaborators yet. Invite a user, then they must accept before permissions appear.</span>
+                                        )}
                                     </div>
-                                )}
-                            </div>
-                        </>
-                    </div>
-                ) : (
-                    <div style={styles.shareSection}>
-                        <h3 style={styles.shareSectionTitle}><FaShare /> Shared Project</h3>
-                        <p style={styles.readOnlyNotice}>
-                            Your permission: {myPermission}. {myPermission === 'view' && 'You can view project tasks only.'}
-                            {myPermission === 'complete' && ' You can complete tasks and add comments.'}
-                            {myPermission === 'edit' && ' You can add, edit, and delete project tasks.'}
-                        </p>
+
+                                    <p style={styles.sharedInfo}>Collaborators ({project.collaborators?.length || 0})</p>
+                                    <div style={styles.collaboratorsList}>
+                                        {project.collaborators?.length ? (
+                                            project.collaborators.map((sharedUser) => (
+                                                <div key={`shared-${sharedUser.userId}`} style={styles.collaboratorRow} className="collaborator-row">
+                                                    <span>{sharedUser.name || 'User'} ({sharedUser.email || 'no-email'})</span>
+                                                    <div style={styles.collaboratorActions}>
+                                                        <div style={{ flex: 1, minWidth: '120px' }}>
+                                                            <CustomPermissionSelect
+                                                                value={sharedUser.permission || 'complete'}
+                                                                onChange={(permission) => handleChangeCollaboratorPermission(sharedUser.userId, permission)}
+                                                            />
+                                                        </div>
+                                                        {String(sharedUser.userId) !== String(user?.id) && (
+                                                            <button
+                                                                type="button"
+                                                                style={styles.removeShareButton}
+                                                                className="remove-btn"
+                                                                onClick={() => handleRemoveSharedUser(sharedUser.userId)}
+                                                            >
+                                                                Remove
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div style={styles.collaboratorRow} className="collaborator-row">
+                                                <span>No collaborators yet. Invite a user, then they must accept before permissions appear.</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <h4 style={styles.shareSectionTitle}><FaShare /> Shared Project</h4>
+                                    <p style={styles.readOnlyNotice}>
+                                        Your permission: {myPermission}. {myPermission === 'view' && 'You can view project tasks only.'}
+                                        {myPermission === 'complete' && ' You can complete tasks and add comments.'}
+                                        {myPermission === 'edit' && ' You can add, edit, and delete project tasks.'}
+                                    </p>
+                                </>
+                            )}
+                        </div>
                     </div>
                 )}
+
+                {/* Task Dependency Graph Section (moved up) */}
+                <div style={{
+                    backgroundColor: theme.bgCard || theme.bgMain,
+                    borderRadius: borderRadius.lg,
+                    padding: '24px',
+                    boxShadow: theme.shadows.neumorphic,
+                    marginBottom: '32px',
+                    border: `1px solid ${theme.border}`,
+                }}>
+                    <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: '12px',
+                        marginBottom: showDependencyGraph ? '16px' : 0,
+                    }}>
+                        <button
+                            onClick={() => setShowDependencyGraph(!showDependencyGraph)}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                background: 'none',
+                                border: 'none',
+                                fontSize: '18px',
+                                fontWeight: '700',
+                                color: theme.textPrimary,
+                                cursor: 'pointer',
+                                padding: 0,
+                            }}
+                        >
+                            <span style={{
+                                display: 'inline-block',
+                                transform: showDependencyGraph ? 'rotate(90deg)' : 'rotate(0deg)',
+                                transition: 'transform 0.3s ease',
+                            }}>▶</span>
+                            Task Dependencies
+                        </button>
+                        {canGenerateTasks && (
+                            <button
+                                type="button"
+                                onClick={handleAIGenerateDependencies}
+                                disabled={isGeneratingDependencies}
+                                title="Generate dependencies with AI"
+                                style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    background: `linear-gradient(90deg, ${theme.primary}, ${theme.primary}CC)`,
+                                    color: '#fff',
+                                    border: 'none',
+                                    padding: '10px 14px',
+                                    borderRadius: borderRadius.md,
+                                    cursor: isGeneratingDependencies ? 'not-allowed' : 'pointer',
+                                    fontWeight: 700,
+                                    fontSize: '13px',
+                                    boxShadow: '0 8px 20px rgba(0,0,0,0.18)',
+                                    transition: 'transform 0.12s ease, box-shadow 0.12s ease',
+                                }}
+                            >
+                                <FaRobot />
+                                {isGeneratingDependencies ? 'Generating' : 'AI Generate'}
+                            </button>
+                        )}
+                    </div>
+
+                    {showDependencyGraph && (
+                        <div style={{ marginTop: '12px' }}>
+                            <TaskDependencyGraph tasks={tasks} links={project.dependencyLinks || []} />
+                        </div>
+                    )}
+                </div>
 
                 <div style={styles.sectionHeader}>
                     <h2 style={styles.sectionTitle}>Project Tasks</h2>
@@ -1268,73 +1445,7 @@ const ProjectDetailPage = () => {
                     )}
                 </div>
 
-                {/* Task Dependency Graph Section */}
-                <div style={{
-                    backgroundColor: theme.bgCard || theme.bgMain,
-                    borderRadius: borderRadius.lg,
-                    padding: '24px',
-                    boxShadow: theme.shadows.neumorphic,
-                    marginBottom: '32px',
-                    border: `1px solid ${theme.border}`,
-                }}>
-                    <div style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        gap: '12px',
-                        marginBottom: showDependencyGraph ? '16px' : 0,
-                    }}>
-                        <button
-                            onClick={() => setShowDependencyGraph(!showDependencyGraph)}
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                background: 'none',
-                                border: 'none',
-                                fontSize: '18px',
-                                fontWeight: '700',
-                                color: theme.textPrimary,
-                                cursor: 'pointer',
-                                padding: 0,
-                            }}
-                        >
-                            <span style={{
-                                display: 'inline-block',
-                                transform: showDependencyGraph ? 'rotate(90deg)' : 'rotate(0deg)',
-                                transition: 'transform 0.3s ease',
-                            }}>▶</span>
-                            Task Dependencies
-                        </button>
-                        {canGenerateTasks && (
-                            <button
-                                type="button"
-                                onClick={handleAIGenerateDependencies}
-                                disabled={isGeneratingDependencies}
-                                style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '8px',
-                                    border: `1px solid ${theme.primary}55`,
-                                    backgroundColor: `${theme.primary}14`,
-                                    color: theme.primary,
-                                    borderRadius: borderRadius.md,
-                                    padding: '8px 12px',
-                                    fontSize: '13px',
-                                    fontWeight: '700',
-                                    cursor: isGeneratingDependencies ? 'not-allowed' : 'pointer',
-                                    opacity: isGeneratingDependencies ? 0.7 : 1,
-                                }}
-                            >
-                                <FaRobot />
-                                {isGeneratingDependencies ? 'Generating...' : 'AI Generate'}
-                            </button>
-                        )}
-                    </div>
-                    {showDependencyGraph && (
-                        <TaskDependencyGraph tasks={tasks} />
-                    )}
-                </div>
+                
 
                 {canCreateTasks && (
                     <AddTaskToProjectModal

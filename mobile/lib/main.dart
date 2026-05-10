@@ -7,5 +7,13 @@ import 'app.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SharedPreferences.getInstance();
-  runApp(const ProviderScope(child: TaskFlowApp()));
+  final view = WidgetsBinding.instance.platformDispatcher.views.first;
+  runApp(
+    MediaQuery(
+      data: MediaQueryData.fromView(view).copyWith(
+        textScaler: TextScaler.noScaling,
+      ),
+      child: const ProviderScope(child: TaskFlowApp()),
+    ),
+  );
 }

@@ -5,9 +5,9 @@ import 'package:intl/intl.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/gradient_background.dart';
-import '../../../core/widgets/tf_page_header.dart';
 import '../../tasks/models/task_model.dart';
 import '../../tasks/providers/tasks_provider.dart';
 import '../providers/focus_provider.dart';
@@ -25,11 +25,9 @@ class FocusScreen extends ConsumerWidget {
     final hours = seconds ~/ 3600;
     final minutes = (seconds % 3600) ~/ 60;
     final remainingSeconds = seconds % 60;
-
     if (hours > 0) {
       return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
     }
-
     return '${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
   }
 
@@ -42,16 +40,11 @@ class FocusScreen extends ConsumerWidget {
     };
   }
 
-  String? _taskId(Map? task) {
-    final value = task?['id'];
-    return value?.toString();
-  }
+  String? _taskId(Map? task) => task?['id']?.toString();
 
   String _formatTaskDueDate(TaskModel task) {
     final deadline = task.deadline;
-    if (deadline == null) {
-      return '';
-    }
+    if (deadline == null) return '';
     return DateFormat('MMM d, yyyy').format(deadline);
   }
 
@@ -59,16 +52,15 @@ class FocusScreen extends ConsumerWidget {
     if (state.technique == FocusTechnique.simpleTimer) {
       return ((state.elapsedSeconds % 3600) / 3600).clamp(0.0, 1.0).toDouble();
     }
-
     if (state.pomodoroPhase == PomodoroPhase.breakTime) {
       return (1 - (state.pomodoroSecondsLeft / 300)).clamp(0.0, 1.0).toDouble();
     }
-
     return (1 - (state.pomodoroSecondsLeft / 1500)).clamp(0.0, 1.0).toDouble();
   }
 
   Color _progressColor(FocusState state) {
-    if (state.technique == FocusTechnique.pomodoro && state.pomodoroPhase == PomodoroPhase.breakTime) {
+    if (state.technique == FocusTechnique.pomodoro &&
+        state.pomodoroPhase == PomodoroPhase.breakTime) {
       return AppSemanticColors.sage;
     }
     return AppSemanticColors.primary;
@@ -82,24 +74,8 @@ class FocusScreen extends ConsumerWidget {
   }
 
   String _phaseLabel(FocusState state) {
-    if (state.technique == FocusTechnique.simpleTimer) {
-      return 'ELAPSED';
-    }
+    if (state.technique == FocusTechnique.simpleTimer) return 'ELAPSED';
     return state.pomodoroPhase == PomodoroPhase.breakTime ? 'BREAK' : 'WORK';
-  }
-
-  Widget _priorityChip(String priority) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: AppSemanticColors.primary.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        priority.toUpperCase(),
-        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppSemanticColors.primary),
-      ),
-    );
   }
 
   Widget _techniqueCard({
@@ -114,30 +90,74 @@ class FocusScreen extends ConsumerWidget {
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
-        child: Container(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: selected ? AppSemanticColors.accentDim : tokens.bgSurface,
-            borderRadius: BorderRadius.circular(14),
+            color: selected
+                ? AppSemanticColors.primary.withValues(alpha: 0.08)
+                : tokens.bgSurface,
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: selected ? AppSemanticColors.accentGlow : tokens.borderSubtle,
-              width: selected ? 1.5 : 0.5,
+              color: selected
+                  ? AppSemanticColors.primary.withValues(alpha: 0.4)
+                  : tokens.borderSubtle,
+              width: selected ? 1.5 : 0.8,
             ),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: AppSemanticColors.primary.withValues(alpha: 0.08),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Icon(icon, size: 18, color: selected ? AppSemanticColors.primary : tokens.textPrimary),
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: selected
+                      ? AppSemanticColors.primary.withValues(alpha: 0.12)
+                      : tokens.bgRaised,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  icon,
+                  size: 17,
+                  color: selected
+                      ? AppSemanticColors.primary
+                      : tokens.textSecondary,
+                ),
+              ),
               const SizedBox(height: 10),
               Text(
                 title,
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: tokens.textPrimary),
+                style: AppTextStyles.bodySmall.copyWith(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: tokens.textPrimary,
+                ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 3),
               Text(
                 subtitle,
-                style: TextStyle(fontSize: 11, color: tokens.textMuted),
+                style: AppTextStyles.bodySmall.copyWith(
+                  fontSize: 13,
+                  color: tokens.textMuted,
+                  height: 1.3,
+                ),
               ),
             ],
           ),
@@ -155,20 +175,25 @@ class FocusScreen extends ConsumerWidget {
       onPressed: onPressed,
       style: OutlinedButton.styleFrom(
         foregroundColor: color,
-        side: BorderSide(color: color),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+        side: BorderSide(color: color.withValues(alpha: 0.6), width: 1.2),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
       ),
       child: Text(label),
     );
   }
 
-  Widget _preSessionView(BuildContext context, WidgetRef ref, FocusState state) {
+  Widget _preSessionView(
+      BuildContext context, WidgetRef ref, FocusState state) {
     final tokens = Theme.of(context).extension<AppColorTokens>()!;
     final notifier = ref.read(focusProvider.notifier);
     final tasksAsync = ref.watch(tasksProvider);
-    final activeTasks = tasksAsync.valueOrNull?.tasks.where((task) => task.status.toLowerCase() != 'done').take(6).toList() ?? <TaskModel>[];
+    final activeTasks = tasksAsync.valueOrNull?.tasks
+            .where((task) => task.status.toLowerCase() != 'done')
+            .take(6)
+            .toList() ??
+        <TaskModel>[];
     final selectedTaskId = _taskId(state.selectedTask);
 
     return Scaffold(
@@ -179,126 +204,233 @@ class FocusScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 const SizedBox(height: 4),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16),
-                  child: TfPageHeader(
-                    title: 'Focus Mode',
-                    subtitle: 'Pick a task and start a session',
-                  ),
-                ),
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: tokens.bgSurface,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: tokens.borderSubtle, width: 0.5),
-                  ),
-                  child: Column(
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+                  child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
                     children: <Widget>[
-                      const Text(
-                        'Task Selector',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                      ),
-                      const SizedBox(height: 10),
-                      if (tasksAsync.isLoading)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 18),
-                          child: Center(child: CircularProgressIndicator()),
-                        )
-                      else if (tasksAsync.hasError)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          child: Text(
-                            'Unable to load tasks.',
-                            style: TextStyle(fontSize: 12, color: tokens.textMuted),
-                          ),
-                        )
-                      else if (activeTasks.isEmpty)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          child: Text(
-                            'No active tasks available.',
-                            style: TextStyle(fontSize: 12, color: tokens.textMuted),
-                          ),
-                        )
-                      else
-                        ListView.separated(
-                          itemCount: activeTasks.length,
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          separatorBuilder: (_, __) => const SizedBox(height: 8),
-                          itemBuilder: (context, index) {
-                            final task = activeTasks[index];
-                            final taskSelection = _taskSelection(task);
-                            final isSelected = task.id == selectedTaskId;
-                            final isAIPick = index == 0;
-                            final hasDueDate = task.deadline != null;
-
-                            return GestureDetector(
-                              onTap: () => notifier.selectTask(isSelected ? null : taskSelection),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                                decoration: BoxDecoration(
-                                  color: isSelected ? AppSemanticColors.accentDim : tokens.bgSurface,
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(
-                                    color: isSelected ? AppSemanticColors.accentGlow : tokens.borderSubtle,
-                                    width: isSelected ? 1.5 : 0.5,
-                                  ),
-                                ),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: <Widget>[
-                                    Row(
-                                      children: <Widget>[
-                                        Expanded(
-                                          child: Text(
-                                            task.title,
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: tokens.textPrimary),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        _priorityChip(task.priority),
-                                        if (isAIPick) ...<Widget>[
-                                          const SizedBox(width: 8),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                            decoration: BoxDecoration(
-                                              color: AppSemanticColors.accentDim,
-                                              borderRadius: BorderRadius.circular(999),
-                                            ),
-                                            child: const Text(
-                                              'AI Pick',
-                                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppSemanticColors.accentDark),
-                                            ),
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                    if (hasDueDate) ...<Widget>[
-                                      const SizedBox(height: 6),
-                                      Text(
-                                        'Due ${_formatTaskDueDate(task)}',
-                                        style: TextStyle(fontSize: 11, color: tokens.textMuted),
-                                      ),
-                                    ],
-                                  ],
-                                ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            Text(
+                              'Focus Mode',
+                              style: GoogleFonts.dmSerifDisplay(
+                                fontSize: 34,
+                                fontWeight: FontWeight.w700,
+                                height: 1.0,
+                                color: tokens.textPrimary,
                               ),
-                            );
-                          },
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Pick a task and start a session',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                    fontSize: 14,
+                                    color: tokens.textSecondary,
+                                    height: 1.25,
+                                  ),
+                            ),
+                          ],
                         ),
+                      ),
                     ],
                   ),
                 ),
-                Container(
-                  margin: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  child: Container(
+                    padding: const EdgeInsets.all(13),
+                    decoration: BoxDecoration(
+                      color: tokens.bgSurface,
+                      borderRadius: BorderRadius.circular(20),
+                      border:
+                          Border.all(color: tokens.borderSubtle, width: 0.8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.04),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        Row(
+                          children: <Widget>[
+                            Container(
+                              width: 28,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                color: AppSemanticColors.primary
+                                    .withValues(alpha: 0.10),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(
+                                Icons.assignment_turned_in_outlined,
+                                size: 15,
+                                color: AppSemanticColors.primary,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Task Selector',
+                              style: AppTextStyles.bodySmall.copyWith(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w600,
+                                color: tokens.textPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        if (tasksAsync.isLoading)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 18),
+                            child: Center(child: CircularProgressIndicator()),
+                          )
+                        else if (tasksAsync.hasError)
+                          Text(
+                            'Unable to load tasks.',
+                            style: AppTextStyles.bodySmall.copyWith(
+                                fontSize: 12, color: tokens.textMuted),
+                          )
+                        else if (activeTasks.isEmpty)
+                          Text(
+                            'No active tasks available.',
+                            style: AppTextStyles.bodySmall.copyWith(
+                                fontSize: 12, color: tokens.textMuted),
+                          )
+                        else
+                          ListView.separated(
+                            itemCount: activeTasks.length,
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 6),
+                            itemBuilder: (context, index) {
+                              final task = activeTasks[index];
+                              final taskSelection = _taskSelection(task);
+                              final isSelected = task.id == selectedTaskId;
+                              final isAIPick = index == 0;
+                              final hasDueDate = task.deadline != null;
+
+                              return GestureDetector(
+                                onTap: () => notifier.selectTask(
+                                    isSelected ? null : taskSelection),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 180),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 11,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? AppSemanticColors.primary
+                                            .withValues(alpha: 0.08)
+                                        : tokens.bgRaised,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? AppSemanticColors.primary
+                                              .withValues(alpha: 0.35)
+                                          : tokens.borderSubtle,
+                                      width: isSelected ? 1.5 : 0.8,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: <Widget>[
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: <Widget>[
+                                            Text(
+                                              task.title,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: AppTextStyles.bodySmall
+                                                  .copyWith(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w600,
+                                                color: tokens.textPrimary,
+                                              ),
+                                            ),
+                                            if (hasDueDate) ...<Widget>[
+                                              const SizedBox(height: 3),
+                                              Text(
+                                                'Due ${_formatTaskDueDate(task)}',
+                                                style: AppTextStyles.bodySmall
+                                                    .copyWith(
+                                                  fontSize: 13,
+                                                  color: tokens.textMuted,
+                                                ),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 7, vertical: 3),
+                                        decoration: BoxDecoration(
+                                          color: AppSemanticColors.primary
+                                              .withValues(alpha: 0.10),
+                                          borderRadius:
+                                              BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          task.priority.toUpperCase(),
+                                          style:
+                                              AppTextStyles.labelSmall.copyWith(
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.w800,
+                                            color: AppSemanticColors.primary,
+                                          ),
+                                        ),
+                                      ),
+                                      if (isAIPick) ...<Widget>[
+                                        const SizedBox(width: 6),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 7, vertical: 3),
+                                          decoration: BoxDecoration(
+                                            color: AppSemanticColors.primary
+                                                .withValues(alpha: 0.15),
+                                            borderRadius:
+                                                BorderRadius.circular(6),
+                                          ),
+                                          child: Text(
+                                            'AI Pick',
+                                            style: AppTextStyles.labelSmall
+                                                .copyWith(
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.w800,
+                                              color: AppSemanticColors.primary,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Row(
                     children: <Widget>[
                       _techniqueCard(
@@ -308,7 +440,8 @@ class FocusScreen extends ConsumerWidget {
                         icon: Icons.timer_outlined,
                         title: 'Simple Timer',
                         subtitle: 'Track elapsed time freely',
-                        onTap: () => notifier.setTechnique(FocusTechnique.simpleTimer),
+                        onTap: () =>
+                            notifier.setTechnique(FocusTechnique.simpleTimer),
                       ),
                       const SizedBox(width: 10),
                       _techniqueCard(
@@ -318,36 +451,60 @@ class FocusScreen extends ConsumerWidget {
                         icon: Icons.track_changes_outlined,
                         title: 'Pomodoro 25/5',
                         subtitle: '25-min sprints with 5-min break',
-                        onTap: () => notifier.setTechnique(FocusTechnique.pomodoro),
+                        onTap: () =>
+                            notifier.setTechnique(FocusTechnique.pomodoro),
                       ),
                     ],
                   ),
                 ),
-                Container(
-                  margin: const EdgeInsets.fromLTRB(16, 20, 16, 0),
-                  width: double.infinity,
+                const SizedBox(height: 16),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Opacity(
                     opacity: state.selectedTask == null ? 0.5 : 1,
-                    child: FilledButton.icon(
-                      onPressed: state.selectedTask == null ? null : notifier.start,
-                      icon: const Icon(Icons.bolt_rounded, color: Colors.white),
-                      label: const Text(
-                        'Start Focus Session',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppSemanticColors.primary,
-                        disabledBackgroundColor: AppSemanticColors.primary,
-                        disabledForegroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        minimumSize: const Size.fromHeight(52),
-                        padding: const EdgeInsets.symmetric(horizontal: 18),
-                        textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 54,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: AppSemanticColors.primary,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(16),
+                            onTap: state.selectedTask == null
+                                ? null
+                                : notifier.start,
+                            child: Center(
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  const Icon(
+                                    Icons.bolt_rounded,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Start Focus Session',
+                                    style: AppTextStyles.bodyMedium.copyWith(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
               ],
             ),
           ),
@@ -356,9 +513,11 @@ class FocusScreen extends ConsumerWidget {
     );
   }
 
-  Widget _activeSessionView(BuildContext context, WidgetRef ref, FocusState state) {
+  Widget _activeSessionView(
+      BuildContext context, WidgetRef ref, FocusState state) {
     final notifier = ref.read(focusProvider.notifier);
-    final taskTitle = state.selectedTask?['title']?.toString() ?? 'Focus Session';
+    final taskTitle =
+        state.selectedTask?['title']?.toString() ?? 'Focus Session';
     final priority = state.selectedTask?['priority']?.toString() ?? 'medium';
     final progress = _progressFor(state);
     final progressColor = _progressColor(state);
@@ -386,17 +545,18 @@ class FocusScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: AppSemanticColors.accentDim,
+                    color: AppSemanticColors.primary.withValues(alpha: 0.20),
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Text(
                     priority.toUpperCase(),
-                    style: const TextStyle(
+                    style: AppTextStyles.labelSmall.copyWith(
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
-                      color: AppSemanticColors.accentDark,
+                      color: AppSemanticColors.primary,
                     ),
                   ),
                 ),
@@ -406,7 +566,8 @@ class FocusScreen extends ConsumerWidget {
                   lineWidth: 12,
                   percent: progress,
                   progressColor: progressColor,
-                  backgroundColor: AppSemanticColors.primary.withValues(alpha: 0.15),
+                  backgroundColor:
+                      AppSemanticColors.primary.withValues(alpha: 0.15),
                   circularStrokeCap: CircularStrokeCap.round,
                   animation: false,
                   center: Column(
@@ -449,15 +610,15 @@ class FocusScreen extends ConsumerWidget {
                         color: AppSemanticColors.primary,
                         onPressed: notifier.pause,
                       ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
                     _sessionActionButton(
                       label: 'Skip Phase',
                       color: AppSemanticColors.sky,
                       onPressed: notifier.skipPhase,
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
                     _sessionActionButton(
-                      label: 'End Session',
+                      label: 'End',
                       color: AppSemanticColors.rose,
                       onPressed: notifier.stop,
                     ),
@@ -465,7 +626,7 @@ class FocusScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 32),
                 Text(
-                  '“$quote”',
+                  '"$quote"',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 14,

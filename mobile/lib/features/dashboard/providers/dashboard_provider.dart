@@ -241,6 +241,9 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
 
         final estimatedMinutes = item['estimated_duration'] ??
             item['duration_minutes'] ??
+            item['schedule_duration_minutes'] ??
+            task['scheduleDurationMinutes'] ??
+            task['schedule_duration_minutes'] ??
             task['estimatedDuration'] ??
             task['estimated_minutes'];
         if (estimatedMinutes != null) {

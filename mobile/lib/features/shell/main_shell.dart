@@ -100,7 +100,7 @@ class _MoreMenu extends StatelessWidget {
             context.go(route);
           },
           child: Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
               color: tokens.bgOverlay,
               borderRadius: BorderRadius.circular(16),
@@ -111,29 +111,29 @@ class _MoreMenu extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
                 Container(
-                  width: 36,
-                  height: 36,
+                  width: 40,
+                  height: 40,
                   decoration: BoxDecoration(
                     color: tint.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(11),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(icon, size: 18, color: tint),
+                  child: Icon(icon, size: 20, color: tint),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 12),
                 Text(
                   title,
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
                         color: tokens.textPrimary,
                       ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 5),
                 Text(
                   subtitle,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        fontSize: 11,
-                        color: tokens.textMuted,
+                        fontSize: 12,
+                        color: tokens.textSecondary,
                         height: 1.25,
                       ),
                 ),
@@ -160,21 +160,21 @@ class _MoreMenu extends StatelessWidget {
               child: Container(
                 width: 36,
                 height: 4,
-                margin: const EdgeInsets.only(top: 12),
+                margin: const EdgeInsets.symmetric(vertical: 14),
                 decoration: BoxDecoration(
                   color: tokens.borderMedium,
                   borderRadius: BorderRadius.circular(999),
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
             GridView.count(
               crossAxisCount: 2,
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               crossAxisSpacing: 10,
               mainAxisSpacing: 10,
-              childAspectRatio: 1.25,
+              childAspectRatio: 1.15,
               children: <Widget>[
                 destinationCard(
                   icon: Icons.view_kanban_rounded,
@@ -217,10 +217,7 @@ class _MoreMenu extends StatelessWidget {
                 },
                 child: Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 14,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
                   decoration: BoxDecoration(
                     color: tokens.bgOverlay,
                     borderRadius: BorderRadius.circular(16),
@@ -229,15 +226,15 @@ class _MoreMenu extends StatelessWidget {
                   child: Row(
                     children: <Widget>[
                       Container(
-                        width: 36,
-                        height: 36,
+                        width: 40,
+                        height: 40,
                         decoration: BoxDecoration(
                           color: tokens.textMuted.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(11),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                         child: Icon(
                           Icons.settings_rounded,
-                          size: 18,
+                          size: 20,
                           color: tokens.textMuted,
                         ),
                       ),
@@ -252,8 +249,8 @@ class _MoreMenu extends StatelessWidget {
                                   .textTheme
                                   .titleSmall
                                   ?.copyWith(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w800,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
                                     color: tokens.textPrimary,
                                   ),
                             ),
@@ -264,8 +261,8 @@ class _MoreMenu extends StatelessWidget {
                                   .textTheme
                                   .bodySmall
                                   ?.copyWith(
-                                    fontSize: 11,
-                                    color: tokens.textMuted,
+                                    fontSize: 12,
+                                    color: tokens.textSecondary,
                                   ),
                             ),
                           ],

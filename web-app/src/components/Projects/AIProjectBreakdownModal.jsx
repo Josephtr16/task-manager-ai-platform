@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { FaTimes, FaRobot, FaCheck, FaHourglassHalf, FaTimesCircle, FaMagic, FaPlus } from 'react-icons/fa';
+import { FaTimes, FaRobot, FaCheck, FaHourglassHalf, FaTimesCircle, FaMagic, FaPlus, FaInfoCircle } from 'react-icons/fa';
 import { useTheme } from '../../context/ThemeContext';
 import { borderRadius } from '../../theme';
 import aiService from '../../services/aiService';
@@ -9,10 +9,12 @@ const AIProjectBreakdownModal = ({ isOpen, onClose, project, onAddAcceptedTasks 
   const { theme } = useTheme();
   const [description, setDescription] = useState('');
   const [scope, setScope] = useState('auto');
-  const [taskCount, setTaskCount] = useState(12);
   const [generatedTasks, setGeneratedTasks] = useState([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
+  const [isGeneratingAllSubtasks, setIsGeneratingAllSubtasks] = useState(false);
+  const [allSubtasksProgress, setAllSubtasksProgress] = useState(null);
+  const [resolvedTaskCount, setResolvedTaskCount] = useState(null);
   const [notification, setNotification] = useState(null);
 
   const showNotification = (type, message) => {
@@ -24,10 +26,12 @@ const AIProjectBreakdownModal = ({ isOpen, onClose, project, onAddAcceptedTasks 
     if (isOpen) {
       setDescription(project?.description || '');
       setScope('auto');
-      setTaskCount(12);
       setGeneratedTasks([]);
       setIsGenerating(false);
       setIsAdding(false);
+      setIsGeneratingAllSubtasks(false);
+      setAllSubtasksProgress(null);
+      setResolvedTaskCount(null);
       setNotification(null);
     }
   }, [isOpen, project]);
@@ -58,30 +62,22 @@ const AIProjectBreakdownModal = ({ isOpen, onClose, project, onAddAcceptedTasks 
 
   const resolveProjectDeadline = (value) => {
     if (!value) return '';
-
     const asText = String(value);
     const dateMatch = asText.match(/^(\d{4}-\d{2}-\d{2})/);
     if (dateMatch) return dateMatch[1];
-
     const parsed = new Date(value);
     if (Number.isNaN(parsed.getTime())) return '';
-
     return parsed.toISOString().split('T')[0];
   };
 
   const projectDueDate = resolveProjectDeadline(project?.dueDate);
+
   const scopeOptions = [
     { value: 'auto', label: 'auto-detect' },
     { value: 'school', label: 'school' },
     { value: 'basic', label: 'basic' },
     { value: 'professional', label: 'professional' },
     { value: 'advanced', label: 'advanced' },
-  ];
-  const taskCountOptions = [
-    { value: '8', label: '8' },
-    { value: '12', label: '12' },
-    { value: '16', label: '16' },
-    { value: '20', label: '20' },
   ];
 
   const handleGenerate = async () => {
@@ -93,7 +89,6 @@ const AIProjectBreakdownModal = ({ isOpen, onClose, project, onAddAcceptedTasks 
         String(project?.category || 'work').toLowerCase(),
         'solo',
         scope,
-        Number(taskCount),
         projectDueDate || undefined
       );
 
@@ -113,9 +108,13 @@ const AIProjectBreakdownModal = ({ isOpen, onClose, project, onAddAcceptedTasks 
       }));
 
       setGeneratedTasks(normalizedTasks);
+      const resolved = result?.resolved_task_count;
+      setResolvedTaskCount(typeof resolved !== 'undefined' && resolved !== null ? Number(resolved) : null);
+      const resolvedScope = result?.resolved_scope;
+      if (resolvedScope) setScope(String(resolvedScope));
       showNotification('success', 'AI task breakdown generated successfully.');
     } catch (error) {
-      showNotification('error', error.response?.data?.message || 'Failed to generate AI project breakdown. Please try again.');
+      showNotification('error', error.response?.data?.detail || error.response?.data?.message || 'Failed to generate AI project breakdown. Please try again.');
     } finally {
       setIsGenerating(false);
     }
@@ -138,10 +137,8 @@ const AIProjectBreakdownModal = ({ isOpen, onClose, project, onAddAcceptedTasks 
   const handleGenerateSubtasks = async (taskId) => {
     const task = generatedTasks.find(item => item.id === taskId);
     if (!task) return;
-
     try {
       updateTask(taskId, { subtasksLoading: true });
-
       const response = await aiService.generateSubtasks(
         `${project?.title || ''}\n${description || project?.description || ''}`,
         task.title,
@@ -150,12 +147,11 @@ const AIProjectBreakdownModal = ({ isOpen, onClose, project, onAddAcceptedTasks 
         task.phase,
         task.estimated_minutes
       );
-
       const subtasks = Array.isArray(response?.subtasks) ? response.subtasks : [];
       updateTask(taskId, { subtasks, subtasksLoading: false });
     } catch (error) {
       updateTask(taskId, { subtasksLoading: false });
-      showNotification('error', error.response?.data?.message || 'Failed to generate subtasks. Please try again.');
+      showNotification('error', error.response?.data?.detail || error.response?.data?.message || 'Failed to generate subtasks. Please try again.');
     }
   };
 
@@ -165,7 +161,6 @@ const AIProjectBreakdownModal = ({ isOpen, onClose, project, onAddAcceptedTasks 
       showNotification('info', 'Please accept at least one task before adding.');
       return;
     }
-
     try {
       setIsAdding(true);
       await onAddAcceptedTasks(acceptedTasks);
@@ -176,13 +171,68 @@ const AIProjectBreakdownModal = ({ isOpen, onClose, project, onAddAcceptedTasks 
     }
   };
 
+  const handleGenerateAllSubtasks = async () => {
+    const tasksNeedingSubtasks = generatedTasks.filter(task => !task.subtasks || task.subtasks.length === 0);
+    if (tasksNeedingSubtasks.length === 0) {
+      showNotification('info', 'All tasks already have subtasks generated.');
+      return;
+    }
+
+    setIsGeneratingAllSubtasks(true);
+    setAllSubtasksProgress({ completed: 0, total: tasksNeedingSubtasks.length });
+    const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+    let rateLimited = false;
+
+    try {
+      for (let i = 0; i < tasksNeedingSubtasks.length; i++) {
+        const task = tasksNeedingSubtasks[i];
+        setAllSubtasksProgress({ completed: i, total: tasksNeedingSubtasks.length });
+        try {
+          updateTask(task.id, { subtasksLoading: true });
+          const response = await aiService.generateSubtasks(
+            `${project?.title || ''}\n${description || project?.description || ''}`,
+            task.title,
+            task.description,
+            task.category,
+            task.phase,
+            task.estimated_minutes
+          );
+          const subtasks = Array.isArray(response?.subtasks) ? response.subtasks : [];
+          updateTask(task.id, { subtasks, subtasksLoading: false });
+        } catch (error) {
+          updateTask(task.id, { subtasksLoading: false });
+          if (error?.response?.status === 429) {
+            rateLimited = true;
+            showNotification('error', 'AI usage limit reached while generating subtasks. Please try again later.');
+            break;
+          }
+          console.error(`Failed to generate subtasks for task ${task.id}:`, error);
+        }
+        if (i < tasksNeedingSubtasks.length - 1) await wait(350);
+      }
+
+      setAllSubtasksProgress({ completed: tasksNeedingSubtasks.length, total: tasksNeedingSubtasks.length });
+      if (!rateLimited) {
+        setTimeout(() => {
+          showNotification('success', `Subtasks generated for ${tasksNeedingSubtasks.length} task${tasksNeedingSubtasks.length !== 1 ? 's' : ''}`);
+          setAllSubtasksProgress(null);
+        }, 500);
+      }
+    } finally {
+      setIsGeneratingAllSubtasks(false);
+    }
+  };
+
+  const acceptedCount = generatedTasks.filter(task => task.accepted).length;
+
+  // Exact trigger height from CustomSelect: padding 12px top + 12px bottom + font ~20px = ~44px
+  // minHeight is 45px in CustomSelect trigger, so we match that exactly
+  const SELECT_TRIGGER_HEIGHT = 45;
+
   const styles = {
     overlay: {
       position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
+      top: 0, left: 0, right: 0, bottom: 0,
       backgroundColor: 'rgba(0, 0, 0, 0.7)',
       display: 'flex',
       justifyContent: 'center',
@@ -248,31 +298,16 @@ const AIProjectBreakdownModal = ({ isOpen, onClose, project, onAddAcceptedTasks 
       boxSizing: 'border-box',
       fontSize: '14px',
     },
-    controlsRow: {
-      display: 'grid',
-      gridTemplateColumns: '1fr 1fr auto',
-      gap: '12px',
-      alignItems: 'center',
-      marginBottom: '18px',
-    },
     deadlineHint: {
       marginBottom: '18px',
       fontSize: '13px',
       color: theme.textSecondary,
     },
-    select: {
-      width: '100%',
-      border: 'none',
-      backgroundColor: theme.bgMain,
-      boxShadow: theme.shadows.neumorphicInset,
-      borderRadius: borderRadius.md,
-      color: theme.textPrimary,
-      padding: '12px 14px',
-      fontSize: '14px',
-    },
+    // Button exactly matches CustomSelect trigger height
     generateBtn: {
-      height: '44px',
-      padding: '0 18px',
+      height: `${SELECT_TRIGGER_HEIGHT}px`,
+      flexShrink: 0,
+      padding: '0 20px',
       border: 'none',
       borderRadius: borderRadius.md,
       backgroundColor: theme.primary,
@@ -284,6 +319,7 @@ const AIProjectBreakdownModal = ({ isOpen, onClose, project, onAddAcceptedTasks 
       alignItems: 'center',
       gap: '8px',
       boxShadow: theme.shadows.neumorphic,
+      whiteSpace: 'nowrap',
     },
     actionBar: {
       display: 'flex',
@@ -437,13 +473,27 @@ const AIProjectBreakdownModal = ({ isOpen, onClose, project, onAddAcceptedTasks 
       alignItems: 'center',
       gap: '8px',
     },
+    generateAllSubtasksBtn: {
+      border: `1px solid ${theme.primary}`,
+      borderRadius: borderRadius.md,
+      padding: '8px 14px',
+      backgroundColor: 'transparent',
+      color: theme.primary,
+      fontWeight: '700',
+      cursor: isGeneratingAllSubtasks ? 'not-allowed' : 'pointer',
+      opacity: isGeneratingAllSubtasks ? 0.7 : 1,
+      display: 'flex',
+      alignItems: 'center',
+      gap: '6px',
+      fontSize: '14px',
+    },
   };
-
-  const acceptedCount = generatedTasks.filter(task => task.accepted).length;
 
   return (
     <div style={styles.overlay} onClick={onClose}>
       <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+
+        {/* Header */}
         <div style={styles.header}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: theme.primary, fontWeight: '800' }}>
@@ -456,28 +506,18 @@ const AIProjectBreakdownModal = ({ isOpen, onClose, project, onAddAcceptedTasks 
           </button>
         </div>
 
+        {/* Notification */}
         {notification && (
-          <div
-            style={{
-              ...styles.notification,
-              backgroundColor:
-                notification.type === 'error'
-                  ? `${theme.error}22`
-                  : notification.type === 'success'
-                    ? `${theme.success}22`
-                    : `${theme.primary}22`,
-              color:
-                notification.type === 'error'
-                  ? theme.error
-                  : notification.type === 'success'
-                    ? theme.success
-                    : theme.primary,
-            }}
-          >
+          <div style={{
+            ...styles.notification,
+            backgroundColor: notification.type === 'error' ? `${theme.error}22` : notification.type === 'success' ? `${theme.success}22` : `${theme.primary}22`,
+            color: notification.type === 'error' ? theme.error : notification.type === 'success' ? theme.success : theme.primary,
+          }}>
             {notification.message}
           </div>
         )}
 
+        {/* Description */}
         <div style={styles.section}>
           <label style={styles.label}>Project Description</label>
           <textarea
@@ -488,43 +528,78 @@ const AIProjectBreakdownModal = ({ isOpen, onClose, project, onAddAcceptedTasks 
           />
         </div>
 
-        <div style={styles.controlsRow}>
-          <div>
-            <label style={styles.label}>Scope</label>
+        {/* Scope label */}
+        <label style={styles.label}>Scope</label>
+
+        {/* Scope row — button height matches CustomSelect trigger minHeight (45px) exactly */}
+        {/* CustomSelect container has marginBottom:20px so we use overflow:hidden to clip it */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'row',
+          alignItems: 'flex-start',
+          gap: '12px',
+          marginBottom: '8px',
+        }}>
+          {/* Clip the CustomSelect's internal marginBottom:20px */}
+          <div style={{
+            flex: 1,
+            minWidth: 0,
+            overflow: 'hidden',
+            height: `${SELECT_TRIGGER_HEIGHT}px`,
+          }}>
             <CustomSelect
               options={scopeOptions}
               value={scope}
               onChange={(value) => setScope(value)}
             />
           </div>
-
-          <div>
-            <label style={styles.label}>Number of Tasks</label>
-            <CustomSelect
-              options={taskCountOptions}
-              value={String(taskCount)}
-              onChange={(value) => setTaskCount(Number(value))}
-            />
-          </div>
-
-          <button type="button" style={styles.generateBtn} onClick={handleGenerate} disabled={isGenerating}>
+          <button
+            type="button"
+            style={styles.generateBtn}
+            onClick={handleGenerate}
+            disabled={isGenerating}
+          >
             <FaMagic /> {isGenerating ? 'Generating...' : 'Generate'}
           </button>
         </div>
 
+        {/* Hint */}
+        <div style={{ marginBottom: '14px' }}>
+          {generatedTasks.length === 0 ? (
+            <div style={{ fontSize: '12px', color: theme.textMuted, fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <FaInfoCircle /> Task count will be auto-detected based on your project scope
+            </div>
+          ) : resolvedTaskCount !== null ? (
+            <div style={{ fontSize: '12px', color: theme.amber || theme.primary, fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <FaInfoCircle /> ✓ {resolvedTaskCount} tasks generated based on detected scope ({scope})
+            </div>
+          ) : null}
+        </div>
+
+        {/* Deadline hint */}
         {projectDueDate && (
           <div style={styles.deadlineHint}>
             Using project due date: <strong>{projectDueDate}</strong>
           </div>
         )}
 
+        {/* Task list */}
         {generatedTasks.length > 0 && (
           <>
             <div style={styles.actionBar}>
               <div style={{ color: theme.textSecondary, fontSize: '14px' }}>
                 {acceptedCount} of {generatedTasks.length} tasks accepted
+                {allSubtasksProgress && ` · Generating... (${allSubtasksProgress.completed}/${allSubtasksProgress.total})`}
               </div>
               <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  type="button"
+                  style={styles.generateAllSubtasksBtn}
+                  onClick={handleGenerateAllSubtasks}
+                  disabled={isGeneratingAllSubtasks || generatedTasks.every(t => t.subtasks && t.subtasks.length > 0)}
+                >
+                  <FaMagic /> {isGeneratingAllSubtasks ? 'Generating...' : 'Generate All Subtasks'}
+                </button>
                 <button type="button" style={styles.actionBtn} onClick={handleAcceptAll}>Accept All</button>
                 <button type="button" style={styles.actionBtn} onClick={handleDenyAll}>Deny All</button>
               </div>
@@ -558,34 +633,14 @@ const AIProjectBreakdownModal = ({ isOpen, onClose, project, onAddAcceptedTasks 
                   {task.description && <div style={styles.taskDesc}>{task.description}</div>}
 
                   <div style={styles.row}>
-                    <button 
-                      type="button" 
-                      style={styles.acceptBtn(task.accepted)} 
-                      onClick={(e) => {
-                        e.preventDefault();
-                        updateTask(task.id, { accepted: true });
-                      }}
-                    >
+                    <button type="button" style={styles.acceptBtn(task.accepted)} onClick={(e) => { e.preventDefault(); updateTask(task.id, { accepted: true }); }}>
                       <FaCheck /> Accept
                     </button>
-                    <button 
-                      type="button" 
-                      style={styles.denyBtn(task.accepted)} 
-                      onClick={(e) => {
-                        e.preventDefault();
-                        updateTask(task.id, { accepted: false });
-                      }}
-                    >
+                    <button type="button" style={styles.denyBtn(task.accepted)} onClick={(e) => { e.preventDefault(); updateTask(task.id, { accepted: false }); }}>
                       <FaTimesCircle /> Deny
                     </button>
-
                     {task.accepted && (
-                      <button
-                        type="button"
-                        style={styles.subtasksBtn}
-                        onClick={() => handleGenerateSubtasks(task.id)}
-                        disabled={task.subtasksLoading}
-                      >
+                      <button type="button" style={styles.subtasksBtn} onClick={() => handleGenerateSubtasks(task.id)} disabled={task.subtasksLoading}>
                         <FaPlus /> {task.subtasksLoading ? 'Generating...' : 'Generate Subtasks'}
                       </button>
                     )}
@@ -607,20 +662,19 @@ const AIProjectBreakdownModal = ({ isOpen, onClose, project, onAddAcceptedTasks 
           </>
         )}
 
+        {/* Footer */}
         <div style={styles.footer}>
           <button type="button" style={styles.cancelBtn} onClick={onClose}>Cancel</button>
-          <button 
-            type="button" 
-            style={styles.addBtn} 
-            onClick={(e) => {
-              e.preventDefault();
-              handleAddAcceptedTasks();
-            }}
+          <button
+            type="button"
+            style={styles.addBtn}
+            onClick={(e) => { e.preventDefault(); handleAddAcceptedTasks(); }}
             disabled={isAdding || acceptedCount === 0}
           >
             <FaCheck /> {isAdding ? 'Adding Tasks...' : acceptedCount > 0 ? `Add ${acceptedCount} Task${acceptedCount !== 1 ? 's' : ''} to Project` : 'No Tasks Accepted'}
           </button>
         </div>
+
       </div>
     </div>
   );

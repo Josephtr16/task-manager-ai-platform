@@ -35,135 +35,109 @@ class StatsCard extends StatelessWidget {
     final tokens = Theme.of(context).extension<AppColorTokens>()!;
     final accentColor = iconColor ?? progressColor ?? AppSemanticColors.primary;
     final progressValue = (progress ?? 0).clamp(0.0, 1.0).toDouble();
-    final numericValue =
-        double.tryParse(value.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0;
     final isProductivity = label.toLowerCase().contains('productivity');
     final hasSlash = value.contains('/');
     final displayValue =
-      (isProductivity && !value.contains('%')) ? '$value%' : value;
-    final isChartOnlyCard = compact && customContent != null && progress == null;
+        (isProductivity && !value.contains('%')) ? '$value%' : value;
 
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
         color: tokens.bgSurface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: tokens.borderSubtle, width: 0.5),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: tokens.borderSubtle, width: 0.8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Container(
-                width: 28,
-                height: 28,
+                width: 32,
+                height: 32,
                 decoration: BoxDecoration(
-                  color: accentColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
+                  color: accentColor.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: accentColor.withValues(alpha: 0.18),
+                    width: 0.8,
+                  ),
                 ),
-                child: Icon(
-                  icon,
-                  size: 16,
-                  color: accentColor,
-                ),
+                child: Icon(icon, size: 17, color: accentColor),
               ),
               const Spacer(),
-              if (numericValue > 80)
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: BoxDecoration(
-                    color: AppSemanticColors.sage,
-                    shape: BoxShape.circle,
-                  ),
+              if (progress != null && isProductivity)
+                CircularPercentIndicator(
+                  radius: 16,
+                  lineWidth: 5,
+                  percent: progressValue,
+                  center: const SizedBox.shrink(),
+                  progressColor: AppSemanticColors.primary,
+                  backgroundColor:
+                      AppSemanticColors.primary.withValues(alpha: 0.10),
+                  circularStrokeCap: CircularStrokeCap.round,
                 ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Text(
             label.toUpperCase(),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
             style: AppTextStyles.labelSmall.copyWith(
               color: tokens.textMuted,
-              fontSize: 10,
+              fontSize: 11,
               fontWeight: FontWeight.w700,
-              letterSpacing: 0.08,
+              letterSpacing: 1.0,
             ),
           ),
           if (subtitle != null) ...<Widget>[
-            const SizedBox(height: 4),
+            const SizedBox(height: 3),
             Text(
               subtitle!,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: AppTextStyles.bodySmall.copyWith(
-                color: tokens.textSecondary,
+                color: tokens.textMuted,
                 fontSize: 11,
               ),
             ),
           ],
           const SizedBox(height: 6),
-          if (!isProductivity)
+          if (customContent != null) ...<Widget>[
+            customContent!,
+            const SizedBox(height: 4),
+          ] else
             Text(
               displayValue,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: AppTextStyles.statValueMd.copyWith(
-                fontSize: hasSlash ? 20 : 28,
-                fontWeight: FontWeight.w800,
+                fontSize: hasSlash ? 28 : 30,
+                fontWeight: FontWeight.w700,
                 height: 1,
                 color: tokens.textPrimary,
+                letterSpacing: -0.5,
               ),
             ),
-          if (!isProductivity) const SizedBox(height: 10),
-          if (customContent != null) ...<Widget>[
-            customContent!,
-            const SizedBox(height: 8),
-          ],
-          if (progress != null) ...<Widget>[
-            if (isProductivity)
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: <Widget>[
-                  Expanded(
-                    child: Text(
-                      displayValue,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.statValueMd.copyWith(
-                        fontSize: hasSlash ? 20 : 28,
-                        fontWeight: FontWeight.w800,
-                        height: 1,
-                        color: tokens.textPrimary,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  CircularPercentIndicator(
-                    radius: 18,
-                    lineWidth: 6,
-                    percent: progressValue,
-                    center: const SizedBox.shrink(),
-                    progressColor: AppSemanticColors.primary,
-                    backgroundColor:
-                        AppSemanticColors.primary.withValues(alpha: 0.12),
-                    circularStrokeCap: CircularStrokeCap.round,
-                  ),
-                ],
-              )
-            else
-              ClipRRect(
-                borderRadius: BorderRadius.circular(99),
-                child: LinearProgressIndicator(
-                  value: progressValue,
-                  backgroundColor: tokens.bgOverlay,
-                  valueColor: AlwaysStoppedAnimation<Color>(accentColor),
-                  minHeight: 3,
-                ),
+          if (progress != null && !isProductivity) ...<Widget>[
+            const SizedBox(height: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(99),
+              child: LinearProgressIndicator(
+                value: progressValue,
+                backgroundColor: tokens.bgOverlay,
+                valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+                minHeight: 3,
               ),
+            ),
           ],
         ],
       ),

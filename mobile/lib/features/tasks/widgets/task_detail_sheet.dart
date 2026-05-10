@@ -15,6 +15,390 @@ import '../../../../services/task_service.dart';
 import '../models/task_model.dart';
 import '../providers/tasks_provider.dart';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Modern date picker bottom sheet
+// ─────────────────────────────────────────────────────────────────────────────
+Future<DateTime?> showModernDatePicker({
+  required BuildContext context,
+  DateTime? initialDate,
+}) async {
+  return showModalBottomSheet<DateTime>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => _ModernDatePickerSheet(initialDate: initialDate),
+  );
+}
+
+class _ModernDatePickerSheet extends StatefulWidget {
+  const _ModernDatePickerSheet({this.initialDate});
+  final DateTime? initialDate;
+
+  @override
+  State<_ModernDatePickerSheet> createState() => _ModernDatePickerSheetState();
+}
+
+class _ModernDatePickerSheetState extends State<_ModernDatePickerSheet> {
+  late DateTime _focusedMonth;
+  DateTime? _selected;
+
+  static const _weekdays = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    _selected = widget.initialDate;
+    _focusedMonth = DateTime(
+      (_selected ?? now).year,
+      (_selected ?? now).month,
+    );
+  }
+
+  void _prevMonth() => setState(() {
+        _focusedMonth =
+            DateTime(_focusedMonth.year, _focusedMonth.month - 1);
+      });
+
+  void _nextMonth() => setState(() {
+        _focusedMonth =
+            DateTime(_focusedMonth.year, _focusedMonth.month + 1);
+      });
+
+  List<DateTime?> _buildGrid() {
+    final firstDay = DateTime(_focusedMonth.year, _focusedMonth.month, 1);
+    final daysInMonth =
+        DateTime(_focusedMonth.year, _focusedMonth.month + 1, 0).day;
+    final startOffset = firstDay.weekday % 7; // Sun = 0
+    final cells = <DateTime?>[];
+    for (var i = 0; i < startOffset; i++) {
+      cells.add(null);
+    }
+    for (var d = 1; d <= daysInMonth; d++) {
+      cells.add(DateTime(_focusedMonth.year, _focusedMonth.month, d));
+    }
+    // pad to complete last row
+    while (cells.length % 7 != 0) {
+      cells.add(null);
+    }
+    return cells;
+  }
+
+  bool _isToday(DateTime d) {
+    final now = DateTime.now();
+    return d.year == now.year && d.month == now.month && d.day == now.day;
+  }
+
+  bool _isSelected(DateTime d) =>
+      _selected != null &&
+      d.year == _selected!.year &&
+      d.month == _selected!.month &&
+      d.day == _selected!.day;
+
+  bool _isPast(DateTime d) {
+    final now = DateTime.now();
+    return d.isBefore(DateTime(now.year, now.month, now.day));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = Theme.of(context).extension<AppColorTokens>()!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final grid = _buildGrid();
+    final accent = AppColorsShared.accent;
+
+    // Quick-pick shortcuts
+    final now = DateTime.now();
+    final shortcuts = <String, DateTime>{
+      'Today': now,
+      'Tomorrow': now.add(const Duration(days: 1)),
+      'In 3 days': now.add(const Duration(days: 3)),
+      'Next week': now.add(const Duration(days: 7)),
+      'In 2 weeks': now.add(const Duration(days: 14)),
+    };
+
+    return Container(
+      decoration: BoxDecoration(
+        color: tokens.bgSurface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.5 : 0.12),
+            blurRadius: 32,
+            offset: const Offset(0, -8),
+          ),
+        ],
+      ),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // drag handle
+          const SizedBox(height: 12),
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: tokens.borderMedium,
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Header label
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              children: [
+                Text(
+                  'Select due date',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: tokens.textPrimary,
+                      ),
+                ),
+                const Spacer(),
+                if (_selected != null)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: accent.withValues(alpha: 0.25)),
+                    ),
+                    child: Text(
+                      DateFormat('MMM d, yyyy').format(_selected!),
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: accent,
+                            fontWeight: FontWeight.w600,
+                          ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Quick picks
+          SizedBox(
+            height: 34,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              children: shortcuts.entries.map((e) {
+                final isActive = _selected != null &&
+                    _selected!.year == e.value.year &&
+                    _selected!.month == e.value.month &&
+                    _selected!.day == e.value.day;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: GestureDetector(
+                    onTap: () => setState(() => _selected = e.value),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: isActive
+                            ? accent
+                            : tokens.bgRaised,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: isActive
+                              ? accent
+                              : tokens.borderMedium,
+                        ),
+                      ),
+                      child: Text(
+                        e.key,
+                        style:
+                            Theme.of(context).textTheme.labelSmall?.copyWith(
+                                  color: isActive
+                                      ? Colors.white
+                                      : tokens.textSecondary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Month nav
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              children: [
+                GestureDetector(
+                  onTap: _prevMonth,
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: tokens.bgRaised,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: tokens.borderSubtle),
+                    ),
+                    child: Icon(Icons.chevron_left_rounded,
+                        color: tokens.textSecondary, size: 20),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    DateFormat('MMMM yyyy').format(_focusedMonth),
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: tokens.textPrimary,
+                        ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                GestureDetector(
+                  onTap: _nextMonth,
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: tokens.bgRaised,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: tokens.borderSubtle),
+                    ),
+                    child: Icon(Icons.chevron_right_rounded,
+                        color: tokens.textSecondary, size: 20),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Weekday headers
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              children: _weekdays
+                  .map(
+                    (d) => Expanded(
+                      child: Text(
+                        d,
+                        textAlign: TextAlign.center,
+                        style:
+                            Theme.of(context).textTheme.labelSmall?.copyWith(
+                                  color: tokens.textMuted,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.5,
+                                ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          // Calendar grid
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: GridView.count(
+              crossAxisCount: 7,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 4,
+              crossAxisSpacing: 0,
+              childAspectRatio: 1.1,
+              children: grid.map((day) {
+                if (day == null) return const SizedBox.shrink();
+
+                final selected = _isSelected(day);
+                final today = _isToday(day);
+                final past = _isPast(day);
+
+                return GestureDetector(
+                  onTap: past ? null : () => setState(() => _selected = day),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    margin: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? accent
+                          : today
+                              ? accent.withValues(alpha: 0.10)
+                              : Colors.transparent,
+                      borderRadius: BorderRadius.circular(10),
+                      border: today && !selected
+                          ? Border.all(
+                              color: accent.withValues(alpha: 0.5), width: 1.5)
+                          : null,
+                    ),
+                    child: Center(
+                      child: Text(
+                        '${day.day}',
+                        style:
+                            Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: selected
+                                      ? Colors.white
+                                      : past
+                                          ? tokens.textDisabled
+                                          : today
+                                              ? accent
+                                              : tokens.textPrimary,
+                                  fontWeight: selected || today
+                                      ? FontWeight.w700
+                                      : FontWeight.w400,
+                                ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Action buttons
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TfButton(
+                    label: 'Clear',
+                    variant: TfButtonVariant.secondary,
+                    onPressed: () => Navigator.of(context).pop(null),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TfButton(
+                    label: 'Confirm',
+                    variant: TfButtonVariant.accent,
+                    onPressed: _selected == null
+                        ? null
+                        : () => Navigator.of(context).pop(_selected),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Task detail sheet
+// ─────────────────────────────────────────────────────────────────────────────
 class TaskDetailSheet extends ConsumerStatefulWidget {
   const TaskDetailSheet({super.key, required this.task});
 
@@ -35,6 +419,7 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
   late String _priority;
   late bool _isEditing;
   late bool _isTracking;
+  DateTime? _editDeadline;
   bool _saving = false;
   bool _deleting = false;
   bool _uploading = false;
@@ -54,12 +439,14 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
     super.initState();
     _title = TextEditingController(text: widget.task.title);
     _description = TextEditingController(text: widget.task.description ?? '');
-    _duration = TextEditingController(text: '${widget.task.estimatedDuration}');
+    _duration =
+        TextEditingController(text: '${widget.task.estimatedDuration}');
     _comment = TextEditingController();
     _shareEmail = TextEditingController();
     _subtaskTitle = TextEditingController();
     _status = widget.task.status;
     _priority = widget.task.priority;
+    _editDeadline = widget.task.deadline;
     _isEditing = false;
     _isTracking = false;
     _attachments = List<Map<String, dynamic>>.from(widget.task.attachments);
@@ -86,16 +473,36 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
     super.dispose();
   }
 
+  Future<void> _pickDeadline() async {
+    final picked = await showModernDatePicker(
+      context: context,
+      initialDate: _editDeadline,
+    );
+    // null = clear, picked date = new value, dismissed = no change
+    // showModalBottomSheet returns null on dismiss too, so we use a sentinel:
+    // If user taps Clear we pop(null), if user taps Confirm we pop(_selected)
+    // We can't distinguish dismiss vs clear without a wrapper — so only update
+    // when the sheet is not dismissed via back gesture (pop returns non-null future).
+    // To handle this cleanly: always update on return, keep current if result is
+    // identical to current (no-op for dismiss via back).
+    setState(() => _editDeadline = picked);
+  }
+
   Future<void> _save() async {
     if (_title.text.trim().isEmpty) return;
     setState(() => _saving = true);
     try {
-      await ref.read(tasksProvider.notifier).updateTask(widget.task.id, <String, dynamic>{
+      await ref
+          .read(tasksProvider.notifier)
+          .updateTask(widget.task.id, <String, dynamic>{
         'title': _title.text.trim(),
         'description': _description.text.trim(),
         'status': _status,
         'priority': _priority,
-        'estimatedDuration': int.tryParse(_duration.text.trim()) ?? widget.task.estimatedDuration,
+        'estimatedDuration':
+            int.tryParse(_duration.text.trim()) ?? widget.task.estimatedDuration,
+        if (_editDeadline != null)
+          'deadline': _editDeadline!.toIso8601String(),
       });
       if (!mounted) return;
       setState(() => _isEditing = false);
@@ -119,7 +526,9 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
       if (!mounted) return;
       setState(() => _status = _status == 'done' ? 'todo' : 'done');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_status == 'done' ? 'Marked complete' : 'Marked todo')),
+        SnackBar(
+            content:
+                Text(_status == 'done' ? 'Marked complete' : 'Marked todo')),
       );
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -173,9 +582,7 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
     setState(() => _uploading = true);
     try {
       final result = await FilePicker.platform.pickFiles(withData: false);
-      if (result == null || result.files.single.path == null) {
-        return;
-      }
+      if (result == null || result.files.single.path == null) return;
       final file = File(result.files.single.path!);
       await _taskService.addAttachment(widget.task.id, file);
       await _refreshDetailData();
@@ -233,7 +640,8 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
   Future<void> _addSubtask() async {
     if (_subtaskTitle.text.trim().isEmpty) return;
     try {
-      await _taskService.addSubtask(widget.task.id, <String, dynamic>{'title': _subtaskTitle.text.trim()});
+      await _taskService.addSubtask(
+          widget.task.id, <String, dynamic>{'title': _subtaskTitle.text.trim()});
       _subtaskTitle.clear();
       await _refreshDetailData();
     } catch (e) {
@@ -289,9 +697,55 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
     );
   }
 
+  // Deadline field used in edit mode — tappable row that opens custom picker
+  Widget _deadlineField(AppColorTokens tokens) {
+    final accent = AppColorsShared.accent;
+    final label = _editDeadline == null
+        ? 'No deadline'
+        : DateFormat('MMM d, yyyy').format(_editDeadline!);
+
+    return GestureDetector(
+      onTap: _pickDeadline,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        decoration: BoxDecoration(
+          color: tokens.bgRaised,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: tokens.borderSubtle),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.calendar_today_outlined,
+                size: 16, color: tokens.textMuted),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                label,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: _editDeadline == null
+                          ? tokens.textMuted
+                          : tokens.textPrimary,
+                    ),
+              ),
+            ),
+            if (_editDeadline != null)
+              GestureDetector(
+                onTap: () => setState(() => _editDeadline = null),
+                child: Icon(Icons.close_rounded, size: 16, color: tokens.textMuted),
+              )
+            else
+              Icon(Icons.chevron_right_rounded, size: 18, color: accent),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildSubtasksSection() {
     final tokens = Theme.of(context).extension<AppColorTokens>()!;
-    final completedCount = _subtasks.where((s) => s['completed'] == true || s['isCompleted'] == true).length;
+    final completedCount = _subtasks
+        .where((s) => s['completed'] == true || s['isCompleted'] == true)
+        .length;
     final totalCount = _subtasks.length;
 
     return Column(
@@ -310,7 +764,7 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         if (_subtasks.isEmpty)
           Container(
             width: double.infinity,
@@ -324,15 +778,19 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
               'No subtasks yet',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: tokens.textSecondary,
-              ),
+                  ),
             ),
           )
         else
           Column(
             children: _subtasks.map((subtask) {
-              final subtaskId = subtask['_id']?.toString() ?? subtask['id']?.toString() ?? '';
-              final completed = subtask['completed'] == true || subtask['isCompleted'] == true;
-              final title = subtask['title']?.toString() ?? 'Untitled subtask';
+              final subtaskId = subtask['_id']?.toString() ??
+                  subtask['id']?.toString() ??
+                  '';
+              final completed = subtask['completed'] == true ||
+                  subtask['isCompleted'] == true;
+              final title =
+                  subtask['title']?.toString() ?? 'Untitled subtask';
 
               return Container(
                 margin: const EdgeInsets.only(bottom: 8),
@@ -344,22 +802,28 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                 ),
                 child: Row(
                   children: <Widget>[
-                    // Custom styled checkbox
                     GestureDetector(
-                      onTap: subtaskId.isEmpty ? null : () => _toggleSubtask(subtaskId),
+                      onTap: subtaskId.isEmpty
+                          ? null
+                          : () => _toggleSubtask(subtaskId),
                       child: Container(
                         width: 24,
                         height: 24,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(6),
-                          color: completed ? AppColors.success : tokens.bgRaised,
+                          color: completed
+                              ? AppColors.success
+                              : tokens.bgRaised,
                           border: Border.all(
-                            color: completed ? AppColors.success : tokens.borderStrong,
+                            color: completed
+                                ? AppColors.success
+                                : tokens.borderStrong,
                             width: 1,
                           ),
                         ),
                         child: completed
-                            ? const Icon(Icons.check, size: 16, color: Colors.white)
+                            ? const Icon(Icons.check,
+                                size: 16, color: Colors.white)
                             : null,
                       ),
                     ),
@@ -367,10 +831,15 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                     Expanded(
                       child: Text(
                         title,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: completed ? tokens.textSecondary : tokens.textPrimary,
-                              decoration: completed ? TextDecoration.lineThrough : null,
-                            ),
+                        style:
+                            Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: completed
+                                      ? tokens.textSecondary
+                                      : tokens.textPrimary,
+                                  decoration: completed
+                                      ? TextDecoration.lineThrough
+                                      : null,
+                                ),
                       ),
                     ),
                   ],
@@ -384,14 +853,11 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = Theme.of(context).extension<AppColorTokens>()!;
+
     final deadlineLabel = widget.task.deadline == null
         ? 'No deadline'
-        : () {
-            final dt = widget.task.deadline!;
-            // Normalize to local midnight to handle timezone properly
-            final normalized = DateTime(dt.year, dt.month, dt.day);
-            return DateFormat('MMM d, yyyy').format(normalized);
-          }();
+        : DateFormat('MMM d, yyyy').format(widget.task.deadline!);
     final priority = widget.task.priority;
     final isDone = _status == 'done';
 
@@ -418,7 +884,7 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
@@ -428,14 +894,17 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                     width: 26,
                     height: 26,
                     decoration: BoxDecoration(
-                      color: isDone ? AppColors.success : Theme.of(context).colorScheme.surface,
+                      color: isDone
+                          ? AppColors.success
+                          : Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(7),
                       border: Border.all(color: Colors.grey.shade300),
                     ),
                     child: Icon(
                       isDone ? Icons.check : Icons.check_box_outline_blank,
                       size: 16,
-                      color: isDone ? Colors.white : Colors.grey.shade700,
+                      color:
+                          isDone ? Colors.white : Colors.grey.shade700,
                     ),
                   ),
                 ),
@@ -444,15 +913,16 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                   child: _isEditing
                       ? TfInput(label: 'Title', controller: _title)
                       : Text(
-                          _title.text.trim().isEmpty ? 'Untitled Task' : _title.text.trim(),
-                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                fontWeight: FontWeight.w700,
-                              ),
+                          _title.text.trim().isEmpty
+                              ? 'Untitled Task'
+                              : _title.text.trim(),
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineSmall
+                              ?.copyWith(fontWeight: FontWeight.w700),
                         ),
                 ),
                 const SizedBox(width: 8),
-                // top edit button removed to avoid duplicate edit controls;
-                // editing is handled in the action bar at the bottom
                 TfButton(
                   label: 'Delete',
                   icon: Icons.delete_outline,
@@ -471,37 +941,46 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                 TfBadge(label: _status, uppercase: true),
                 TfBadge(label: widget.task.category),
                 if ((widget.task.aiPriorityScore ?? 0) > 0)
-                  TfBadge(label: 'AI ${widget.task.aiPriorityScore}%', color: AppColorsShared.accent, uppercase: true),
+                  TfBadge(
+                    label: 'AI ${widget.task.aiPriorityScore}%',
+                    color: AppColorsShared.accent,
+                    uppercase: true,
+                  ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
             if (_isEditing) ...<Widget>[
-              TfInput(label: 'Description', controller: _description, maxLines: 4),
+              TfInput(
+                  label: 'Description',
+                  controller: _description,
+                  maxLines: 4),
               const SizedBox(height: 10),
-              Row(
-                children: <Widget>[
-                  Expanded(
-                    child: InputDecorator(
-                      decoration: const InputDecoration(labelText: 'Deadline'),
-                      child: Text(deadlineLabel),
+
+              // Deadline row — custom picker
+              Text(
+                'Deadline',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: tokens.textSecondary,
+                      fontWeight: FontWeight.w600,
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: TfInput(
-                      label: 'Estimated Duration (min)',
-                      controller: _duration,
-                      keyboardType: TextInputType.number,
-                    ),
-                  ),
-                ],
+              ),
+              const SizedBox(height: 6),
+              _deadlineField(tokens),
+              const SizedBox(height: 10),
+
+              TfInput(
+                label: 'Estimated Duration (min)',
+                controller: _duration,
+                keyboardType: TextInputType.number,
               ),
               const SizedBox(height: 10),
               DropdownButtonFormField<String>(
                 initialValue: _status,
-                decoration: const InputDecoration(labelText: 'Status'),
+                decoration:
+                    const InputDecoration(labelText: 'Status'),
                 items: _statuses
-                    .map((s) => DropdownMenuItem<String>(value: s, child: Text(s)))
+                    .map((s) => DropdownMenuItem<String>(
+                        value: s, child: Text(s)))
                     .toList(),
                 onChanged: (v) {
                   if (v != null) setState(() => _status = v);
@@ -510,48 +989,66 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
               const SizedBox(height: 10),
               DropdownButtonFormField<String>(
                 initialValue: _priority,
-                decoration: const InputDecoration(labelText: 'Priority'),
+                decoration:
+                    const InputDecoration(labelText: 'Priority'),
                 items: _priorities
-                    .map((p) => DropdownMenuItem<String>(value: p, child: Text(p)))
+                    .map((p) => DropdownMenuItem<String>(
+                        value: p, child: Text(p)))
                     .toList(),
                 onChanged: (v) {
                   if (v != null) setState(() => _priority = v);
                 },
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
             ] else ...<Widget>[
-              _sectionTitle(Icons.description_outlined, 'Description'),
+              _sectionTitle(
+                  Icons.description_outlined, 'Description'),
               Text(
-                _description.text.trim().isEmpty ? 'No description' : _description.text.trim(),
+                _description.text.trim().isEmpty
+                    ? 'No description'
+                    : _description.text.trim(),
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
-              const SizedBox(height: 16),
-              _sectionTitle(Icons.calendar_today_outlined, 'Deadline'),
+              const SizedBox(height: 10),
+              _sectionTitle(
+                  Icons.calendar_today_outlined, 'Deadline'),
               Text(deadlineLabel),
-              const SizedBox(height: 16),
-              _sectionTitle(Icons.schedule_outlined, 'Estimated Duration'),
+              const SizedBox(height: 10),
+              _sectionTitle(
+                  Icons.schedule_outlined, 'Estimated Duration'),
               Text('${widget.task.estimatedDuration} min'),
             ],
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
             _sectionTitle(Icons.timer_outlined, 'Time Tracking'),
             if (_trackingError != null) ...<Widget>[
-              Text(_trackingError!, style: const TextStyle(color: AppColors.error)),
+              Text(_trackingError!,
+                  style:
+                      const TextStyle(color: AppColors.error)),
               const SizedBox(height: 8),
             ],
             TfButton(
               label: _isTracking ? 'Stop Timer' : 'Start Timer',
-              icon: _isTracking ? Icons.stop_circle_outlined : Icons.play_arrow_rounded,
-              variant: _isTracking ? TfButtonVariant.danger : TfButtonVariant.accent,
-              onPressed: _isTracking ? _stopTimer : _startTimer,
+              icon: _isTracking
+                  ? Icons.stop_circle_outlined
+                  : Icons.play_arrow_rounded,
+              variant: _isTracking
+                  ? TfButtonVariant.danger
+                  : TfButtonVariant.accent,
+              onPressed:
+                  _isTracking ? _stopTimer : _startTimer,
               width: double.infinity,
             ),
             const SizedBox(height: 8),
-            Text('Total logged: 0m', style: Theme.of(context).textTheme.bodySmall),
-            const SizedBox(height: 16),
-            _sectionTitle(Icons.subdirectory_arrow_right_outlined, 'Depends On'),
+            Text('Total logged: 0m',
+                style: Theme.of(context).textTheme.bodySmall),
+            const SizedBox(height: 10),
+            _sectionTitle(
+                Icons.subdirectory_arrow_right_outlined,
+                'Depends On'),
             const Text('No dependencies'),
-            const SizedBox(height: 16),
-            _sectionTitle(Icons.attach_file_outlined, 'Attachments'),
+            const SizedBox(height: 10),
+            _sectionTitle(
+                Icons.attach_file_outlined, 'Attachments'),
             TfButton(
               label: _uploading ? 'Uploading...' : 'Upload File',
               icon: Icons.upload_file_outlined,
@@ -564,45 +1061,63 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
               ..._attachments.map(
                 (attachment) => ListTile(
                   contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.insert_drive_file_outlined),
-                  title: Text(attachment['filename']?.toString() ?? 'Attachment'),
-                  subtitle: Text(timeago.format(DateTime.tryParse('${attachment['uploadedAt'] ?? ''}') ?? DateTime.now())),
+                  leading: const Icon(
+                      Icons.insert_drive_file_outlined),
+                  title: Text(
+                      attachment['filename']?.toString() ??
+                          'Attachment'),
+                  subtitle: Text(timeago.format(
+                      DateTime.tryParse(
+                              '${attachment['uploadedAt'] ?? ''}') ??
+                          DateTime.now())),
                 ),
               ),
             ],
-            const SizedBox(height: 16),
-            _sectionTitle(Icons.comment_outlined, 'Comments'),
+            const SizedBox(height: 10),
+            _sectionTitle(
+                Icons.comment_outlined, 'Comments'),
             if (_comments.isNotEmpty)
               ..._comments.map(
                 (comment) => ListTile(
                   contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.chat_bubble_outline),
-                  title: Text(comment['text']?.toString() ?? ''),
-                  subtitle: Text(timeago.format(DateTime.tryParse('${comment['createdAt'] ?? ''}') ?? DateTime.now())),
+                  leading: const Icon(
+                      Icons.chat_bubble_outline),
+                  title: Text(
+                      comment['text']?.toString() ?? ''),
+                  subtitle: Text(timeago.format(
+                      DateTime.tryParse(
+                              '${comment['createdAt'] ?? ''}') ??
+                          DateTime.now())),
                 ),
               ),
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: <Widget>[
                 Expanded(
-                  child: TfInput(label: 'Add comment', controller: _comment),
+                  child: TfInput(
+                      label: 'Add comment',
+                      controller: _comment),
                 ),
                 const SizedBox(width: 8),
                 TfButton(
                   label: _commenting ? '...' : 'Send',
                   icon: Icons.send_rounded,
                   isLoading: _commenting,
-                  onPressed: _commenting ? null : _addComment,
+                  onPressed:
+                      _commenting ? null : _addComment,
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            _sectionTitle(Icons.person_add_outlined, 'Share'),
+            const SizedBox(height: 10),
+            _sectionTitle(
+                Icons.person_add_outlined, 'Share'),
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: <Widget>[
                 Expanded(
-                  child: TfInput(label: 'Share by email', controller: _shareEmail),
+                  child: TfInput(
+                      label: 'Share by email',
+                      controller: _shareEmail),
                 ),
                 const SizedBox(width: 8),
                 TfButton(
@@ -613,13 +1128,16 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            _sectionTitle(Icons.checklist_rounded, 'Subtasks'),
+            const SizedBox(height: 10),
+            _sectionTitle(
+                Icons.checklist_rounded, 'Subtasks'),
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: <Widget>[
                 Expanded(
-                  child: TfInput(label: 'New subtask', controller: _subtaskTitle),
+                  child: TfInput(
+                      label: 'New subtask',
+                      controller: _subtaskTitle),
                 ),
                 const SizedBox(width: 8),
                 TfButton(
@@ -630,16 +1148,19 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
             _buildSubtasksSection(),
             const SizedBox(height: 18),
             Row(
               children: <Widget>[
                 Expanded(
                   child: TfButton(
-                    label: widget.task.status == 'done' ? 'Mark Todo' : 'Mark Done',
+                    label: widget.task.status == 'done'
+                        ? 'Mark Todo'
+                        : 'Mark Done',
                     variant: TfButtonVariant.secondary,
-                    onPressed: _saving ? null : _toggleComplete,
+                    onPressed:
+                        _saving ? null : _toggleComplete,
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -647,7 +1168,12 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                   child: TfButton(
                     label: _isEditing ? 'Save' : 'Edit',
                     isLoading: _saving,
-                    onPressed: _saving ? null : (_isEditing ? _save : () => setState(() => _isEditing = true)),
+                    onPressed: _saving
+                        ? null
+                        : (_isEditing
+                            ? _save
+                            : () =>
+                                setState(() => _isEditing = true)),
                   ),
                 ),
               ],

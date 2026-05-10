@@ -80,6 +80,8 @@ class TfBadge extends StatelessWidget {
           Text(
             uppercase ? label.toUpperCase() : label,
             style: AppTextStyles.labelSmall.copyWith(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
               color: effectiveColor,
               letterSpacing: uppercase ? 0.6 : 0.2,
             ),

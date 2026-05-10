@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -98,106 +99,145 @@ class _SwipeableKanbanCardState extends ConsumerState<SwipeableKanbanCard>
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Container(
-              width: 36, height: 4,
-              margin: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                color: tokens.borderMedium,
-                borderRadius: BorderRadius.circular(2),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Container(
+                width: 36,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: tokens.borderSubtle,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: <Widget>[
                   Text(
-                    'Move task to',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.10,
-                      color: tokens.textMuted,
+                    widget.task.title,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.fraunces(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: tokens.textPrimary,
+                      height: 1.05,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    widget.task.title,
+                    'Move task to',
+                    textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: tokens.textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: 0.5,
+                      color: tokens.textMuted,
                     ),
                   ),
+                  const SizedBox(height: 16),
                 ],
               ),
-            ),
-            ...List<Widget>.generate(_columnKeys.length, (i) {
-              final key   = _columnKeys[i];
-              final label = _columnLabels[i];
-              final isCurrent = key == widget.currentColumn;
-              final colors = <String, Color>{
-                'todo':        AppSemanticColors.sky,
-                'in-progress': AppSemanticColors.primary,
-                'review':      AppSemanticColors.sage,
-                'done':        AppSemanticColors.rose,
-              };
-              final color = colors[key] ?? AppSemanticColors.primary;
-              return ListTile(
-                enabled: !isCurrent,
-                leading: Container(
-                  width: 34, height: 34,
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(Icons.arrow_forward_rounded, size: 16, color: color),
-                ),
-                title: Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: isCurrent ? tokens.textMuted : tokens.textPrimary,
-                  ),
-                ),
-                trailing: isCurrent
-                    ? Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: tokens.bgOverlay,
-                          borderRadius: BorderRadius.circular(4),
+              ...List<Widget>.generate(_columnKeys.length, (i) {
+                final key = _columnKeys[i];
+                final label = _columnLabels[i];
+                final isCurrent = key == widget.currentColumn;
+                final colors = <String, Color>{
+                  'todo': AppSemanticColors.sky,
+                  'in-progress': AppSemanticColors.primary,
+                  'review': AppSemanticColors.sage,
+                  'done': AppSemanticColors.rose,
+                };
+                final color = colors[key] ?? AppSemanticColors.primary;
+                final row = SizedBox(
+                  height: 64,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(14),
+                    onTap: isCurrent
+                        ? null
+                        : () {
+                            Navigator.pop(ctx);
+                            ref.read(tasksProvider.notifier).updateTask(
+                              widget.task.id,
+                              {'status': key},
+                            );
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              content: Text('Moved to $label'),
+                              backgroundColor: color,
+                              duration: const Duration(seconds: 2),
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                            ));
+                          },
+                    child: Row(
+                      children: <Widget>[
+                        Container(
+                          width: 10,
+                          height: 10,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: <String, Color>{
+                              'todo': Colors.grey,
+                              'in-progress': AppSemanticColors.primary,
+                              'review': AppSemanticColors.sage,
+                              'done': AppSemanticColors.rose,
+                            }[key] ?? Colors.grey,
+                          ),
                         ),
-                        child: Text(
-                          'Current',
-                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: tokens.textMuted),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Text(
+                            label,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: tokens.textPrimary,
+                            ),
+                          ),
                         ),
-                      )
-                    : Icon(Icons.chevron_right_rounded, color: tokens.textMuted),
-                onTap: isCurrent
-                    ? null
-                    : () {
-                        Navigator.pop(ctx);
-                        ref.read(tasksProvider.notifier).updateTask(
-                          widget.task.id,
-                          {'status': key},
-                        );
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content: Text('Moved to $label'),
-                          backgroundColor: color,
-                          duration: const Duration(seconds: 2),
-                          behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                        ));
-                      },
-              );
-            }),
-            const SizedBox(height: 8),
-          ],
+                        if (isCurrent)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: tokens.bgRaised,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              'Current',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: tokens.textMuted,
+                              ),
+                            ),
+                          )
+                        else
+                          Icon(
+                            Icons.keyboard_arrow_right,
+                            size: 18,
+                            color: tokens.textMuted,
+                          ),
+                      ],
+                    ),
+                  ),
+                );
+
+                if (i == _columnKeys.length - 1) {
+                  return row;
+                }
+
+                return Column(
+                  children: <Widget>[
+                    row,
+                    Divider(color: tokens.borderSubtle, height: 1),
+                  ],
+                );
+              }),
+            ],
+          ),
         ),
       ),
     );
@@ -216,22 +256,27 @@ class _SwipeableKanbanCardState extends ConsumerState<SwipeableKanbanCard>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            Container(
-              width: 36, height: 4,
-              margin: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                color: tokens.borderMedium,
-                borderRadius: BorderRadius.circular(2),
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(top: 12, bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(999),
+                ),
               ),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
               child: Text(
                 widget.task.title,
-                style: TextStyle(
-                  fontSize: 14,
+               textAlign: TextAlign.center,
+                style: GoogleFonts.fraunces(
+                  fontSize: 22,
                   fontWeight: FontWeight.w700,
-                  color: tokens.textPrimary,
+                  letterSpacing: -0.3,
+                  color: Theme.of(context).textTheme.bodyLarge?.color,
                 ),
               ),
             ),
@@ -246,9 +291,11 @@ class _SwipeableKanbanCardState extends ConsumerState<SwipeableKanbanCard>
                 child: Icon(Icons.open_in_new_rounded, color: AppSemanticColors.sky, size: 20),
               ),
               title: Text('View Details',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: tokens.textPrimary)),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
               subtitle: Text('Open task detail sheet',
-                  style: TextStyle(fontSize: 12, color: tokens.textMuted)),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Colors.grey.shade500,
+                  )),
               trailing: Icon(Icons.chevron_right_rounded, color: tokens.textMuted),
               onTap: () {
                 Navigator.pop(ctx);
@@ -271,9 +318,11 @@ class _SwipeableKanbanCardState extends ConsumerState<SwipeableKanbanCard>
                 child: Icon(Icons.my_location_rounded, color: AppSemanticColors.sage, size: 20),
               ),
               title: Text('Start Focus Mode',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: tokens.textPrimary)),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
               subtitle: Text('Focus on this task with a timer',
-                  style: TextStyle(fontSize: 12, color: tokens.textMuted)),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Colors.grey.shade500,
+                  )),
               trailing: Icon(Icons.chevron_right_rounded, color: tokens.textMuted),
               onTap: () {
                 Navigator.pop(ctx);
@@ -295,9 +344,11 @@ class _SwipeableKanbanCardState extends ConsumerState<SwipeableKanbanCard>
                 child: Icon(Icons.delete_outline_rounded, color: AppSemanticColors.rose, size: 20),
               ),
               title: Text('Delete Task',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppSemanticColors.rose)),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppSemanticColors.rose)),
               subtitle: Text('Remove this task permanently',
-                  style: TextStyle(fontSize: 12, color: tokens.textMuted)),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Colors.grey.shade500,
+                  )),
               onTap: () {
                 Navigator.pop(ctx);
                 ref.read(tasksProvider.notifier).deleteTask(widget.task.id);
@@ -310,6 +361,7 @@ class _SwipeableKanbanCardState extends ConsumerState<SwipeableKanbanCard>
                 ));
               },
             ),
+            Divider(height: 1, thickness: 0.5, color: tokens.borderSubtle),
             TextButton(
               onPressed: () => Navigator.pop(ctx),
               child: Text('Cancel',
@@ -354,7 +406,7 @@ class _SwipeableKanbanCardState extends ConsumerState<SwipeableKanbanCard>
                             Text('Move',
                                 style: TextStyle(
                                     color: Colors.white,
-                                    fontSize: 10,
+                                    fontSize: 11,
                                     fontWeight: FontWeight.w700)),
                           ],
                         )
@@ -371,7 +423,7 @@ class _SwipeableKanbanCardState extends ConsumerState<SwipeableKanbanCard>
                 width:  -_offset,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: AppSemanticColors.rose,
+                    color: AppSemanticColors.accent,
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: _offset.abs() > 36
@@ -384,7 +436,7 @@ class _SwipeableKanbanCardState extends ConsumerState<SwipeableKanbanCard>
                             Text('Options',
                                 style: TextStyle(
                                     color: Colors.white,
-                                    fontSize: 10,
+                                    fontSize: 11,
                                     fontWeight: FontWeight.w700)),
                           ],
                         )

@@ -39,20 +39,12 @@ class _TfButtonState extends State<TfButton> {
     Color bg;
     Color textColor;
     Border border;
-    List<BoxShadow> shadows = [];
 
     switch (widget.variant) {
       case TfButtonVariant.primary:
         bg = AppColorsShared.accent;
         textColor = Colors.white;
         border = Border.all(color: Colors.transparent);
-        shadows = [
-          BoxShadow(
-            color: AppColorsShared.accentGlow,
-            blurRadius: _pressed ? 8 : 16,
-            offset: const Offset(0, 4),
-          ),
-        ];
         break;
       case TfButtonVariant.secondary:
         bg = tokens.bgRaised;
@@ -68,13 +60,6 @@ class _TfButtonState extends State<TfButton> {
         bg = AppColorsShared.accent;
         textColor = Colors.white;
         border = Border.all(color: Colors.transparent);
-        shadows = [
-          BoxShadow(
-            color: AppColorsShared.accentGlow,
-            blurRadius: _pressed ? 6 : 12,
-            offset: const Offset(0, 2),
-          ),
-        ];
         break;
       case TfButtonVariant.danger:
         bg = isDark
@@ -100,7 +85,6 @@ class _TfButtonState extends State<TfButton> {
             color: bg,
             borderRadius: BorderRadius.circular(8),
             border: border,
-            boxShadow: shadows,
           ),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           child: Row(

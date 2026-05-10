@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../services/ai_service.dart';
@@ -54,8 +56,11 @@ class TasksNotifier extends AsyncNotifier<TasksState> {
   final TaskService _taskService = TaskService();
   final AiService _aiService = AiService();
 
+  Timer? _debounceTimer;
+
   @override
   Future<TasksState> build() async {
+    ref.onDispose(() => _debounceTimer?.cancel());
     final base = const TasksState();
     return _loadTasks(base);
   }
@@ -126,6 +131,15 @@ class TasksNotifier extends AsyncNotifier<TasksState> {
     return <TaskModel>[...active, ...completed];
   }
 
+  /// Debounced auto-reprioritize — fires 1.5s after the last mutation,
+  /// matching the web app's triggerAutoReprioritize behavior.
+  void _triggerAutoReprioritize() {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 1500), () {
+      aiPrioritize(silent: true);
+    });
+  }
+
   Future<void> loadTasks() async {
     final current = state.valueOrNull ?? const TasksState();
     state = const AsyncLoading();
@@ -135,7 +149,8 @@ class TasksNotifier extends AsyncNotifier<TasksState> {
   Future<void> loadMore() async {
     final current = state.valueOrNull ?? const TasksState();
     if (current.page >= current.totalPages) return;
-    state = AsyncData(await _loadTasks(current.copyWith(page: current.page + 1), append: true));
+    state = AsyncData(
+        await _loadTasks(current.copyWith(page: current.page + 1), append: true));
   }
 
   Future<void> setFilter(String key, dynamic value) async {
@@ -147,36 +162,108 @@ class TasksNotifier extends AsyncNotifier<TasksState> {
   Future<void> createTask(Map<String, dynamic> payload) async {
     await _taskService.createTask(payload);
     await loadTasks();
+    _triggerAutoReprioritize();
   }
 
   Future<void> updateTask(String id, Map<String, dynamic> payload) async {
     await _taskService.updateTask(id, payload);
     await loadTasks();
+    _triggerAutoReprioritize();
   }
 
   Future<void> deleteTask(String id) async {
     await _taskService.deleteTask(id);
     await loadTasks();
+    _triggerAutoReprioritize();
   }
 
   Future<void> toggleComplete(TaskModel task) async {
     final nextStatus = task.status == 'done' ? 'todo' : 'done';
     await _taskService.updateTask(task.id, <String, dynamic>{'status': nextStatus});
     await loadTasks();
+    _triggerAutoReprioritize();
   }
 
-  Future<void> aiPrioritize() async {
+  /// [silent] = true → called automatically after mutations (no loading flash).
+  /// [silent] = false → called manually by tapping "AI Prioritize".
+  Future<void> aiPrioritize({bool silent = false}) async {
     final current = state.valueOrNull ?? const TasksState();
+
+    final activeTasks = current.tasks
+        .where((t) => t.status.toLowerCase() != 'done')
+        .toList();
+
+    if (activeTasks.isEmpty) return;
+
+    // Send the same fields the web app sends to prioritize.py
     final payload = current.tasks
         .map((t) => <String, dynamic>{
               'id': t.id,
               'title': t.title,
               'priority': t.priority,
+              'status': t.status,
               'deadline': t.deadline?.toIso8601String(),
+              'estimated_minutes': t.estimatedDuration,
+              'category': t.category,
             })
         .toList();
-    await _aiService.prioritize(payload);
-    await loadTasks();
+
+    final result = await _aiService.prioritize(payload);
+
+    // Build scoreMap from response (same as web app)
+    final rankedTasks = (result['tasks'] as List?) ?? [];
+    final scoreMap = <String, int>{};
+    for (final item in rankedTasks) {
+      if (item is Map) {
+        final id = item['id']?.toString() ?? '';
+        final score = item['score'];
+        if (id.isNotEmpty && score != null) {
+          scoreMap[id] = (score is num) ? score.round() : int.tryParse('$score') ?? 0;
+        }
+      }
+    }
+
+    if (scoreMap.isEmpty) {
+      if (!silent) await loadTasks();
+      return;
+    }
+
+    // Apply scores to tasks
+    final scoredTasks = current.tasks.map((t) {
+      final score = scoreMap[t.id];
+      if (score == null) return t;
+      return TaskModel(
+        id: t.id,
+        title: t.title,
+        description: t.description,
+        status: t.status,
+        priority: t.priority,
+        category: t.category,
+        deadline: t.deadline,
+        estimatedDuration: t.estimatedDuration,
+        aiPriorityScore: score,
+        projectName: t.projectName,
+        totalSubtasks: t.totalSubtasks,
+        completedSubtasks: t.completedSubtasks,
+        attachments: t.attachments,
+        comments: t.comments,
+        subtasks: t.subtasks,
+      );
+    }).toList();
+
+    // Sort active by descending AI score, completed stay at the bottom
+    final active = scoredTasks.where((t) => t.status.toLowerCase() != 'done').toList();
+    final completed = scoredTasks.where((t) => t.status.toLowerCase() == 'done').toList();
+
+    active.sort((a, b) {
+      final aScore = a.aiPriorityScore ?? -1;
+      final bScore = b.aiPriorityScore ?? -1;
+      return bScore.compareTo(aScore);
+    });
+
+    // Re-fetch latest state in case it changed during the async gap
+    final latest = state.valueOrNull ?? current;
+    state = AsyncData(latest.copyWith(tasks: [...active, ...completed]));
   }
 
   Future<void> detectRisks() async {
@@ -186,7 +273,10 @@ class TasksNotifier extends AsyncNotifier<TasksState> {
               'id': t.id,
               'title': t.title,
               'priority': t.priority,
+              'status': t.status,
               'deadline': t.deadline?.toIso8601String(),
+              'estimated_minutes': t.estimatedDuration,
+              'category': t.category,
             })
         .toList();
     final risks = await _aiService.detectRisks(payload);

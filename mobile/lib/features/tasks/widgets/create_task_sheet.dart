@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../services/ai_service.dart';
 import '../providers/tasks_provider.dart';
+import 'task_detail_sheet.dart';
 
 class CreateTaskSheet extends ConsumerStatefulWidget {
   const CreateTaskSheet({super.key, this.projectId});
@@ -40,16 +41,12 @@ class _CreateTaskSheetState extends ConsumerState<CreateTaskSheet> {
   static const _priorities = <String>['low', 'medium', 'high', 'urgent'];
 
   Future<void> _pickDeadline() async {
-    final now = DateTime.now();
-    final date = await showDatePicker(
+    final picked = await showModernDatePicker(
       context: context,
-      initialDate: _deadline ?? now,
-      firstDate: DateTime(now.year - 1),
-      lastDate: DateTime(now.year + 5),
+      initialDate: _deadline,
     );
-    if (date == null) return;
     if (!mounted) return;
-    setState(() => _deadline = date);
+    setState(() => _deadline = picked);
   }
 
   Future<void> _assistWrite() async {
@@ -308,7 +305,7 @@ class _CreateTaskSheetState extends ConsumerState<CreateTaskSheet> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 9),
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
@@ -361,7 +358,7 @@ class _CreateTaskSheetState extends ConsumerState<CreateTaskSheet> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 9),
                   Flexible(
                     child: ListView.separated(
                       shrinkWrap: true,
@@ -543,7 +540,7 @@ class _CreateTaskSheetState extends ConsumerState<CreateTaskSheet> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 10),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
@@ -619,14 +616,14 @@ class _CreateTaskSheetState extends ConsumerState<CreateTaskSheet> {
                           color: tokens.textPrimary,
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 8),
                       TextField(
                         controller: title,
                         decoration: _inputDecoration('Task name',
                             hintText: 'Name the task clearly'),
                         enabled: !_saving,
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 8),
                       TextField(
                         controller: desc,
                         decoration: _inputDecoration('Description',
@@ -635,7 +632,7 @@ class _CreateTaskSheetState extends ConsumerState<CreateTaskSheet> {
                         maxLines: 5,
                         enabled: !_saving,
                       ),
-                      if (!_aiLoading) const SizedBox(height: 12),
+                      if (!_aiLoading) const SizedBox(height: 8),
                       if (!_aiLoading)
                         SizedBox(
                           width: double.infinity,
@@ -659,7 +656,7 @@ class _CreateTaskSheetState extends ConsumerState<CreateTaskSheet> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
@@ -687,7 +684,7 @@ class _CreateTaskSheetState extends ConsumerState<CreateTaskSheet> {
                           color: tokens.textPrimary,
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 8),
                       Row(
                         children: <Widget>[
                           Expanded(
@@ -711,7 +708,7 @@ class _CreateTaskSheetState extends ConsumerState<CreateTaskSheet> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 8),
                       InkWell(
                         onTap: _saving
                             ? null
@@ -731,7 +728,7 @@ class _CreateTaskSheetState extends ConsumerState<CreateTaskSheet> {
                           child: Text(_category),
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 8),
                       InkWell(
                         onTap: _saving
                             ? null
@@ -751,7 +748,7 @@ class _CreateTaskSheetState extends ConsumerState<CreateTaskSheet> {
                           child: Text(_priority),
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 8),
                       TextField(
                         controller: tags,
                         decoration: _inputDecoration('Tags',

@@ -69,7 +69,7 @@ class TfCard extends StatelessWidget {
         border: Border.all(color: effectiveBorderColor, width: 1),
         boxShadow: shadows,
       ),
-      padding: padding ?? const EdgeInsets.all(20),
+      padding: padding ?? const EdgeInsets.all(15),
       child: child,
     );
 

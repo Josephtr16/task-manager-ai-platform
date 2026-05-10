@@ -60,7 +60,6 @@ export const aiService = {
     projectType,
     team,
     scope,
-    taskCount,
     projectDeadline
   ) => {
     const payload = {
@@ -69,12 +68,8 @@ export const aiService = {
       project_type: projectType,
       team,
       scope,
-      task_count: taskCount,
+      project_deadline: projectDeadline,
     };
-
-    if (projectDeadline) {
-      payload.project_deadline = projectDeadline;
-    }
 
     const response = await api.post(`${AI_BASE_PATH}/project-breakdown`, payload);
     return response.data;

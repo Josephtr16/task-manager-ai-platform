@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/widgets/gradient_background.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../services/project_service.dart';
 import '../../../services/task_service.dart';
@@ -40,17 +41,17 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     try {
       final taskId = '${task['_id'] ?? task['id'] ?? ''}';
       if (taskId.isEmpty) return;
-
       final currentStatus = '${task['status'] ?? 'todo'}'.toLowerCase();
-      final newStatus = (currentStatus == 'done' || currentStatus == 'completed') ? 'todo' : 'done';
-
+      final newStatus =
+          (currentStatus == 'done' || currentStatus == 'completed')
+              ? 'todo'
+              : 'done';
       await _taskService.updateTask(taskId, <String, dynamic>{'status': newStatus});
       _reloadProject();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error updating task: $e')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error updating task: $e')));
     }
   }
 
@@ -67,16 +68,16 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     return DateTime.tryParse(raw.toString());
   }
 
-  List<Map<String, dynamic>> _sortByClosestDeadline(List<Map<String, dynamic>> tasks) {
+  List<Map<String, dynamic>> _sortByClosestDeadline(
+      List<Map<String, dynamic>> tasks) {
     final sorted = List<Map<String, dynamic>>.from(tasks);
-    sorted.sort((left, right) {
-      final leftDeadline = _taskDeadline(left);
-      final rightDeadline = _taskDeadline(right);
-
-      if (leftDeadline == null && rightDeadline == null) return 0;
-      if (leftDeadline == null) return 1;
-      if (rightDeadline == null) return -1;
-      return leftDeadline.compareTo(rightDeadline);
+    sorted.sort((l, r) {
+      final ld = _taskDeadline(l);
+      final rd = _taskDeadline(r);
+      if (ld == null && rd == null) return 0;
+      if (ld == null) return 1;
+      if (rd == null) return -1;
+      return ld.compareTo(rd);
     });
     return sorted;
   }
@@ -112,22 +113,14 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   }
 
   Color _hoursColor(double? hours) {
-    if (hours == null || hours == 0) {
-      return const Color(0xFF7C634A);
-    }
-    if (hours <= 4) {
-      return const Color(0xFF4F8A67);
-    } else if (hours <= 12) {
-      return const Color(0xFFD08D2F);
-    } else {
-      return const Color(0xFFC65B4C);
-    }
+    if (hours == null || hours == 0) return const Color(0xFF7C634A);
+    if (hours <= 4) return const Color(0xFF4F8A67);
+    if (hours <= 12) return const Color(0xFFD08D2F);
+    return const Color(0xFFC65B4C);
   }
 
-  AppColorTokens _tokens(BuildContext context) {
-    return Theme.of(context).extension<AppColorTokens>() ??
-        AppTheme.lightTokens;
-  }
+  AppColorTokens _tokens(BuildContext context) =>
+      Theme.of(context).extension<AppColorTokens>() ?? AppTheme.lightTokens;
 
   Widget _sectionTitle(BuildContext context, String title, {String? subtitle}) {
     return Text(
@@ -140,8 +133,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   }
 
   Widget _metricCard(BuildContext context,
-      {required IconData icon, required String label, required String value}) {
-    final theme = Theme.of(context);
+      {required IconData icon,
+      required String label,
+      required String value}) {
     final tokens = _tokens(context);
     return Container(
       padding: const EdgeInsets.all(14),
@@ -164,10 +158,10 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
               Expanded(
                 child: Text(
                   label,
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: tokens.textSecondary,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: tokens.textSecondary,
+                        fontWeight: FontWeight.w700,
+                      ),
                 ),
               ),
             ],
@@ -177,10 +171,10 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
             value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w800,
-              color: tokens.textPrimary,
-            ),
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: tokens.textPrimary,
+                ),
           ),
         ],
       ),
@@ -188,34 +182,29 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   }
 
   Widget _chip(String text, {Color? backgroundColor, Color? textColor}) {
-    return Builder(
-      builder: (context) {
-        final tokens = _tokens(context);
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: backgroundColor ?? tokens.bgSurface.withValues(alpha: 0.6),
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: tokens.borderSubtle),
+    return Builder(builder: (context) {
+      final tokens = _tokens(context);
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: backgroundColor ?? tokens.bgSurface.withValues(alpha: 0.6),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: tokens.borderSubtle),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: textColor ?? tokens.textSecondary,
           ),
-          child: Text(
-            text,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: textColor ?? tokens.textSecondary,
-            ),
-          ),
-        );
-      },
-    );
+        ),
+      );
+    });
   }
 
-  Widget _settingsSection(
-    BuildContext context, {
-    required String title,
-    required Widget child,
-  }) {
+  Widget _settingsSection(BuildContext context,
+      {required String title, required Widget child}) {
     final tokens = _tokens(context);
     return Container(
       width: double.infinity,
@@ -226,25 +215,20 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
         border: Border.all(color: tokens.borderSubtle),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x12000000),
-            blurRadius: 16,
-            offset: Offset(0, 8),
-          ),
+              color: Color(0x12000000), blurRadius: 16, offset: Offset(0, 8)),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 0.4,
-              color: tokens.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 12),
+          Text(title,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.4,
+                color: tokens.textPrimary,
+              )),
+          const SizedBox(height: 8),
           child,
         ],
       ),
@@ -258,23 +242,19 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
       hintText: hintText,
       filled: true,
       fillColor: tokens.bgSurface,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      contentPadding:
+          const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(20),
-        borderSide: BorderSide(color: tokens.borderSubtle),
-      ),
+          borderRadius: BorderRadius.circular(20),
+          borderSide: BorderSide(color: tokens.borderSubtle)),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(20),
-        borderSide: BorderSide(color: tokens.borderSubtle),
-      ),
+          borderRadius: BorderRadius.circular(20),
+          borderSide: BorderSide(color: tokens.borderSubtle)),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(20),
-        borderSide: BorderSide(color: tokens.accent, width: 1.4),
-      ),
+          borderRadius: BorderRadius.circular(20),
+          borderSide: BorderSide(color: tokens.accent, width: 1.4)),
       labelStyle: TextStyle(
-        color: tokens.textSecondary,
-        fontWeight: FontWeight.w700,
-      ),
+          color: tokens.textSecondary, fontWeight: FontWeight.w700),
     );
   }
 
@@ -302,10 +282,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
             border: Border.all(color: tokens.borderSubtle),
             boxShadow: const [
               BoxShadow(
-                color: Color(0x08000000),
-                blurRadius: 8,
-                offset: Offset(0, 3),
-              ),
+                  color: Color(0x08000000),
+                  blurRadius: 8,
+                  offset: Offset(0, 3)),
             ],
           ),
           child: Column(
@@ -325,36 +304,29 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: tokens.textSecondary,
-                      ),
-                    ),
+                    child: Text(label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: tokens.textSecondary,
+                        )),
                   ),
                   trailing ??
-                      Icon(
-                        Icons.keyboard_arrow_down_rounded,
-                        size: 18,
-                        color: color,
-                      ),
+                      Icon(Icons.keyboard_arrow_down_rounded,
+                          size: 18, color: color),
                 ],
               ),
               const SizedBox(height: 6),
-              Text(
-                value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: tokens.textPrimary,
-                ),
-              ),
+              Text(value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: tokens.textPrimary,
+                  )),
             ],
           ),
         ),
@@ -374,8 +346,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
       final normalized = value.replaceAll('-', ' ').trim();
       return normalized
           .split(RegExp(r'\s+'))
-          .where((part) => part.isNotEmpty)
-          .map((part) => part[0].toUpperCase() + part.substring(1))
+          .where((p) => p.isNotEmpty)
+          .map((p) => p[0].toUpperCase() + p.substring(1))
           .join(' ');
     }
 
@@ -383,48 +355,31 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
       final key = option.toLowerCase();
       if (title.toLowerCase().contains('category')) {
         switch (key) {
-          case 'work':
-            return Icons.work_outline_rounded;
-          case 'personal':
-            return Icons.person_outline_rounded;
-          case 'health':
-            return Icons.favorite_outline_rounded;
-          case 'shopping':
-            return Icons.shopping_bag_outlined;
-          case 'learning':
-            return Icons.school_outlined;
-          case 'family':
-            return Icons.groups_rounded;
+          case 'work': return Icons.work_outline_rounded;
+          case 'personal': return Icons.person_outline_rounded;
+          case 'health': return Icons.favorite_outline_rounded;
+          case 'shopping': return Icons.shopping_bag_outlined;
+          case 'learning': return Icons.school_outlined;
+          case 'family': return Icons.groups_rounded;
         }
       }
-
       if (title.toLowerCase().contains('priority')) {
         switch (key) {
-          case 'urgent':
-            return Icons.local_fire_department_rounded;
-          case 'high':
-            return Icons.priority_high_rounded;
-          case 'medium':
-            return Icons.remove_rounded;
-          case 'low':
-            return Icons.arrow_downward_rounded;
+          case 'urgent': return Icons.local_fire_department_rounded;
+          case 'high': return Icons.priority_high_rounded;
+          case 'medium': return Icons.remove_rounded;
+          case 'low': return Icons.arrow_downward_rounded;
         }
       }
-
       switch (key) {
         case 'completed':
-        case 'done':
-          return Icons.check_circle_outline_rounded;
+        case 'done': return Icons.check_circle_outline_rounded;
         case 'in-progress':
-        case 'in progress':
-          return Icons.autorenew_rounded;
+        case 'in progress': return Icons.autorenew_rounded;
         case 'not-started':
-        case 'not started':
-          return Icons.radio_button_unchecked_rounded;
-        case 'blocked':
-          return Icons.block_rounded;
-        default:
-          return Icons.circle_outlined;
+        case 'not started': return Icons.radio_button_unchecked_rounded;
+        case 'blocked': return Icons.block_rounded;
+        default: return Icons.circle_outlined;
       }
     }
 
@@ -432,45 +387,29 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
       final key = option.toLowerCase();
       if (title.toLowerCase().contains('category')) {
         switch (key) {
-          case 'work':
-            return tokens.accent;
-          case 'personal':
-            return tokens.sky;
-          case 'health':
-            return tokens.rose;
-          case 'shopping':
-            return tokens.sage;
-          case 'learning':
-            return const Color(0xFF8E6B3E);
-          case 'family':
-            return const Color(0xFF6E7BC7);
+          case 'work': return tokens.accent;
+          case 'personal': return tokens.sky;
+          case 'health': return tokens.rose;
+          case 'shopping': return tokens.sage;
+          case 'learning': return const Color(0xFF8E6B3E);
+          case 'family': return const Color(0xFF6E7BC7);
         }
       }
-
       if (title.toLowerCase().contains('priority')) {
         switch (key) {
-          case 'urgent':
-            return tokens.rose;
-          case 'high':
-            return const Color(0xFFD08D2F);
-          case 'medium':
-            return tokens.accent;
-          case 'low':
-            return tokens.sage;
+          case 'urgent': return tokens.rose;
+          case 'high': return const Color(0xFFD08D2F);
+          case 'medium': return tokens.accent;
+          case 'low': return tokens.sage;
         }
       }
-
       switch (key) {
         case 'completed':
-        case 'done':
-          return tokens.sage;
+        case 'done': return tokens.sage;
         case 'in-progress':
-        case 'in progress':
-          return const Color(0xFFD08D2F);
-        case 'blocked':
-          return tokens.rose;
-        default:
-          return tokens.accent;
+        case 'in progress': return const Color(0xFFD08D2F);
+        case 'blocked': return tokens.rose;
+        default: return tokens.accent;
       }
     }
 
@@ -478,256 +417,264 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
-        return SafeArea(
-          top: false,
-          child: Container(
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(sheetContext).size.height * 0.78,
+      builder: (sheetContext) => SafeArea(
+        top: false,
+        child: Container(
+          constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(sheetContext).size.height * 0.78),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: <Color>[
+                tokens.bgSurface,
+                tokens.bgRaised.withValues(alpha: 0.98),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: <Color>[
-                  tokens.bgSurface,
-                  tokens.bgRaised.withValues(alpha: 0.98),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(30)),
-              border: Border(top: BorderSide(color: tokens.borderSubtle)),
-              boxShadow: const [
-                BoxShadow(
+            borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(30)),
+            border: Border(top: BorderSide(color: tokens.borderSubtle)),
+            boxShadow: const [
+              BoxShadow(
                   color: Color(0x22000000),
                   blurRadius: 30,
-                  offset: Offset(0, -6),
-                ),
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Center(
-                    child: Container(
-                      width: 42,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: tokens.accentDim,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
+                  offset: Offset(0, -6)),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Center(
+                  child: Container(
+                    width: 42,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: tokens.accentDim,
+                      borderRadius: BorderRadius.circular(999),
                     ),
                   ),
-                  const SizedBox(height: 14),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: tokens.bgRaised.withValues(alpha: 0.8),
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: tokens.borderSubtle),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: tokens.accent.withValues(alpha: 0.10),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child:
-                              Icon(optionIcon(selected), color: tokens.accent),
+                ),
+                const SizedBox(height: 9),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: tokens.bgRaised.withValues(alpha: 0.8),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: tokens.borderSubtle),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: tokens.accent.withValues(alpha: 0.10),
+                          borderRadius: BorderRadius.circular(16),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Text(
-                                title,
+                        child: Icon(optionIcon(selected),
+                            color: tokens.accent),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(title,
                                 style: Theme.of(context)
                                     .textTheme
                                     .titleMedium
                                     ?.copyWith(
-                                      fontWeight: FontWeight.w900,
-                                      color: tokens.textPrimary,
-                                    ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Pick one option to keep the project setup clean and consistent.',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
-                                    ?.copyWith(
+                                        fontWeight: FontWeight.w900,
+                                        color: tokens.textPrimary)),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Pick one option to keep the project setup clean and consistent.',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
                                       color: tokens.textSecondary,
-                                      height: 1.35,
-                                    ),
-                              ),
-                            ],
-                          ),
+                                      height: 1.35),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 14),
-                  Flexible(
-                    child: ListView.separated(
-                      shrinkWrap: true,
-                      itemCount: options.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 10),
-                      itemBuilder: (context, index) {
-                        final option = options[index];
-                        final isSelected = option == selected;
-                        final accent = optionColor(option);
-                        final label = formatLabel(option);
-
-                        return Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () => Navigator.of(sheetContext).pop(option),
-                            borderRadius: BorderRadius.circular(22),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 180),
-                              padding: const EdgeInsets.all(14),
-                              decoration: BoxDecoration(
+                ),
+                const SizedBox(height: 9),
+                Flexible(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: options.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                    itemBuilder: (context, index) {
+                      final option = options[index];
+                      final isSelected = option == selected;
+                      final accent = optionColor(option);
+                      final label = formatLabel(option);
+                      return Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () =>
+                              Navigator.of(sheetContext).pop(option),
+                          borderRadius: BorderRadius.circular(22),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? accent.withValues(alpha: 0.10)
+                                  : tokens.bgRaised.withValues(alpha: 0.76),
+                              borderRadius: BorderRadius.circular(22),
+                              border: Border.all(
                                 color: isSelected
-                                    ? accent.withValues(alpha: 0.10)
-                                    : tokens.bgRaised.withValues(alpha: 0.76),
-                                borderRadius: BorderRadius.circular(22),
-                                border: Border.all(
-                                  color: isSelected
-                                      ? accent.withValues(alpha: 0.32)
-                                      : tokens.borderSubtle,
-                                ),
-                                boxShadow: const [
-                                  BoxShadow(
+                                    ? accent.withValues(alpha: 0.32)
+                                    : tokens.borderSubtle,
+                              ),
+                              boxShadow: const [
+                                BoxShadow(
                                     color: Color(0x0C000000),
                                     blurRadius: 12,
-                                    offset: Offset(0, 4),
+                                    offset: Offset(0, 4)),
+                              ],
+                            ),
+                            child: Row(
+                              children: <Widget>[
+                                Container(
+                                  width: 42,
+                                  height: 42,
+                                  decoration: BoxDecoration(
+                                    color:
+                                        accent.withValues(alpha: 0.12),
+                                    borderRadius:
+                                        BorderRadius.circular(14),
                                   ),
-                                ],
-                              ),
-                              child: Row(
-                                children: <Widget>[
-                                  Container(
-                                    width: 42,
-                                    height: 42,
-                                    decoration: BoxDecoration(
-                                      color: accent.withValues(alpha: 0.12),
-                                      borderRadius: BorderRadius.circular(14),
-                                    ),
-                                    child: Icon(
-                                      optionIcon(option),
-                                      color: accent,
-                                      size: 22,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: <Widget>[
-                                        Text(
-                                          label,
+                                  child: Icon(optionIcon(option),
+                                      color: accent, size: 22),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: <Widget>[
+                                      Text(label,
                                           style: Theme.of(context)
                                               .textTheme
                                               .titleSmall
                                               ?.copyWith(
-                                                fontWeight: FontWeight.w800,
-                                                color: tokens.textPrimary,
-                                              ),
-                                        ),
-                                        const SizedBox(height: 3),
-                                        Text(
-                                          isSelected
-                                              ? 'Currently selected'
-                                              : 'Tap to select this value',
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .bodySmall
-                                              ?.copyWith(
-                                                color: tokens.textSecondary,
-                                              ),
-                                        ),
-                                      ],
-                                    ),
+                                                  fontWeight:
+                                                      FontWeight.w800,
+                                                  color:
+                                                      tokens.textPrimary)),
+                                      const SizedBox(height: 3),
+                                      Text(
+                                        isSelected
+                                            ? 'Currently selected'
+                                            : 'Tap to select this value',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall
+                                            ?.copyWith(
+                                                color:
+                                                    tokens.textSecondary),
+                                      ),
+                                    ],
                                   ),
-                                  const SizedBox(width: 8),
-                                  AnimatedContainer(
-                                    duration: const Duration(milliseconds: 180),
-                                    width: 28,
-                                    height: 28,
-                                    decoration: BoxDecoration(
+                                ),
+                                const SizedBox(width: 8),
+                                AnimatedContainer(
+                                  duration: const Duration(milliseconds: 180),
+                                  width: 28,
+                                  height: 28,
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? accent
+                                        : tokens.bgSurface,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
                                       color: isSelected
                                           ? accent
-                                          : tokens.bgSurface,
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: isSelected
-                                            ? accent
-                                            : tokens.borderMedium,
-                                      ),
-                                    ),
-                                    child: Icon(
-                                      isSelected
-                                          ? Icons.check_rounded
-                                        : null,
-                                      size: 18,
-                                      color: isSelected
-                                          ? Colors.white
-                                          : tokens.textSecondary,
+                                          : tokens.borderMedium,
                                     ),
                                   ),
-                                ],
-                              ),
+                                  child: Icon(
+                                    isSelected ? Icons.check_rounded : null,
+                                    size: 18,
+                                    color: isSelected
+                                        ? Colors.white
+                                        : tokens.textSecondary,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        );
-                      },
-                    ),
+                        ),
+                      );
+                    },
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
   Widget _taskCard(BuildContext context, Map<String, dynamic> task) {
     final status = '${task['status'] ?? 'todo'}';
-    final due = task['deadline'] == null ? null : _formatDate(task['deadline']);
-    final completed =
-        status.toLowerCase() == 'done' || status.toLowerCase() == 'completed';
+    final due =
+        task['deadline'] == null ? null : _formatDate(task['deadline']);
+    final completed = status.toLowerCase() == 'done' ||
+        status.toLowerCase() == 'completed';
     final tokens = _tokens(context);
     final priority = '${task['priority'] ?? 'medium'}';
     final title = '${task['title'] ?? 'Untitled task'}'.trim();
     final description = '${task['description'] ?? ''}'.trim();
     final taskModel = TaskModel.fromJson(task);
-    final estimatedHours = double.tryParse('${task['estimatedHours'] ?? 0}') ?? 0;
+    final estimatedHours =
+        double.tryParse('${task['estimatedHours'] ?? 0}') ?? 0;
+
+    Widget compactChip(String text,
+        {Color? backgroundColor, Color? textColor}) {
+      return Container(
+        padding:
+            const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: backgroundColor ??
+              tokens.bgSurface.withValues(alpha: 0.6),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: tokens.borderSubtle),
+        ),
+        child: Text(text,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: textColor ?? tokens.textSecondary,
+            )),
+      );
+    }
 
     return Material(
       color: Colors.transparent,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(13, 12, 13, 12),
         decoration: BoxDecoration(
           color: tokens.bgRaised.withValues(alpha: 0.96),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: tokens.borderSubtle),
           boxShadow: const [
             BoxShadow(
-              color: Color(0x12000000),
-              blurRadius: 14,
-              offset: Offset(0, 6),
-            ),
+                color: Color(0x12000000),
+                blurRadius: 14,
+                offset: Offset(0, 6)),
           ],
         ),
         child: Row(
@@ -751,11 +698,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: completed
-                    ? const Icon(
-                        Icons.check_rounded,
-                        size: 16,
-                        color: Colors.white,
-                      )
+                    ? const Icon(Icons.check_rounded,
+                        size: 16, color: Colors.white)
                     : null,
               ),
             ),
@@ -776,18 +720,20 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                                 context: context,
                                 isScrollControlled: true,
                                 backgroundColor: Colors.transparent,
-                                builder: (_) => TaskDetailSheet(task: taskModel),
+                                builder: (_) =>
+                                    TaskDetailSheet(task: taskModel),
                               ).then((_) => _reloadProject());
                             },
                             borderRadius: BorderRadius.circular(12),
                             child: Text(
                               title,
-                              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: -0.2,
-                                    color: completed
-                                        ? tokens.textSecondary
-                                        : tokens.textPrimary,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleSmall
+                                  ?.copyWith(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: tokens.textPrimary,
                                     decoration: completed
                                         ? TextDecoration.lineThrough
                                         : TextDecoration.none,
@@ -796,72 +742,61 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                           ),
                         ),
                       ),
-                      Icon(
-                        Icons.chevron_right_rounded,
-                        size: 22,
-                        color: tokens.textMuted,
-                      ),
+                      Icon(Icons.chevron_right_rounded,
+                          size: 22, color: tokens.textMuted),
                     ],
                   ),
                   if (description.isNotEmpty) ...<Widget>[
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
                     Text(
                       description,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            height: 1.45,
-                            color: tokens.textSecondary,
-                          ),
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w400,
+                              color: tokens.textSecondary),
                     ),
                   ],
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 7),
                   Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
+                    spacing: 6,
+                    runSpacing: 6,
                     children: <Widget>[
-                      _chip('Status: $status'),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: _priorityColor(priority).withValues(alpha: 0.14),
-                          borderRadius: BorderRadius.circular(999),
-                          border: Border.all(
-                            color: _priorityColor(priority).withValues(alpha: 0.28),
-                          ),
-                        ),
-                        child: Text(
-                          'Priority: ${priority.toUpperCase()}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            color: _priorityColor(priority),
-                          ),
-                        ),
+                      compactChip('Status: $status'),
+                      compactChip(
+                        'Priority: ${priority.toUpperCase()}',
+                        backgroundColor: _priorityColor(priority)
+                            .withValues(alpha: 0.14),
+                        textColor: _priorityColor(priority),
                       ),
                       if (estimatedHours > 0)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: _hoursColor(estimatedHours).withValues(alpha: 0.14),
-                            borderRadius: BorderRadius.circular(999),
+                            color: _hoursColor(estimatedHours)
+                                .withValues(alpha: 0.14),
+                            borderRadius: BorderRadius.circular(6),
                             border: Border.all(
-                              color: _hoursColor(estimatedHours).withValues(alpha: 0.28),
+                              color: _hoursColor(estimatedHours)
+                                  .withValues(alpha: 0.28),
                             ),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: <Widget>[
-                              Icon(
-                                Icons.schedule_rounded,
-                                size: 13,
-                                color: _hoursColor(estimatedHours),
-                              ),
+                              Icon(Icons.schedule_rounded,
+                                  size: 13,
+                                  color: _hoursColor(estimatedHours)),
                               const SizedBox(width: 4),
                               Text(
                                 '${estimatedHours.toStringAsFixed(1)}h',
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 11,
                                   fontWeight: FontWeight.w800,
                                   color: _hoursColor(estimatedHours),
                                 ),
@@ -869,10 +804,131 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                             ],
                           ),
                         ),
-                      if (due != null) _chip('Due: $due'),
                     ],
                   ),
+                  if (due != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Row(
+                        children: <Widget>[
+                          Icon(Icons.calendar_today_rounded,
+                              size: 11, color: tokens.textMuted),
+                          const SizedBox(width: 4),
+                          Text(due,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: tokens.textMuted,
+                                fontWeight: FontWeight.w500,
+                              )),
+                        ],
+                      ),
+                    ),
                 ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// ── Redesigned AI Generate Tasks card ──────────────────────────────────
+  Widget _aiGenerateCard(
+      BuildContext context, Map<String, dynamic> project, int taskCount) {
+    final tokens = _tokens(context);
+    final accent = AppColorsShared.accent;
+    final hasNoTasks = taskCount == 0;
+
+    return GestureDetector(
+      onTap: () => showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => AiBreakdownSheet(
+          projectId: widget.projectId,
+          project: project,
+          onTasksCreated: _reloadProject,
+        ),
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: tokens.bgSurface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: accent.withValues(alpha: 0.30),
+            width: 1.2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: accent.withValues(alpha: 0.08),
+              blurRadius: 20,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // Icon badge
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: accent.withValues(alpha: 0.20),
+                ),
+              ),
+              child: Icon(
+                Icons.auto_awesome_rounded,
+                color: accent,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 14),
+            // Text
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    hasNoTasks
+                        ? 'Generate tasks with AI'
+                        : 'Regenerate Task Plan',
+                    style:
+                        Theme.of(context).textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              color: tokens.textPrimary,
+                              letterSpacing: -0.2,
+                            ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    hasNoTasks
+                        ? 'Let AI break this project into structured tasks.'
+                        : 'AI can suggest a fresh task plan for this project.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: tokens.textSecondary,
+                          height: 1.4,
+                        ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Arrow
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                Icons.arrow_forward_rounded,
+                color: accent,
+                size: 18,
               ),
             ),
           ],
@@ -886,18 +942,15 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
         TextEditingController(text: '${project['title'] ?? ''}');
     final descriptionController =
         TextEditingController(text: '${project['description'] ?? ''}');
-    final estimatedHoursController =
-        TextEditingController(text: '${project['estimatedTotalHours'] ?? ''}');
+    final estimatedHoursController = TextEditingController(
+        text: '${project['estimatedTotalHours'] ?? ''}');
     const categoryOptions = <String>[
-      'Work',
-      'Personal',
-      'Health',
-      'Shopping',
-      'Learning',
-      'Family'
+      'Work', 'Personal', 'Health', 'Shopping', 'Learning', 'Family'
     ];
     const priorityOptions = <String>['low', 'medium', 'high', 'urgent'];
-    const statusOptions = <String>['not-started', 'in-progress', 'completed'];
+    const statusOptions = <String>[
+      'not-started', 'in-progress', 'completed'
+    ];
 
     final initialCategory =
         categoryOptions.contains('${project['category'] ?? ''}')
@@ -907,10 +960,12 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
         priorityOptions.contains('${project['priority'] ?? ''}')
             ? '${project['priority']}'
             : 'medium';
-    final initialStatus = statusOptions.contains('${project['status'] ?? ''}')
-        ? '${project['status']}'
-        : 'not-started';
-    final parsedDueDate = DateTime.tryParse('${project['dueDate'] ?? ''}');
+    final initialStatus =
+        statusOptions.contains('${project['status'] ?? ''}')
+            ? '${project['status']}'
+            : 'not-started';
+    final parsedDueDate =
+        DateTime.tryParse('${project['dueDate'] ?? ''}');
     final tokens = _tokens(context);
 
     String selectedCategory = initialCategory;
@@ -920,39 +975,35 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
 
     try {
       if (!mounted) return;
-
       await showDialog<bool>(
         context: context,
         builder: (dialogContext) {
           var saving = false;
-
           return StatefulBuilder(
             builder: (context, setDialogState) {
               Future<void> saveProject() async {
                 final title = titleController.text.trim();
                 final description = descriptionController.text.trim();
-                final estimatedHoursText = estimatedHoursController.text.trim();
+                final estimatedHoursText =
+                    estimatedHoursController.text.trim();
                 final estimatedTotalHours = estimatedHoursText.isEmpty
                     ? 0
                     : double.tryParse(estimatedHoursText);
-
                 if (title.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                       content: Text('Project name cannot be empty.')));
                   return;
                 }
-
                 if (estimatedTotalHours == null) {
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                       content:
                           Text('Estimated total hours must be a number.')));
                   return;
                 }
-
                 setDialogState(() => saving = true);
                 try {
-                  await _projectService
-                      .updateProject(widget.projectId, <String, dynamic>{
+                  await _projectService.updateProject(
+                      widget.projectId, <String, dynamic>{
                     'title': title,
                     'description': description,
                     'category': selectedCategory,
@@ -968,7 +1019,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                   setDialogState(() => saving = false);
                   if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text('Failed to save project settings.')));
+                      content:
+                          Text('Failed to save project settings.')));
                 }
               }
 
@@ -980,7 +1032,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                     gradient: LinearGradient(
                       colors: <Color>[
                         tokens.bgSurface,
-                        tokens.bgRaised.withValues(alpha: 0.98)
+                        tokens.bgRaised.withValues(alpha: 0.98),
                       ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
@@ -991,13 +1043,14 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                       BoxShadow(
                           color: Color(0x26000000),
                           blurRadius: 28,
-                          offset: Offset(0, 14))
+                          offset: Offset(0, 14)),
                     ],
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(30),
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
+                      padding:
+                          const EdgeInsets.fromLTRB(18, 18, 18, 20),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1008,8 +1061,10 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                               Container(
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                  color: tokens.accent.withValues(alpha: 0.10),
-                                  borderRadius: BorderRadius.circular(16),
+                                  color: tokens.accent
+                                      .withValues(alpha: 0.10),
+                                  borderRadius:
+                                      BorderRadius.circular(16),
                                 ),
                                 child: Icon(Icons.tune_rounded,
                                     color: tokens.accent),
@@ -1017,7 +1072,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
                                   children: <Widget>[
                                     Text(
                                       'Project settings',
@@ -1045,164 +1101,174 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                               IconButton(
                                 onPressed: saving
                                     ? null
-                                    : () => Navigator.of(dialogContext).pop(),
-                                icon: const Icon(Icons.close_rounded),
+                                    : () => Navigator.of(dialogContext)
+                                        .pop(),
+                                icon:
+                                    const Icon(Icons.close_rounded),
                                 color: tokens.textSecondary,
                               ),
                             ],
                           ),
-                          const SizedBox(height: 16),
-                          _settingsSection(
-                            dialogContext,
-                            title: 'Basics',
-                            child: Column(
-                              children: <Widget>[
+                          const SizedBox(height: 10),
+                          _settingsSection(dialogContext,
+                              title: 'Basics',
+                              child: Column(children: <Widget>[
                                 TextField(
                                   controller: titleController,
                                   decoration: _settingsInputDecoration(
-                                        'Project name',
-                                        hintText: 'Name the work clearly and precisely'),
+                                      'Project name',
+                                      hintText:
+                                          'Name the work clearly and precisely'),
                                 ),
-                                const SizedBox(height: 12),
+                                const SizedBox(height: 8),
                                 TextField(
                                   controller: descriptionController,
                                   decoration: _settingsInputDecoration(
                                       'Project summary',
-                                      hintText: 'Describe the goal and expected outcome'),
+                                      hintText:
+                                          'Describe the goal and expected outcome'),
                                   minLines: 4,
                                   maxLines: 6,
                                 ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          _settingsSection(
-                            dialogContext,
-                            title: 'Settings',
-                            child: GridView.count(
-                              crossAxisCount: 2,
-                              crossAxisSpacing: 8,
-                              mainAxisSpacing: 8,
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              childAspectRatio: 2.05,
-                              children: <Widget>[
-                                _compactSettingTile(
-                                  context: dialogContext,
-                                  label: 'Focus area',
-                                  value: selectedCategory,
-                                  icon: Icons.folder_rounded,
-                                  accentColor: tokens.accent,
-                                  onTap: () async {
-                                    final picked = await _showSelectionSheet(
-                                        dialogContext,
-                                        title: 'Select category',
-                                        options: categoryOptions,
-                                        selected: selectedCategory);
-                                    if (picked == null) return;
-                                    setDialogState(
-                                        () => selectedCategory = picked);
-                                  },
-                                ),
-                                _compactSettingTile(
-                                  context: dialogContext,
-                                  label: 'Urgency',
-                                  value: selectedPriority,
-                                  icon: Icons.flag_rounded,
-                                  accentColor: _priorityColor(selectedPriority),
-                                  onTap: () async {
-                                    final picked = await _showSelectionSheet(
-                                        dialogContext,
-                                        title: 'Select priority',
-                                        options: priorityOptions,
-                                        selected: selectedPriority);
-                                    if (picked == null) return;
-                                    setDialogState(
-                                        () => selectedPriority = picked);
-                                  },
-                                ),
-                                _compactSettingTile(
-                                  context: dialogContext,
-                                  label: 'Progress state',
-                                  value: selectedStatus,
-                                  icon: Icons.verified_rounded,
-                                  accentColor: _statusColor(selectedStatus),
-                                  onTap: () async {
-                                    final picked = await _showSelectionSheet(
-                                        dialogContext,
-                                        title: 'Select status',
-                                        options: statusOptions,
-                                        selected: selectedStatus);
-                                    if (picked == null) return;
-                                    setDialogState(
-                                        () => selectedStatus = picked);
-                                  },
-                                ),
-                                _compactSettingTile(
-                                  context: dialogContext,
-                                  label: 'Target date',
-                                  value: selectedDueDate == null
-                                      ? 'No due date'
-                                      : DateFormat('MMM d, yyyy')
-                                          .format(selectedDueDate!),
-                                  icon: Icons.calendar_month_rounded,
-                                  accentColor: tokens.accent,
-                                  onTap: () async {
-                                    final pickedDate = await showDatePicker(
-                                      context: dialogContext,
-                                      initialDate:
-                                          selectedDueDate ?? DateTime.now(),
-                                      firstDate: DateTime(2000),
-                                      lastDate: DateTime(2100),
-                                    );
-                                    if (pickedDate == null) return;
-                                    setDialogState(
-                                        () => selectedDueDate = pickedDate);
-                                  },
-                                  trailing: selectedDueDate == null
-                                      ? null
-                                      : TextButton(
-                                          style: TextButton.styleFrom(
-                                            padding: EdgeInsets.zero,
-                                            minimumSize: const Size(0, 24),
-                                            tapTargetSize: MaterialTapTargetSize
-                                                .shrinkWrap,
+                              ])),
+                          const SizedBox(height: 8),
+                          _settingsSection(dialogContext,
+                              title: 'Settings',
+                              child: GridView.count(
+                                crossAxisCount: 2,
+                                crossAxisSpacing: 8,
+                                mainAxisSpacing: 8,
+                                shrinkWrap: true,
+                                physics:
+                                    const NeverScrollableScrollPhysics(),
+                                childAspectRatio: 2.05,
+                                children: <Widget>[
+                                  _compactSettingTile(
+                                    context: dialogContext,
+                                    label: 'Focus area',
+                                    value: selectedCategory,
+                                    icon: Icons.folder_rounded,
+                                    accentColor: tokens.accent,
+                                    onTap: () async {
+                                      final picked =
+                                          await _showSelectionSheet(
+                                              dialogContext,
+                                              title: 'Select category',
+                                              options: categoryOptions,
+                                              selected: selectedCategory);
+                                      if (picked == null) return;
+                                      setDialogState(() =>
+                                          selectedCategory = picked);
+                                    },
+                                  ),
+                                  _compactSettingTile(
+                                    context: dialogContext,
+                                    label: 'Urgency',
+                                    value: selectedPriority,
+                                    icon: Icons.flag_rounded,
+                                    accentColor:
+                                        _priorityColor(selectedPriority),
+                                    onTap: () async {
+                                      final picked =
+                                          await _showSelectionSheet(
+                                              dialogContext,
+                                              title: 'Select priority',
+                                              options: priorityOptions,
+                                              selected: selectedPriority);
+                                      if (picked == null) return;
+                                      setDialogState(() =>
+                                          selectedPriority = picked);
+                                    },
+                                  ),
+                                  _compactSettingTile(
+                                    context: dialogContext,
+                                    label: 'Progress state',
+                                    value: selectedStatus,
+                                    icon: Icons.verified_rounded,
+                                    accentColor:
+                                        _statusColor(selectedStatus),
+                                    onTap: () async {
+                                      final picked =
+                                          await _showSelectionSheet(
+                                              dialogContext,
+                                              title: 'Select status',
+                                              options: statusOptions,
+                                              selected: selectedStatus);
+                                      if (picked == null) return;
+                                      setDialogState(() =>
+                                          selectedStatus = picked);
+                                    },
+                                  ),
+                                  _compactSettingTile(
+                                    context: dialogContext,
+                                    label: 'Target date',
+                                    value: selectedDueDate == null
+                                        ? 'No due date'
+                                        : DateFormat('MMM d, yyyy')
+                                            .format(selectedDueDate!),
+                                    icon: Icons.calendar_month_rounded,
+                                    accentColor: tokens.accent,
+                                    onTap: () async {
+                                      final pickedDate =
+                                          await showModernDatePicker(
+                                        context: dialogContext,
+                                        initialDate: selectedDueDate,
+                                      );
+                                      if (pickedDate == null) return;
+                                      setDialogState(() =>
+                                          selectedDueDate = pickedDate);
+                                    },
+                                    trailing: selectedDueDate == null
+                                        ? null
+                                        : TextButton(
+                                            style:
+                                                TextButton.styleFrom(
+                                              padding: EdgeInsets.zero,
+                                              minimumSize:
+                                                  const Size(0, 24),
+                                              tapTargetSize:
+                                                  MaterialTapTargetSize
+                                                      .shrinkWrap,
+                                            ),
+                                            onPressed: () =>
+                                                setDialogState(() =>
+                                                    selectedDueDate =
+                                                        null),
+                                            child:
+                                                const Text('Clear'),
                                           ),
-                                          onPressed: () => setDialogState(
-                                              () => selectedDueDate = null),
-                                          child: const Text('Clear'),
-                                        ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          _settingsSection(
-                            dialogContext,
-                            title: 'Estimate',
-                            child: TextField(
-                              controller: estimatedHoursController,
-                              decoration: _settingsInputDecoration(
-                                  'Estimated hours',
-                                  hintText: 'Approximate time investment'),
-                              keyboardType:
-                                  const TextInputType.numberWithOptions(
-                                      decimal: true),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
+                                  ),
+                                ],
+                              )),
+                          const SizedBox(height: 8),
+                          _settingsSection(dialogContext,
+                              title: 'Estimate',
+                              child: TextField(
+                                controller: estimatedHoursController,
+                                decoration: _settingsInputDecoration(
+                                    'Estimated hours',
+                                    hintText:
+                                        'Approximate time investment'),
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                        decimal: true),
+                              )),
+                          const SizedBox(height: 10),
                           Row(
                             children: <Widget>[
                               Expanded(
                                 child: OutlinedButton(
                                   onPressed: saving
                                       ? null
-                                      : () => Navigator.of(dialogContext).pop(),
+                                      : () => Navigator.of(dialogContext)
+                                          .pop(),
                                   style: OutlinedButton.styleFrom(
-                                    minimumSize: const Size.fromHeight(50),
-                                    side:
-                                        BorderSide(color: tokens.borderMedium),
-                                    foregroundColor: tokens.textSecondary,
+                                    minimumSize:
+                                        const Size.fromHeight(50),
+                                    side: BorderSide(
+                                        color: tokens.borderMedium),
+                                    foregroundColor:
+                                        tokens.textSecondary,
                                     shape: RoundedRectangleBorder(
                                         borderRadius:
                                             BorderRadius.circular(18)),
@@ -1213,17 +1279,20 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                               const SizedBox(width: 12),
                               Expanded(
                                 child: FilledButton(
-                                  onPressed: saving ? null : saveProject,
+                                  onPressed:
+                                      saving ? null : saveProject,
                                   style: FilledButton.styleFrom(
-                                    minimumSize: const Size.fromHeight(50),
+                                    minimumSize:
+                                        const Size.fromHeight(50),
                                     backgroundColor: tokens.accent,
                                     foregroundColor: Colors.white,
                                     shape: RoundedRectangleBorder(
                                         borderRadius:
                                             BorderRadius.circular(18)),
                                   ),
-                                  child: Text(
-                                      saving ? 'Saving...' : 'Save changes'),
+                                  child: Text(saving
+                                      ? 'Saving...'
+                                      : 'Save changes'),
                                 ),
                               ),
                             ],
@@ -1248,7 +1317,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F0E8),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Project Detail'),
         backgroundColor: Colors.transparent,
@@ -1261,56 +1330,68 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
             }
-
             if (snapshot.hasError) {
               return Center(
                 child: Padding(
                   padding: const EdgeInsets.all(24),
-                  child: Text(
-                    'Failed to load project details.',
-                    style: Theme.of(context).textTheme.titleMedium,
-                    textAlign: TextAlign.center,
-                  ),
+                  child: Text('Failed to load project details.',
+                      style: Theme.of(context).textTheme.titleMedium,
+                      textAlign: TextAlign.center),
                 ),
               );
             }
 
-            final data = snapshot.data ?? const <String, dynamic>{};
+            final data =
+                snapshot.data ?? const <String, dynamic>{};
             final project = data['project'] is Map
-                ? Map<String, dynamic>.from(data['project'] as Map)
+                ? Map<String, dynamic>.from(
+                    data['project'] as Map)
                 : const <String, dynamic>{};
-            final tasks = _sortByClosestDeadline((data['tasks'] as List? ?? const <dynamic>[])
-                .whereType<Map>()
-                .map((task) => Map<String, dynamic>.from(task))
-              .toList());
-            final collaborators = (project['collaborators'] as List? ??
-                    const <dynamic>[])
-                .whereType<Map>()
-                .map((collaborator) => Map<String, dynamic>.from(collaborator))
-                .toList();
-            final projectTitle = '${project['title'] ?? 'Project'}';
+            final tasks = _sortByClosestDeadline(
+                (data['tasks'] as List? ?? const <dynamic>[])
+                    .whereType<Map>()
+                    .map((t) => Map<String, dynamic>.from(t))
+                    .toList());
+            final collaborators =
+                (project['collaborators'] as List? ??
+                        const <dynamic>[])
+                    .whereType<Map>()
+                    .map((c) => Map<String, dynamic>.from(c))
+                    .toList();
+            final projectTitle =
+                '${project['title'] ?? 'Project'}';
             final description =
                 '${project['description'] ?? 'A dedicated workspace for tracking project work.'}';
-            final status = '${project['status'] ?? 'not-started'}';
-            final priority = '${project['priority'] ?? 'medium'}';
-            final progress = int.tryParse('${project['progress'] ?? 0}') ?? 0;
-            final totalTasks =
-                int.tryParse('${project['totalTasks'] ?? tasks.length}') ??
-                    tasks.length;
-            final completedTasks =
-                int.tryParse('${project['completedTasks'] ?? 0}') ?? 0;
+            final status =
+                '${project['status'] ?? 'not-started'}';
+            final priority =
+                '${project['priority'] ?? 'medium'}';
+            final progress =
+                int.tryParse('${project['progress'] ?? 0}') ??
+                    0;
+            final totalTasks = int.tryParse(
+                    '${project['totalTasks'] ?? tasks.length}') ??
+                tasks.length;
+            final completedTasks = int.tryParse(
+                    '${project['completedTasks'] ?? 0}') ??
+                0;
             final pendingInviteCount =
-                ((project['pendingInvites'] as List?) ?? const <dynamic>[])
+                ((project['pendingInvites'] as List?) ??
+                        const <dynamic>[])
                     .length;
-            final dueDate = _formatDate(project['dueDate']);
-            final estimatedHours = double.tryParse('${project['estimatedTotalHours'] ?? 0}') ?? 0;
+            final dueDate =
+                _formatDate(project['dueDate']);
+            final estimatedHours = double.tryParse(
+                    '${project['estimatedTotalHours'] ?? 0}') ??
+                0;
             final tokens = _tokens(context);
 
             return ListView(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
               children: <Widget>[
+                // ── Project header card ──
                 Container(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(15),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(28),
                     gradient: LinearGradient(
@@ -1333,11 +1414,13 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment:
+                            CrossAxisAlignment.start,
                         children: <Widget>[
                           Expanded(
                             child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.start,
                               children: <Widget>[
                                 Text(
                                   projectTitle,
@@ -1366,33 +1449,41 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                           const SizedBox(width: 12),
                           Container(
                             decoration: BoxDecoration(
-                              color: tokens.bgSurface.withValues(alpha: 0.8),
-                              borderRadius: BorderRadius.circular(16),
-                              border:
-                                  Border.all(color: tokens.borderSubtle),
+                              color: tokens.bgSurface
+                                  .withValues(alpha: 0.8),
+                              borderRadius:
+                                  BorderRadius.circular(16),
+                              border: Border.all(
+                                  color: tokens.borderSubtle),
                             ),
                             child: IconButton(
                               tooltip: 'Project settings',
-                              icon: Icon(Icons.more_vert_rounded,
+                              icon: Icon(
+                                  Icons.more_vert_rounded,
                                   color: tokens.accent),
-                              onPressed: () => _openProjectSettings(project),
+                              onPressed: () =>
+                                  _openProjectSettings(project),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 10),
                       Wrap(
                         spacing: 10,
                         runSpacing: 10,
                         children: <Widget>[
-                          _chip('Status: ${status.replaceAll('-', ' ')}',
-                              backgroundColor:
-                                  _statusColor(status).withValues(alpha: 0.14),
-                              textColor: _statusColor(status)),
-                          _chip('Priority: $priority',
-                              backgroundColor: _priorityColor(priority)
-                                  .withValues(alpha: 0.14),
-                              textColor: _priorityColor(priority)),
+                          _chip(
+                            'Status: ${status.replaceAll('-', ' ')}',
+                            backgroundColor: _statusColor(status)
+                                .withValues(alpha: 0.14),
+                            textColor: _statusColor(status),
+                          ),
+                          _chip(
+                            'Priority: $priority',
+                            backgroundColor: _priorityColor(priority)
+                                .withValues(alpha: 0.14),
+                            textColor: _priorityColor(priority),
+                          ),
                           _chip('Due: $dueDate'),
                         ],
                       ),
@@ -1401,14 +1492,18 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                         children: <Widget>[
                           Expanded(
                             child: ClipRRect(
-                              borderRadius: BorderRadius.circular(999),
+                              borderRadius:
+                                  BorderRadius.circular(999),
                               child: LinearProgressIndicator(
                                 minHeight: 8,
-                                value:
-                                    (progress / 100).clamp(0.0, 1.0).toDouble(),
-                                backgroundColor: tokens.bgSurface.withValues(alpha: 0.4),
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                    _priorityColor(priority)),
+                                value: (progress / 100)
+                                    .clamp(0.0, 1.0)
+                                    .toDouble(),
+                                backgroundColor: tokens.bgSurface
+                                    .withValues(alpha: 0.4),
+                                valueColor:
+                                    AlwaysStoppedAnimation<Color>(
+                                        _priorityColor(priority)),
                               ),
                             ),
                           ),
@@ -1428,7 +1523,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 10),
+
+                // ── Metrics grid ──
                 GridView.count(
                   crossAxisCount: 2,
                   crossAxisSpacing: 12,
@@ -1456,22 +1553,16 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                         label: 'Due Date',
                         value: dueDate),
                   ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Project ID: ${widget.projectId}',
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: const Color(0xFF8A7661)),
-                ),
-                const SizedBox(height: 12),
+                  ),
+                  const SizedBox(height: 8),
+
+                // ── Collaborators ──
                 Container(
-                  padding: const EdgeInsets.all(18),
+                  padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.72),
+                    color: tokens.bgRaised,
                     borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: const Color(0xFFE8DCCB)),
+                    border: Border.all(color: tokens.borderSubtle),
                     boxShadow: const [
                       BoxShadow(
                           color: Color(0x0D000000),
@@ -1483,55 +1574,60 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       _sectionTitle(context, 'Collaborators',
-                          subtitle: 'People with access to this project'),
-                      const SizedBox(height: 12),
+                          subtitle:
+                              'People with access to this project'),
+                      const SizedBox(height: 8),
                       if (collaborators.isEmpty)
                         Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 12),
                           child: Text(
                             'No collaborators yet. Invite people to work together here.',
                             style: Theme.of(context)
                                 .textTheme
                                 .bodyMedium
-                                ?.copyWith(color: const Color(0xFF7F6B56)),
+                                ?.copyWith(color: tokens.textSecondary),
                           ),
                         )
                       else
                         ...collaborators.map(
-                          (collaborator) => Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
+                          (c) => Padding(
+                            padding:
+                                const EdgeInsets.only(bottom: 10),
                             child: ListTile(
                               dense: true,
                               contentPadding: EdgeInsets.zero,
                               leading: CircleAvatar(
-                                backgroundColor: const Color(0xFFF2E3D2),
+                                backgroundColor: tokens.bgSurface,
                                 child: Text(
-                                  '${('${collaborator['name'] ?? collaborator['email'] ?? 'U'}').characters.first.toUpperCase()}',
-                                  style: const TextStyle(
-                                      color: Color(0xFF7C634A),
+                                  '${('${c['name'] ?? c['email'] ?? 'U'}').characters.first.toUpperCase()}',
+                                  style: TextStyle(
+                                      color: tokens.textMuted,
                                       fontWeight: FontWeight.w800),
                                 ),
                               ),
                               title: Text(
-                                '${collaborator['name'] ?? collaborator['email'] ?? 'User'}',
+                                '${c['name'] ?? c['email'] ?? 'User'}',
                                 style: const TextStyle(
                                     fontWeight: FontWeight.w700),
                               ),
                               subtitle: Text(
-                                  '${collaborator['permission'] ?? 'view'}'),
+                                  '${c['permission'] ?? 'view'}'),
                             ),
                           ),
                         ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
+
+                // ── Tasks section ──
                 Container(
-                  padding: const EdgeInsets.all(18),
+                  padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFBF7F1),
+                    color: tokens.bgRaised,
                     borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: const Color(0xFFE8DCCB)),
+                    border: Border.all(color: tokens.borderSubtle),
                     boxShadow: const [
                       BoxShadow(
                           color: Color(0x10000000),
@@ -1546,11 +1642,13 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                         children: <Widget>[
                           Expanded(
                             child: _sectionTitle(context, 'Tasks',
-                                subtitle: 'What this project is made of'),
+                                subtitle:
+                                    'What this project is made of'),
                           ),
                           const SizedBox(width: 12),
                           TextButton.icon(
-                            onPressed: () => showModalBottomSheet<void>(
+                            onPressed: () =>
+                                showModalBottomSheet<void>(
                               context: context,
                               isScrollControlled: true,
                               backgroundColor: Colors.transparent,
@@ -1563,99 +1661,32 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                           ),
                         ],
                       ),
+
+                      // ── AI Generate card — inline above tasks ──
+                      const SizedBox(height: 10),
+                      _aiGenerateCard(context, project, tasks.length),
                       const SizedBox(height: 14),
+
                       if (tasks.isEmpty)
                         Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 12),
                           child: Text(
-                            'No tasks for this project yet. Add one to get started.',
+                            'No tasks yet. Add one manually or generate with AI.',
                             style: Theme.of(context)
                                 .textTheme
                                 .bodyMedium
-                                ?.copyWith(color: const Color(0xFF7F6B56)),
+                                ?.copyWith(color: tokens.textSecondary),
                           ),
                         )
                       else
                         ...tasks.map(
                           (task) => Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
+                            padding:
+                                const EdgeInsets.only(bottom: 12),
                             child: _taskCard(context, task),
                           ),
                         ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: <Color>[Color(0xFFD08D2F), Color(0xFFB8772A)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: const [
-                      BoxShadow(
-                          color: Color(0x332A1A08),
-                          blurRadius: 18,
-                          offset: Offset(0, 8)),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Row(
-                        children: <Widget>[
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.18),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(Icons.smart_toy_outlined,
-                                color: Colors.white, size: 18),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              'AI can turn this project into a structured task plan.',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleSmall
-                                  ?.copyWith(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: const Color(0xFF8C5B1F),
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            textStyle:
-                                const TextStyle(fontWeight: FontWeight.w800),
-                          ),
-                          onPressed: () => showModalBottomSheet<void>(
-                            context: context,
-                            isScrollControlled: true,
-                            backgroundColor: Colors.transparent,
-                            builder: (_) => AiBreakdownSheet(
-                              projectId: widget.projectId,
-                              project: project,
-                              onTasksCreated: _reloadProject,
-                            ),
-                          ),
-                          icon: const Icon(Icons.auto_awesome_rounded),
-                          label: const Text('Generate Tasks with AI'),
-                        ),
-                      ),
                     ],
                   ),
                 ),

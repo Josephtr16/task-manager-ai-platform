@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/widgets/gradient_background.dart';
-import '../../../core/widgets/tf_page_header.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers/projects_provider.dart';
 import '../widgets/create_project_sheet.dart';
@@ -18,18 +18,44 @@ class ProjectsScreen extends ConsumerWidget {
     final tokens = Theme.of(context).extension<AppColorTokens>()!;
 
     return Scaffold(
-      body: GradientBackground(
-        child: asyncState.when(
+      body: SafeArea(
+        bottom: false,
+        child: GradientBackground(
+          child: asyncState.when(
           data: (data) {
             final count = data.projects.length;
             final isOwner = true; // TODO: determine ownership from user/project
             final itemCount = data.projects.length + (isOwner ? 1 : 0);
 
             return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                  child: TfPageHeader(title: 'Projects', subtitle: '$count active projects'),
+                  padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Projects',
+                        style: GoogleFonts.fraunces(
+                          fontSize: 36,
+                          fontWeight: FontWeight.w700,
+                          color: tokens.textPrimary,
+                          height: 1.1,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '$count active projects',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: tokens.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 Expanded(
                   child: CustomScrollView(
@@ -65,12 +91,12 @@ class ProjectsScreen extends ConsumerWidget {
                                       mainAxisAlignment: MainAxisAlignment.center,
                                       crossAxisAlignment: CrossAxisAlignment.center,
                                       children: <Widget>[
-                                        Icon(Icons.add, size: 20, color: tokens.textMuted),
-                                        const SizedBox(height: 8),
+                                        Icon(Icons.add, size: 24, color: tokens.textMuted),
+                                        const SizedBox(height: 10),
                                         Text(
                                           'New project',
                                           textAlign: TextAlign.center,
-                                          style: TextStyle(fontSize: 11, color: tokens.textMuted, fontWeight: FontWeight.w500),
+                                          style: TextStyle(fontSize: 13, color: tokens.textSecondary, fontWeight: FontWeight.w600),
                                         ),
                                       ],
                                     ),
@@ -97,6 +123,7 @@ class ProjectsScreen extends ConsumerWidget {
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (err, _) => Center(child: Text(err.toString())),
         ),
+      ),
       ),
     );
   }

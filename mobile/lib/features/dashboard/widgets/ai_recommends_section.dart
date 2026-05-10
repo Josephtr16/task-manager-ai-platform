@@ -348,8 +348,9 @@ class _AiTaskCardState extends State<_AiTaskCard> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.labelMedium.copyWith(
+                        fontSize: 14,
                         color: tokens.textPrimary,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -441,7 +442,7 @@ class _AiTaskCardState extends State<_AiTaskCard> {
                     child: Text(
                       aiInsight,
                       style: AppTextStyles.bodySmall.copyWith(
-                        fontSize: 11,
+                        fontSize: 12,
                         color: tokens.textSecondary,
                         fontStyle: FontStyle.italic,
                       ),
@@ -472,7 +473,7 @@ class _AiTaskCardState extends State<_AiTaskCard> {
       child: Text(
         label,
         style: AppTextStyles.labelSmall.copyWith(
-          fontSize: 10,
+          fontSize: 11,
           color: color,
           fontWeight: FontWeight.w500,
         ),

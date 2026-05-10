@@ -118,7 +118,7 @@ class _SwipeableTaskCardState extends State<SwipeableTaskCard>
                               'Complete',
                               style: TextStyle(
                                 color: Colors.white,
-                                fontSize: 10,
+                                fontSize: 11,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
@@ -150,7 +150,7 @@ class _SwipeableTaskCardState extends State<SwipeableTaskCard>
                               'Options',
                               style: TextStyle(
                                 color: Colors.white,
-                                fontSize: 10,
+                                fontSize: 11,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),

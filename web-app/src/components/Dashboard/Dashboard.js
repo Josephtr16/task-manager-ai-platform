@@ -13,8 +13,7 @@ import CreateTaskModal from '../Tasks/CreateTaskModal';
 import TaskDetailModal from '../Tasks/TaskDetailModal';
 import { StatsCardSkeleton } from '../common/SkeletonLoader';
 import { readCache, writeCache } from '../../utils/sessionCache';
-import { formatTaskDuration } from '../../utils/formatTaskDuration';
-import { FaChartLine, FaCheckCircle, FaCalendarAlt, FaPlus, FaTimes, FaRegLightbulb, FaPlay, FaClock, FaListOl, FaTrash } from 'react-icons/fa';
+import { FaChartLine, FaCheckCircle, FaCalendarAlt, FaPlus, FaTimes, FaRegLightbulb, FaPlay, FaClock, FaListOl, FaTrash, FaFire } from 'react-icons/fa';
 
 const DASHBOARD_CACHE_KEY = 'taskflow_dashboard_cache';
 const DAILY_PLAN_STORAGE_KEY = 'taskflow_daily_plan';
@@ -1010,24 +1009,17 @@ const DailyPlanPanel = ({ plan, tasks, theme, onToggleScheduleItem, onTaskClick,
                         }}
                       />
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <strong style={{
-                          color: isCompleted ? theme.textSecondary : theme.textPrimary,
-                          textDecoration: isCompleted ? 'line-through' : 'none',
-                          fontSize: '14px',
+                        <div style={{
+                          fontSize: '18px',
                           fontWeight: '700',
+                          color: theme.textMuted,
+                          margin: 0,
+                          letterSpacing: '0.06em',
                         }}>
-                          {item.title}
-                        </strong>
-                        <span style={{
-                          color: theme.textSecondary,
-                          fontSize: '12px',
-                          fontWeight: '600',
-                        }}>
-                          {formatTaskDuration(item.duration_minutes)}
-                        </span>
-                      </div>
-                    </label>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+                          <div style={{ color: theme.textSecondary }}>
+                            {taskDetails?.title || item.title}
+                          </div>
+                        </div>
                       {hasSubtasks && (
                         <button
                           type="button"
@@ -1065,6 +1057,7 @@ const DailyPlanPanel = ({ plan, tasks, theme, onToggleScheduleItem, onTaskClick,
                         {item.suggested_start}
                       </span>
                     </div>
+                  </label>
                   </div>
 
                   {hasSubtasks && isExpanded && (
@@ -1250,6 +1243,7 @@ const Dashboard = () => {
   const [showDeletePlanConfirm, setShowDeletePlanConfirm] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [dailyInsight] = useState('');
 
   useEffect(() => {
     setStats(computeLocalStats(tasks));
@@ -1611,37 +1605,62 @@ const Dashboard = () => {
     loadDashboardData();
   };
 
-  const busiestDayData = useMemo(() => {
-    const labels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const counts = Array(7).fill(0);
+  const weeklyActivityData = useMemo(() => {
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    const mondayOffset = (dayOfWeek === 0 ? -6 : 1 - dayOfWeek);
+    const monday = new Date(today);
+    monday.setDate(monday.getDate() + mondayOffset);
+    monday.setHours(0, 0, 0, 0);
 
+    const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    const weekDays = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(monday);
+      d.setDate(d.getDate() + i);
+      weekDays.push(d);
+    }
+
+    const counts = Array(7).fill(0);
+    const completedDates = new Set();
     (tasks || []).forEach((task) => {
-      if (task.status !== 'done' || !task.completedAt) return;
-      const completedDate = new Date(task.completedAt);
-      if (!Number.isNaN(completedDate.getTime())) {
-        counts[completedDate.getDay()] += 1;
+      if (task.status !== 'done' || !task.updatedAt) return;
+      const completedDate = new Date(task.updatedAt);
+      completedDate.setHours(0, 0, 0, 0);
+
+      for (let i = 0; i < 7; i++) {
+        const weekDay = new Date(weekDays[i]);
+        if (completedDate.getTime() === weekDay.getTime()) {
+          counts[i] += 1;
+          completedDates.add(i);
+          break;
+        }
       }
     });
 
-    const maxCount = Math.max(...counts, 0);
-    const busiestIndex = counts.findIndex((count) => count === maxCount);
+    const totalDone = counts.reduce((a, b) => a + b, 0);
+    const activeDays = completedDates.size;
+    const average = totalDone / 7;
 
-    if (maxCount === 0 || busiestIndex < 0) {
-      return {
-        labels,
-        counts,
-        maxCount: 1,
-        busiestLabel: 'No data',
-        busiestCount: 0,
-      };
+    let streak = 0;
+    const todayIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    for (let i = todayIndex; i >= 0; i--) {
+      if (counts[i] > 0) {
+        streak += 1;
+      } else {
+        break;
+      }
     }
 
     return {
-      labels,
+      dayLabels,
+      weekDays,
       counts,
-      maxCount,
-      busiestLabel: labels[busiestIndex],
-      busiestCount: maxCount,
+      totalDone,
+      activeDays,
+      average,
+      streak,
+      todayIndex,
     };
   }, [tasks]);
 
@@ -1694,6 +1713,7 @@ const Dashboard = () => {
       color: theme.textSecondary,
     },
     greetingName: {
+      fontFamily: '"Fraunces", serif',
       fontWeight: '600',
       color: theme.textPrimary,
     },
@@ -1740,6 +1760,145 @@ const Dashboard = () => {
       fontWeight: '700',
       letterSpacing: '-0.005em',
     },
+  };
+
+  const fallbackTips = [
+    'Break large tasks into smaller steps to stay in flow.',
+    'Your most creative work happens in the first 90 minutes.',
+    'One completed task builds momentum for the next.',
+    'Consistency beats perfection every single time.',
+    'Schedule your hardest task when your energy peaks.',
+    'A clear deadline turns intention into action.',
+    'Progress, not perfection, is the goal today.',
+    'A small win early can change the shape of your whole day.',
+    'Start before you feel ready and let momentum do the rest.',
+    'Focus on the next right step, not the whole staircase.',
+    'You do not need more time, you need a sharper intention.',
+    'A calm pace can still produce excellent work.',
+    'Your future self benefits from what you finish today.',
+    'Clarity grows when you write things down and begin.',
+    'A good system beats a burst of motivation.',
+    'The hardest part is often just beginning.',
+    'Done is powerful, even when it is not perfect.',
+    'Protect your attention like the valuable resource it is.',
+    'Every finished task makes the next one easier.',
+    'You are allowed to make steady progress.',
+    'Tiny steps still move you forward.',
+    'Momentum is built in moments, not marathons.',
+    'Choose progress over pressure today.',
+    'Consistency turns effort into identity.',
+    'A focused hour can outperform a distracted afternoon.',
+    'Start with the task that gives the most relief.',
+    'Your pace is enough when it is intentional.',
+    'The right plan makes the next action obvious.',
+    'A clear list can quiet a busy mind.',
+    'Work can feel lighter when you simplify the next step.',
+    'One decision at a time is how big goals move.',
+    'You are building proof that you can follow through.',
+    'Small progress compounds quietly.',
+    'Begin where the resistance is lowest.',
+    'Even a modest start can unlock a strong finish.',
+    'The next five minutes matter more than the last five distractions.',
+    'Keep going; the friction usually fades after you start.',
+    'Discipline is just repeated clarity.',
+    'A steady rhythm is often better than a rush.',
+    'Aim for useful, then improve from there.',
+    'You can always refine the work after it exists.',
+    'Today is a good day to make one important thing easier.',
+    'A single completed task can reset your energy.',
+    'There is power in choosing what to ignore.',
+    'You do not need to catch up all at once.',
+    'Do the important thing before the urgent thing takes over.',
+    'Your attention deserves a destination.',
+    'The work gets smaller once it is on the page.',
+    'Keep the bar for starting low and the bar for finishing high.',
+    'A little progress is still progress worth keeping.',
+    'You can be both gentle and effective.',
+    'Let the next task earn your focus.',
+    'The best time to continue is now.',
+    'If it matters, make space for it.',
+    'Structure creates freedom for better work.',
+    'The simplest plan is often the strongest one.',
+    'You are closer after every task you complete.',
+    'A clear priority is a kind of relief.',
+    'Today rewards consistency more than intensity.',
+    'A thoughtful start often leads to a better finish.',
+    'You can make this day easier by completing one real thing.',
+    'Let your actions match the goals you care about.',
+    'The next hour can still be productive.',
+    'A narrow focus can make a big difference.',
+    'Your work improves when your attention stops scattering.',
+    'You are capable of building a good day on purpose.',
+    'A small completion can unlock larger energy.',
+    'Keep your plan simple enough to follow.',
+    'Start with motion; motivation often follows.',
+    'What you repeat becomes who you are.',
+    'Choose the task that moves the day forward.',
+    'One clear action can cut through hesitation.',
+    'You do not need to be perfect to be effective.',
+    'Forward is a direction worth protecting.',
+    'Let progress be your proof.',
+    'The work becomes easier when you stop negotiating with it.',
+    'Your effort matters even when no one sees it.',
+    'Keep the important work in front of the noise.',
+    'A completed task is a promise kept.',
+    'The day can still turn in your favor.',
+    'A focused mind creates better outcomes.',
+    'You are one decision away from starting well.',
+    'Use your energy where it will count most.',
+    'A little more discipline today can save time tomorrow.',
+    'There is strength in showing up again.',
+    'Make the next task smaller, not the goal.',
+    'Work with the day you have, not the one you wish for.',
+    'A clean finish beats a messy rush.',
+    'You can build confidence by finishing what you begin.',
+    'The present moment is where progress happens.',
+    'Give your best attention to the task that matters most.',
+    'The path forward is usually simpler than it feels.',
+    'Keep moving, even if the steps are small.',
+    'A little consistency today can change the week.',
+    'Let today be about finishing, not just planning.',
+    'You are allowed to work with calm confidence.',
+    'One well-placed effort can carry the whole afternoon.',
+    'The first move is often the most valuable one.',
+    'Stay with the task long enough to see it sharpen.',
+    'You can create momentum on purpose.',
+    'Every choice to continue makes you stronger at continuing.',
+    'A tidy list can make the day feel lighter.',
+    'Focus on completion, and clarity will follow.',
+    'Today does not need to be huge to be meaningful.',
+    'A clear priority is a quiet kind of power.',
+    'Do one thing well, then let that lead the next.',
+    'The best progress is often calm, repeatable, and real.',
+    'You can still make meaningful progress in a short window.',
+    'Protect the work that will matter at the end of the day.',
+    'A finished task is more valuable than a perfect intention.',
+    'The easiest way forward is usually one honest step.',
+    'Keep showing up; that is where trust is built.',
+    'The day improves when you make one good decision at a time.',
+    'Finish something small and let it lift your energy.',
+    'You are capable of turning intention into execution.',
+    'A focused start can change the tone of everything after it.',
+    'What gets attention grows, so choose carefully.',
+    'You can make real progress without making noise.',
+    'The simplest act of completion can be the most motivating.',
+    'Keep your eyes on what moves the work forward.',
+    'A consistent routine is a quiet advantage.',
+    'You are building a track record with every task completed.',
+    'Small disciplined choices add up fast.',
+    'The next task is enough of a challenge for now.',
+    'A good day is often made from a few completed things.',
+    'Less hesitation, more execution.',
+    'Start clean, finish clean, and let that be enough.',
+    'You do not need perfect conditions to make progress.',
+    'A single deliberate effort can create surprising momentum.',
+    'Trust the process of small, finished steps.',
+  ];
+
+  const getInsight = () => {
+    if (dailyInsight) return dailyInsight;
+    const dayIndex = new Date().getDate() % fallbackTips.length;
+    return fallbackTips[dayIndex];
   };
 
   if (loading) {
@@ -1909,91 +2068,156 @@ const Dashboard = () => {
           />
           <StatsCard
             icon={<FaCalendarAlt />}
-            label="Busiest Day"
+            label="Weekly Activity"
             color={theme.warning}
             customContent={(
-              <>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '8px' }}>
-                  <h2 style={{
-                    fontFamily: 'Fraunces, serif',
-                    fontSize: '40px',
-                    fontWeight: '800',
-                    color: theme.textPrimary,
-                    margin: 0,
+              <div style={{ position: 'relative' }}>
+                <div style={{ marginBottom: '12px', paddingTop: '0' }}>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
+                    gap: '5px',
+                    marginBottom: '8px',
                   }}>
-                    {busiestDayData.busiestLabel}
-                  </h2>
-                  <span style={{ fontSize: '13px', color: theme.textMuted }}>
-                    {busiestDayData.busiestCount} completed
-                  </span>
+                    {weeklyActivityData.counts.map((count, index) => {
+                      const isDayZero = count === 0;
+                      const isToday = index === weeklyActivityData.todayIndex;
+                      const isAboveAverage = count > weeklyActivityData.average;
+                      let bgColor = '#f0ebe3';
+                      let textColor = theme.textPrimary;
+                      let borderColor = '#ddd6c9';
+                      let borderWidth = '0.5px';
+
+                      if (isDayZero && isToday) {
+                        bgColor = '#f0ebe3';
+                        borderColor = '#C9924A';
+                        borderWidth = '1.5px';
+                      } else if (!isDayZero && isAboveAverage) {
+                        bgColor = '#C9924A';
+                        textColor = '#fff';
+                      } else if (!isDayZero) {
+                        bgColor = '#e8c98a';
+                      }
+
+                      return (
+                        <div
+                          key={`day-${index}`}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '8px',
+                            backgroundColor: bgColor,
+                            border: `${borderWidth} solid ${borderColor}`,
+                            fontSize: '12px',
+                            fontWeight: '700',
+                            color: textColor,
+                          }}
+                          title={`${weeklyActivityData.dayLabels[index]}: ${count} completed`}
+                        >
+                          {count > 0 ? count : ''}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
+                    gap: '5px',
+                    marginBottom: '12px',
+                  }}>
+                    {weeklyActivityData.dayLabels.map((label, index) => (
+                      <div
+                        key={`label-${index}`}
+                        style={{
+                          textAlign: 'center',
+                          fontSize: '11px',
+                          fontWeight: '600',
+                          color: theme.textMuted,
+                        }}
+                      >
+                        {label}
+                      </div>
+                    ))}
+                  </div>
                 </div>
                 <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
-                  gap: '6px',
-                  alignItems: 'end',
-                  height: '44px',
-                  marginBottom: '8px',
+                  display: 'flex',
+                  justifyContent: 'space-around',
+                  gap: '10px',
                 }}>
-                  {busiestDayData.counts.map((count, index) => {
-                    const height = Math.max(6, Math.round((count / busiestDayData.maxCount) * 100));
-                    return (
-                      <div
-                        key={busiestDayData.labels[index]}
-                        style={{
-                          height: `${height}%`,
-                          borderRadius: '4px',
-                          backgroundColor: count > 0 ? theme.warning : `${theme.warning}25`,
-                          boxShadow: count > 0 ? `0 0 8px ${theme.warning}40` : 'none',
-                        }}
-                        title={`${busiestDayData.labels[index]}: ${count}`}
-                      />
-                    );
-                  })}
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: '6px' }}>
-                  {busiestDayData.labels.map((label) => (
-                    <span
-                      key={label}
-                      style={{ fontSize: '11px', textAlign: 'center', color: theme.textMuted }}
-                    >
-                      {label}
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '2px',
+                  }}>
+                    <span style={{ fontSize: '11px', color: theme.textMuted, fontWeight: '600' }}>
+                      Total done
                     </span>
-                  ))}
+                    <span style={{
+                      fontSize: '18px',
+                      fontWeight: '800',
+                      color: theme.textPrimary,
+                    }}>
+                      {weeklyActivityData.totalDone}
+                    </span>
+                  </div>
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '2px',
+                  }}>
+                    <span style={{ fontSize: '11px', color: theme.textMuted, fontWeight: '600' }}>
+                      Active days
+                    </span>
+                    <span style={{
+                      fontSize: '18px',
+                      fontWeight: '800',
+                      color: theme.textPrimary,
+                    }}>
+                      {weeklyActivityData.activeDays}/7
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+                    <span style={{ fontSize: '20px', fontWeight: '800', fontFamily: 'Fraunces, serif', color: theme.primary, display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <FaFire style={{ fontSize: '18px', color: theme.primary }} />
+                      {stats?.streak || 0}
+                    </span>
+                    <span style={{ fontSize: '11px', color: theme.textMuted, fontWeight: '500' }}>Streak</span>
+                  </div>
                 </div>
-              </>
+              </div>
             )}
           />
           <StatsCard
-            icon={<FaClock />}
-            label="Focus Time"
+            icon={<FaRegLightbulb />}
+            label="Daily Insight"
             color={theme.primary}
             customContent={(
-              <>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '16px' }}>
-                  <h2 style={{
-                    fontFamily: 'Fraunces, serif',
-                    fontSize: '56px',
-                    fontWeight: '800',
-                    color: theme.textPrimary,
-                    margin: 0,
-                  }}>
-                    {(() => {
-                      const totalTime = tasks.reduce((total, task) => total + (task.timeTracking?.totalTime || 0), 0);
-                      const hours = Math.floor(totalTime / 60);
-                      const mins = totalTime % 60;
-                      return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
-                    })()}
-                  </h2>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{
+                  fontFamily: 'inherit, sans-serif',
+                  fontSize: '18px',
+                  fontWeight: '500',
+                  color: theme.textMuted,
+                  margin: 0,
+                  letterSpacing: '0.06em',
+                }}>
+                  Your daily motivation
                 </div>
                 <p style={{
-                  fontSize: '13px',
-                  color: theme.textSecondary,
+                  fontFamily: '"Fraunces", serif',
+                  fontSize: '24px',
+                  fontWeight: '700',
+                  color: theme.textPrimary,
                   margin: 0,
+                  lineHeight: 1.1,
                 }}>
-                  Total time tracked across all tasks
+                  {getInsight()}
                 </p>
-              </>
+              </div>
             )}
           />
         </div>

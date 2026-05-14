@@ -75,27 +75,15 @@ class StatsCard extends StatelessWidget {
                 child: Icon(icon, size: 17, color: accentColor),
               ),
               const Spacer(),
-              if (progress != null && isProductivity)
-                CircularPercentIndicator(
-                  radius: 16,
-                  lineWidth: 5,
-                  percent: progressValue,
-                  center: const SizedBox.shrink(),
-                  progressColor: AppSemanticColors.primary,
-                  backgroundColor:
-                      AppSemanticColors.primary.withValues(alpha: 0.10),
-                  circularStrokeCap: CircularStrokeCap.round,
-                ),
             ],
           ),
           const SizedBox(height: 8),
           Text(
             label.toUpperCase(),
-            style: AppTextStyles.labelSmall.copyWith(
-              color: tokens.textMuted,
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.0,
+            style: AppTextStyles.labelCaps.copyWith(
+              color: tokens.textSecondary,
+              fontSize: 10,
+              letterSpacing: 0.55,
             ),
           ),
           if (subtitle != null) ...<Widget>[
@@ -115,16 +103,43 @@ class StatsCard extends StatelessWidget {
             customContent!,
             const SizedBox(height: 4),
           ] else
-            Text(
-              displayValue,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.statValueMd.copyWith(
-                fontSize: hasSlash ? 28 : 30,
-                fontWeight: FontWeight.w700,
-                height: 1,
-                color: tokens.textPrimary,
-                letterSpacing: -0.5,
+            SizedBox(
+              width: double.infinity,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: <Widget>[
+                  Expanded(
+                    child: FittedBox(
+                      alignment: Alignment.centerLeft,
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        displayValue,
+                        maxLines: 1,
+                        softWrap: false,
+                        style: AppTextStyles.statValueMd.copyWith(
+                          fontSize: hasSlash ? 28 : 30,
+                          fontWeight: FontWeight.w700,
+                          height: 1,
+                          color: tokens.textPrimary,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (progress != null && isProductivity) ...<Widget>[
+                    const Spacer(),
+                    CircularPercentIndicator(
+                      radius: 20,
+                      lineWidth: 6,
+                      percent: progressValue,
+                      center: const SizedBox.shrink(),
+                      progressColor: AppSemanticColors.primary,
+                      backgroundColor:
+                          AppSemanticColors.primary.withValues(alpha: 0.10),
+                      circularStrokeCap: CircularStrokeCap.round,
+                    ),
+                  ],
+                ],
               ),
             ),
           if (progress != null && !isProductivity) ...<Widget>[

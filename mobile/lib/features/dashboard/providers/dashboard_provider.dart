@@ -9,6 +9,7 @@ class DashboardState {
     this.tasks = const <Map<String, dynamic>>[],
     this.upcomingTasks = const <Map<String, dynamic>>[],
     this.stats = const <String, dynamic>{},
+    this.dailyInsight = '',
     this.dailyPlan,
     this.standupReport,
   });
@@ -18,6 +19,7 @@ class DashboardState {
   final Map<String, dynamic> stats;
   final Map<String, dynamic>? dailyPlan;
   final Map<String, dynamic>? standupReport;
+  final String dailyInsight;
 }
 
 final dashboardProvider =
@@ -53,11 +55,35 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
         ? Map<String, dynamic>.from(statsPayload['stats'] as Map)
         : Map<String, dynamic>.from(statsPayload);
 
+    // Resolve daily insight from stats payload using multiple candidate keys.
+    String insightText = '';
+    final insightKeys = [
+      'dailyInsight',
+      'daily_insight',
+      'insight',
+      'motivation',
+      'quote',
+    ];
+    for (final k in insightKeys) {
+      final v = statsRaw[k];
+      if (v != null) {
+        final s = v.toString().trim();
+        if (s.isNotEmpty) {
+          insightText = s;
+          break;
+        }
+      }
+    }
+    if (insightText.isEmpty) {
+      insightText = 'Clarity grows when you write things down and begin.';
+    }
+
     return DashboardState(
       tasks: tasks,
       stats: statsRaw,
       upcomingTasks: upcoming,
       dailyPlan: dailyPlanRaw,
+      dailyInsight: insightText,
     );
   }
 
@@ -115,6 +141,7 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
           if (focusTaskTitle != null) 'focus_task_title': focusTaskTitle,
           if (schedule != null) 'schedule': schedule,
         },
+        dailyInsight: current.dailyInsight,
       ),
     );
     try {
@@ -139,6 +166,7 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
         stats: current.stats,
         standupReport: current.standupReport,
         dailyPlan: null,
+        dailyInsight: current.dailyInsight,
       ),
     );
     try {

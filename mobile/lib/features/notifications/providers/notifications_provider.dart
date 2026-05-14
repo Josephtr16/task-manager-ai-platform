@@ -48,4 +48,38 @@ class NotificationsNotifier extends AsyncNotifier<NotificationsState> {
     await _service.markAllRead();
     await refresh();
   }
+
+  Future<void> deleteNotification(String id) async {
+    await deleteOne(id);
+  }
+
+  Future<void> deleteOne(String id) async {
+    await _service.deleteOne(id);
+    final current = state.valueOrNull ?? const NotificationsState();
+    final removed = current.items.where((item) {
+      final itemId = '${item['id'] ?? item['_id'] ?? ''}';
+      return itemId != id;
+    }).toList();
+    final deletedItem = current.items.cast<Map<String, dynamic>?>().firstWhere(
+          (item) => '${item?['id'] ?? item?['_id'] ?? ''}' == id,
+          orElse: () => null,
+        );
+    final nextUnreadCount = deletedItem == null || deletedItem['read'] == true
+        ? current.unreadCount
+        : (current.unreadCount - 1).clamp(0, current.unreadCount);
+
+    state = AsyncData(
+      NotificationsState(
+        items: removed,
+        unreadCount: nextUnreadCount,
+      ),
+    );
+  }
+
+  Future<void> clearAll() async {
+    await _service.clearAll();
+    state = const AsyncData(
+      NotificationsState(items: <Map<String, dynamic>>[], unreadCount: 0),
+    );
+  }
 }

@@ -125,45 +125,18 @@ def _validate_and_fix_deadlines(tasks: list, today: str, deadline: str) -> list:
     today_dt = date.fromisoformat(today)
     deadline_dt = date.fromisoformat(deadline)
     total_days = max((deadline_dt - today_dt).days, 1)
+    n = len(tasks)
 
-    phase_order = ["planning", "design", "development", "testing", "deployment"]
-    phase_windows = {
-        "planning":    (0.00, 0.10),
-        "design":      (0.10, 0.25),
-        "development": (0.25, 0.75),
-        "testing":     (0.75, 0.90),
-        "deployment":  (0.90, 1.00),
-    }
+    for i, task in enumerate(tasks):
+        if n == 1:
+            task_date = deadline_dt
+        else:
+            offset = round((i / (n - 1)) * total_days)
+            task_date = today_dt + timedelta(days=max(offset, 1))
+            task_date = min(task_date, deadline_dt)
+        task["deadline"] = task_date.isoformat()
 
-    by_phase = {p: [] for p in phase_order}
-    for task in tasks:
-        phase = task.get("phase", "development")
-        if phase not in by_phase:
-            phase = "development"
-        by_phase[phase].append(task)
-
-    result = []
-    for phase in phase_order:
-        phase_tasks = by_phase[phase]
-        if not phase_tasks:
-            continue
-
-        start_pct, end_pct = phase_windows[phase]
-        phase_start = today_dt + timedelta(days=int(total_days * start_pct))
-        phase_end = today_dt + timedelta(days=max(int(total_days * end_pct), 1))
-        phase_days = max((phase_end - phase_start).days, len(phase_tasks))
-
-        for i, task in enumerate(phase_tasks):
-            offset = (
-                phase_days // 2
-                if len(phase_tasks) == 1
-                else int(i * phase_days / (len(phase_tasks) - 1))
-            )
-            task_date = min(phase_start + timedelta(days=offset), deadline_dt)
-            task["deadline"] = task_date.isoformat()
-            result.append(task)
-
-    return result
+    return tasks
 
 
 # ---------------------------------------------------------------------------

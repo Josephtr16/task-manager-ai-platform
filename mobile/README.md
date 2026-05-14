@@ -9,6 +9,16 @@ No backend changes required.
 flutter pub get
 flutter run
 
+If you are running on a physical Android phone, stop the app completely and launch it again with your computer's LAN IP so the app can reach the backend:
+```bash
+flutter run --dart-define=TASKFLOW_ANDROID_HOST=192.168.1.14
+```
+If you are connected over USB debugging instead of Wi-Fi, you can also map the backend ports with ADB:
+```bash
+adb reverse tcp:5000 tcp:5000
+adb reverse tcp:8000 tcp:8000
+```
+
 ## Design
 Quiet luxury editorial dark aesthetic.
 Primary: #C9924A (warm copper). Fonts: Geist/Syne/Fraunces.

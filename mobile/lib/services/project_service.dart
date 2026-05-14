@@ -3,9 +3,11 @@ import 'package:dio/dio.dart';
 import 'api_service.dart';
 
 class ProjectService {
-  ProjectService({Dio? dio}) : _dio = dio ?? ApiService.instance.dio;
+  ProjectService({Dio? dio}) : _dioOverride = dio;
 
-  final Dio _dio;
+  final Dio? _dioOverride;
+
+  Dio get _dio => _dioOverride ?? ApiService.instance.dio;
 
   Map<String, dynamic> _asMap(dynamic data) {
     if (data is Map<String, dynamic>) {

@@ -5,10 +5,12 @@ import '../core/constants/api_constants.dart';
 import 'api_service.dart';
 
 class AuthService {
-  AuthService({Dio? dio}) : _dio = dio ?? ApiService.instance.dio;
+  AuthService({Dio? dio}) : _dioOverride = dio;
 
-  final Dio _dio;
+  final Dio? _dioOverride;
   static const FlutterSecureStorage _storage = FlutterSecureStorage();
+
+  Dio get _dio => _dioOverride ?? ApiService.instance.dio;
 
   Future<Map<String, dynamic>> login(String email, String password) async {
     final res = await _dio.post('/auth/login', data: <String, dynamic>{

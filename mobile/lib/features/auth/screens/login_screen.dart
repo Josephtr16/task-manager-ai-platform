@@ -248,24 +248,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
             // Theme toggle button
             Positioned(
-              top: 8,
-              right: 8,
-              child: IconButton(
-                onPressed: () {
-                  final notifier = ref.read(settingsProvider.notifier);
-                  final newMode = settings.themeMode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
-                  notifier.setThemeMode(newMode);
-                },
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-                icon: Icon(
-                  Theme.of(context).brightness == Brightness.dark
-                      ? Icons.light_mode_outlined
-                      : Icons.dark_mode_outlined,
-                  size: 20,
-                  color: tokens.textMuted,
+              top: 20,
+              right: 20,
+              child: Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? tokens.bgRaised
+                      : Colors.white.withOpacity(0.95),
+                  border: Border.all(
+                    color: tokens.borderSubtle,
+                    width: 1.5,
+                  ),
                 ),
-                splashRadius: 20,
+                child: IconButton(
+                  onPressed: () {
+                    final notifier = ref.read(settingsProvider.notifier);
+                    final newMode = settings.themeMode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
+                    notifier.setThemeMode(newMode);
+                  },
+                  padding: const EdgeInsets.all(5),
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  icon: Icon(
+                    Theme.of(context).brightness == Brightness.dark
+                        ? Icons.light_mode_outlined
+                        : Icons.dark_mode_outlined,
+                    size: 24,
+                    color: tokens.textMuted,
+                  ),
+                  splashRadius: 18,
+                ),
               ),
             ),
           ],

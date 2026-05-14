@@ -25,26 +25,40 @@ class ApiService {
   static UnauthorizedHandler? onUnauthorized;
 
   static String _resolveBaseUrl() {
+    if (kApiBaseUrlOverride.isNotEmpty) {
+      print('🌐 [ApiService] Using override base URL: $kApiBaseUrlOverride');
+      return kApiBaseUrlOverride;
+    }
+
     if (kIsWeb) {
+      print('🌐 [ApiService] Using iOS base URL (web): $kApiBaseUrlIOS');
       return kApiBaseUrlIOS;
     }
 
-    return defaultTargetPlatform == TargetPlatform.android
+    final url = defaultTargetPlatform == TargetPlatform.android
         ? kApiBaseUrlAndroid
         : kApiBaseUrlIOS;
+    print('🌐 [ApiService] Using ${defaultTargetPlatform == TargetPlatform.android ? 'Android' : 'iOS'} base URL: $url');
+    return url;
   }
 
-  late final Dio dio = Dio(
-    BaseOptions(
-      baseUrl: _resolveBaseUrl(),
-      connectTimeout: const Duration(seconds: 20),
-      receiveTimeout: const Duration(seconds: 25),
-      sendTimeout: const Duration(seconds: 25),
-      headers: <String, String>{'Content-Type': 'application/json'},
-    ),
-  )..interceptors.add(
+  Dio get dio => _createDio();
+
+  Dio _createDio() {
+    final dio = Dio(
+      BaseOptions(
+        baseUrl: _resolveBaseUrl(),
+        connectTimeout: const Duration(seconds: 5),
+        receiveTimeout: const Duration(seconds: 10),
+        sendTimeout: const Duration(seconds: 10),
+        headers: <String, String>{'Content-Type': 'application/json'},
+      ),
+    );
+
+    dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
+          print('🔵 [Dio] Requesting: ${options.method} ${options.baseUrl}${options.path}');
           final token = await _storage.read(key: kTokenStorageKey);
           if (token != null && token.isNotEmpty) {
             options.headers['Authorization'] = 'Bearer $token';
@@ -59,6 +73,10 @@ class ApiService {
           handler.next(response);
         },
         onError: (error, handler) async {
+          print('❌ [Dio] Error: ${error.type} - ${error.message}');
+          if (error.response != null) {
+            print('   Status: ${error.response?.statusCode}');
+          }
           final status = error.response?.statusCode;
           final payload = error.response?.data;
 
@@ -88,4 +106,7 @@ class ApiService {
         },
       ),
     );
+
+    return dio;
+  }
 }

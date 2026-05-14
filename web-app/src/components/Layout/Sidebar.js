@@ -15,12 +15,12 @@ import {
   FaRobot,
   FaCog,
   FaSignOutAlt,
-  FaLayerGroup,
   FaFolder,
   FaBell,
   FaTimes,
   FaChevronLeft,
   FaChevronRight,
+  FaTrash,
 } from 'react-icons/fa';
 
 const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 232 }) => {
@@ -31,6 +31,7 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 232
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [deleteHoverId, setDeleteHoverId] = useState(null);
   const prevUnreadCountRef = useRef(0);
 
   const menuItems = [
@@ -107,6 +108,26 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 232
       setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (error) {
       console.error('Failed to mark notification as read:', error);
+    }
+  };
+
+  const handleDeleteOne = async (id) => {
+    try {
+      await notificationsAPI.deleteNotification(id);
+      setNotifications((prev) => prev.filter((n) => n._id !== id));
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    } catch (err) {
+      console.error('Failed to delete notification', err);
+    }
+  };
+
+  const handleClearAll = async () => {
+    try {
+      await notificationsAPI.clearAll();
+      setNotifications([]);
+      setUnreadCount(0);
+    } catch (err) {
+      console.error('Failed to clear notifications', err);
     }
   };
 
@@ -364,9 +385,8 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 232
     },
     notificationHeader: {
       display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      padding: '16px',
+      flexDirection: 'column',
+      padding: '14px 16px 12px',
       borderBottom: `1px solid ${theme.border}`,
       backgroundColor: theme.bgCard,
     },
@@ -402,6 +422,32 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 232
       fontSize: '12px',
       fontWeight: '600',
       transition: 'all 150ms ease',
+    },
+    clearAllButton: {
+      backgroundColor: 'transparent',
+      border: 'none',
+      padding: '6px 10px',
+      color: '#C0392B',
+      cursor: 'pointer',
+      fontSize: '12px',
+      fontWeight: '600',
+      transition: 'all 150ms ease',
+    },
+    deleteIcon: {
+      position: 'absolute',
+      top: '10px',
+      right: '10px',
+      backgroundColor: 'transparent',
+      border: 'none',
+      padding: '4px',
+      color: theme.textMuted,
+      cursor: 'pointer',
+      fontSize: '14px',
+      opacity: 0,
+      transition: 'opacity 150ms ease',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     emptyState: {
       fontSize: '13px',
@@ -469,6 +515,8 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 232
         .sidebar-edge-toggle:hover { color: ${theme.primary} !important; transform: translateY(-50%) scale(1.04); }
         .notif-item:hover { transform: translateY(-1px); box-shadow: ${theme.shadows.md} !important; border-color: ${theme.borderMedium} !important; }
         .notif-mark-all:hover { background-color: ${theme.type === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'} !important; }
+        .notif-item:hover .delete-icon { opacity: 1 !important; }
+        .delete-icon { transition: opacity 150ms ease !important; }
       `}</style>
 
       {/* Logo */}
@@ -545,13 +593,22 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 232
 
       <aside style={styles.notificationPanel}>
         <div style={styles.notificationHeader}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <FaBell color={theme.primary} />
-            <strong style={{ color: theme.textPrimary, fontSize: '15px' }}>{tt('notifications.title', 'Notifications')}</strong>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <FaBell color={theme.primary} />
+              <strong style={{ color: theme.textPrimary, fontFamily: '"Syne", sans-serif', fontSize: '16px', fontWeight: '700' }}>{tt('notifications.title', 'Notifications')}</strong>
+            </div>
+            <button onClick={() => setIsNotificationOpen(false)} style={styles.iconButton} className="icon-btn" title={tt('common.close', 'Close')}>
+              <FaTimes />
+            </button>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <button onClick={handleMarkAllRead} style={styles.markAllButton} className="notif-mark-all">{tt('notifications.markAllRead', 'Mark all read')}</button>
-            <button onClick={() => setIsNotificationOpen(false)} style={styles.iconButton} className="icon-btn" title={tt('common.close', 'Close')}><FaTimes /></button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button onClick={handleMarkAllRead} style={{ ...styles.markAllButton, flex: 1 }} className="notif-mark-all" disabled={notifications.length === 0}>
+              {tt('notifications.markAllRead', 'Mark all read')}
+            </button>
+            <button onClick={handleClearAll} style={{ ...styles.markAllButton, flex: 1, color: theme.error || '#C0392B', borderColor: `${theme.error || '#C0392B'}33` }} className="notif-mark-all" disabled={notifications.length === 0}>
+              {tt('notifications.clearAll', 'Clear all')}
+            </button>
           </div>
         </div>
         <div style={styles.notificationList}>
@@ -563,8 +620,18 @@ const Sidebar = ({ isCollapsed = false, onToggle = () => { }, sidebarWidth = 232
                 key={notification._id}
                 style={{ ...styles.notificationItem, ...(notification.read ? {} : styles.notificationUnread), transitionDelay: `${Math.min(index * 20, 160)}ms` }}
                 className="notif-item"
+                onMouseEnter={() => setDeleteHoverId(notification._id)}
+                onMouseLeave={() => setDeleteHoverId(null)}
                 onClick={() => { if (!notification.read) handleMarkRead(notification._id); }}
               >
+                <button
+                  style={{ ...styles.deleteIcon, opacity: deleteHoverId === notification._id ? 1 : 0 }}
+                  className="delete-icon"
+                  onClick={(e) => { e.stopPropagation(); handleDeleteOne(notification._id); }}
+                  title={tt('common.delete', 'Delete')}
+                >
+                  <FaTrash />
+                </button>
                 <p style={styles.notificationMessage}>{renderTextWithMentions(notification.message)}</p>
                 <div style={styles.notificationMeta}>{formatTimeAgo(notification.createdAt)}</div>
                 {!notification.read && <span style={styles.unreadDot} />}

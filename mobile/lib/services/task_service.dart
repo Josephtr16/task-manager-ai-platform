@@ -4,9 +4,11 @@ import 'dart:io';
 import 'api_service.dart';
 
 class TaskService {
-  TaskService({Dio? dio}) : _dio = dio ?? ApiService.instance.dio;
+  TaskService({Dio? dio}) : _dioOverride = dio;
 
-  final Dio _dio;
+  final Dio? _dioOverride;
+
+  Dio get _dio => _dioOverride ?? ApiService.instance.dio;
 
   Future<Map<String, dynamic>> getTasks([Map<String, dynamic>? params]) async {
     final res = await _dio.get('/tasks', queryParameters: params);

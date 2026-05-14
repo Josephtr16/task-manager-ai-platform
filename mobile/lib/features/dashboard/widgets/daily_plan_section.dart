@@ -163,8 +163,8 @@ class _DailyPlanSectionState extends ConsumerState<DailyPlanSection> {
               taskData['dueDate'] ??
               taskData['due_date'] ??
               taskData['deadline_at'];
-          if ((item['deadline_label'] == null ||
-                  (item['deadline_label'] as String).isEmpty) &&
+            if ((item['deadline_label'] == null ||
+                ((item['deadline_label']?.toString() ?? '').isEmpty)) &&
               deadlineRaw != null) {
             final deadlineText = deadlineRaw.toString();
             final parsed = DateTime.tryParse(deadlineText);

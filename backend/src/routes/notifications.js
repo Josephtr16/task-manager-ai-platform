@@ -87,4 +87,23 @@ router.patch('/:id/read', async (req, res) => {
   }
 });
 
+router.delete('/clear-all', async (req, res) => {
+  try {
+    await Notification.deleteMany({ userId: req.user.id });
+    return res.status(200).json({ success: true, data: {} });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.delete('/:id', async (req, res) => {
+  try {
+    const notification = await Notification.findOneAndDelete({ _id: req.params.id, userId: req.user.id });
+    if (!notification) return res.status(404).json({ success: false, message: 'Notification not found' });
+    return res.status(200).json({ success: true, data: {} });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 module.exports = router;

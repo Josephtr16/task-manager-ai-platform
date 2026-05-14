@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../auth/providers/auth_provider.dart';
+import '../../notifications/providers/notifications_provider.dart';
+import '../../shell/notification_sheet.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/widgets/tf_page_header.dart';
 import '../providers/dashboard_provider.dart';
 import '../widgets/ai_recommends_section.dart';
 import '../widgets/daily_plan_section.dart';
@@ -34,26 +34,28 @@ class DashboardScreen extends ConsumerWidget {
             data: (data) {
               final firstName = userName.split(' ').first;
               final dueToday = (data.stats['dueToday'] ?? 0) as num;
-              final dueTomorrow = (data.stats['dueTomorrow'] ?? 0) as num;
               final completed = (data.stats['completed'] ?? 0) as num;
               final total = (data.stats['total'] ?? 0) as num;
               final productivity =
                   ((data.stats['productivityScore'] ?? 0) as num).toDouble();
-              final busiestDay = _busiestDayLabel(data.stats, data.tasks);
-              final busiestDayData = _weekdayLoad(data.tasks);
+              final dailyInsight = data.dailyInsight;
 
               return CustomScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 slivers: <Widget>[
                   SliverAppBar(
-                    expandedHeight: 116,
-                    toolbarHeight: 0,
+                    expandedHeight: 144,
+                    toolbarHeight: 56,
                     elevation: 0,
                     scrolledUnderElevation: 0,
                     backgroundColor: Colors.transparent,
+                    actions: const <Widget>[
+                      _NotificationBellButton(),
+                      SizedBox(width: 0),
+                    ],
                     flexibleSpace: FlexibleSpaceBar(
                       background: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
+                        padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.end,
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -63,7 +65,8 @@ class DashboardScreen extends ConsumerWidget {
                                 children: <InlineSpan>[
                                   TextSpan(
                                     text: '${_greeting()}, ',
-                                    style: AppTextStyles.greetingItalic.copyWith(
+                                    style:
+                                        AppTextStyles.greetingItalic.copyWith(
                                       fontSize: 36,
                                       color: tokens.textSecondary,
                                     ),
@@ -120,55 +123,103 @@ class DashboardScreen extends ConsumerWidget {
                         horizontal: 16,
                         vertical: 12,
                       ),
-                      child: GridView.count(
-                        crossAxisCount: 2,
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        childAspectRatio: 1.08,
+                      child: Row(
                         children: <Widget>[
-                          StatsCard(
-                            label: 'Due Today',
-                            value: '${dueToday.toInt()}',
-                            subtitle: 'Action required',
-                            icon: Icons.today_rounded,
-                            iconColor: AppSemanticColors.rose,
-                            progress:
-                                (dueToday.toDouble() / 10).clamp(0.0, 1.0),
-                            progressColor: AppSemanticColors.rose,
-                            compact: true,
-                          ),
-                          StatsCard(
-                            label: 'Tasks Completed',
-                            value: '${completed.toInt()}/${total.toInt()}',
-                            subtitle: 'This week',
-                            icon: Icons.check_circle_outline_rounded,
-                            iconColor: AppSemanticColors.sage,
-                            progress: total <= 0 ? 0 : completed / total,
-                            progressColor: AppSemanticColors.sage,
-                            compact: true,
-                          ),
-                          StatsCard(
-                            label: 'Productivity Score',
-                            value: '${productivity.round()}',
-                            subtitle: 'Great consistency',
-                            icon: Icons.auto_graph_rounded,
-                            iconColor: AppSemanticColors.primary,
-                            progress: (productivity / 100).clamp(0.0, 1.0),
-                            progressColor: AppSemanticColors.primary,
-                            compact: true,
-                          ),
-                          StatsCard(
-                            label: 'Busiest Day',
-                            value: busiestDay,
-                            subtitle: 'Most load',
-                            icon: Icons.bar_chart_rounded,
-                            iconColor: AppSemanticColors.sky,
-                            customContent: _BusiestDayChart(
-                              values: busiestDayData,
+                          Expanded(
+                            child: StatsCard(
+                              label: 'Productivity Score',
+                              value: '${productivity.round()}',
+                              subtitle: 'Great consistency',
+                              icon: Icons.auto_graph_rounded,
+                              iconColor: AppSemanticColors.primary,
+                              progress: (productivity / 100).clamp(0.0, 1.0),
+                              progressColor: AppSemanticColors.primary,
+                              compact: true,
                             ),
-                            compact: true,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: StatsCard(
+                              label: 'Tasks Completed',
+                              value: '${completed.toInt()}/${total.toInt()}',
+                              subtitle: 'This week',
+                              icon: Icons.check_circle_outline_rounded,
+                              iconColor: AppSemanticColors.sage,
+                              progress: total <= 0 ? 0 : completed / total,
+                              progressColor: AppSemanticColors.sage,
+                              compact: true,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      child: Column(
+                        children: <Widget>[
+                          // Daily Insight Card
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.all(12),
+                            child: Row(
+                              children: <Widget>[
+                                Container(
+                                  width: 24,
+                                  height: 24,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFAEEDA),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: const Icon(
+                                    Icons.lightbulb_outline,
+                                    size: 14,
+                                    color: Color(0xFFC9924A),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: <Widget>[
+                                      Text(
+                                        'DAILY INSIGHT',
+                                        style: AppTextStyles.labelCaps.copyWith(
+                                          color: tokens.textSecondary,
+                                          fontSize: 10,
+                                          letterSpacing: 0.55,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        dailyInsight,
+                                        style: GoogleFonts.fraunces(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w700,
+                                          color: tokens.textPrimary,
+                                        ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          // Weekly Activity Heatmap Card
+                          _WeeklyActivityCard(
+                            tasks: data.tasks,
+                            tokens: tokens,
                           ),
                         ],
                       ),
@@ -573,74 +624,66 @@ class _TimeField extends StatelessWidget {
   }
 }
 
-String _busiestDayLabel(
-  Map<String, dynamic> stats,
-  List<Map<String, dynamic>> tasks,
-) {
-  final raw = '${stats['busiestDay'] ?? stats['busiest_day'] ?? ''}'.trim();
-  if (raw.isNotEmpty) return raw;
+// Removed busiest-day helpers; replaced by _WeeklyActivityCard below.
 
-  final data = _weekdayLoad(tasks);
-  final index =
-      data.indexWhere((v) => v == data.reduce((a, b) => a > b ? a : b));
-  const names = <String>['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  if (index < 0 || index >= names.length) return 'Mon';
-  return names[index];
-}
-
-List<double> _weekdayLoad(List<Map<String, dynamic>> tasks) {
-  final counts = List<double>.filled(7, 0);
-  for (final task in tasks) {
-    final deadline = DateTime.tryParse('${task['deadline'] ?? ''}');
-    if (deadline == null) continue;
-    final idx = deadline.weekday - 1;
-    if (idx >= 0 && idx < counts.length) {
-      counts[idx] += 1;
-    }
-  }
-
-  if (counts.every((c) => c == 0)) {
-    return <double>[2, 3, 4, 3, 5, 2, 1];
-  }
-  return counts;
-}
-
-class _BusiestDayChart extends StatelessWidget {
-  const _BusiestDayChart({required this.values});
-
-  final List<double> values;
+class _NotificationBellButton extends ConsumerWidget {
+  const _NotificationBellButton();
 
   @override
-  Widget build(BuildContext context) {
-    final capped = values.take(7).toList();
-    while (capped.length < 7) {
-      capped.add(0);
-    }
-    final maxY = (capped.reduce((a, b) => a > b ? a : b) + 1).toDouble();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeData = Theme.of(context);
+    final tokens = themeData.extension<AppColorTokens>()!;
+    final state = ref.watch(notificationsProvider);
 
-    return SizedBox(
-      height: 22,
-      child: BarChart(
-        BarChartData(
-          maxY: maxY,
-          gridData: const FlGridData(show: false),
-          borderData: FlBorderData(show: false),
-          titlesData: const FlTitlesData(show: false),
-          barGroups: List<BarChartGroupData>.generate(
-            7,
-            (i) => BarChartGroupData(
-              x: i,
-              barRods: <BarChartRodData>[
-                BarChartRodData(
-                  toY: capped[i],
-                  width: 6,
-                  borderRadius: BorderRadius.circular(4),
-                  color: AppSemanticColors.sky,
-                ),
-              ],
+    final unreadCount = state.maybeWhen(
+      data: (data) => data.items.where((n) => n['read'] != true).length,
+      orElse: () => 0,
+    );
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 16, right: 16),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          GestureDetector(
+            onTap: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                useRootNavigator: false,
+                builder: (_) => NotificationSheet(themeData: themeData),
+              );
+            },
+            child: Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: tokens.bgRaised,
+                shape: BoxShape.circle,
+                border: Border.all(color: tokens.borderSubtle, width: 1),
+              ),
+              child: Icon(
+                Icons.notifications_none_rounded,
+                size: 24,
+                color: tokens.textPrimary,
+              ),
             ),
           ),
-        ),
+          if (unreadCount > 0)
+            Positioned(
+              top: 6,
+              right: 6,
+              child: Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: tokens.accent,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -652,4 +695,289 @@ String _greeting() {
   if (hour >= 12 && hour < 17) return 'Good afternoon';
   if (hour >= 17 && hour < 20) return 'Good evening';
   return 'Good night';
+}
+
+String _resolveDailyInsight(Map<String, dynamic> stats) {
+  final candidates = <String?>[
+    stats['dailyInsight'] as String?,
+    stats['daily_insight'] as String?,
+    stats['insight'] as String?,
+    stats['motivation'] as String?,
+    stats['motivationalInsight'] as String?,
+  ];
+
+  for (final candidate in candidates) {
+    final text = candidate?.trim() ?? '';
+    if (text.isNotEmpty) return text;
+  }
+
+  return 'Your motivation for today is loading…';
+}
+
+class _WeeklyActivityCard extends StatelessWidget {
+  const _WeeklyActivityCard({
+    required this.tasks,
+    required this.tokens,
+  });
+
+  final List<dynamic> tasks;
+  final AppColorTokens tokens;
+
+  _WeeklyActivityData _computeWeeklyData() {
+    // Debug: log incoming task statuses and first task keys to diagnose heatmap data
+    try {
+      debugPrint('HEATMAP: task statuses = ${tasks.map((t) => t['status']).toList()}');
+      debugPrint('HEATMAP: first task keys = ${tasks.isNotEmpty ? tasks.first.keys.toList() : []}');
+    } catch (_) {}
+    final today = DateTime.now();
+    final weekStart = DateTime(today.year, today.month, today.day)
+        .subtract(Duration(days: today.weekday - 1));
+
+    final dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    final counts = <int>[0, 0, 0, 0, 0, 0, 0];
+
+    for (final task in tasks) {
+      final status = '${task['status'] ?? ''}'.toLowerCase();
+      // broaden accepted completed statuses
+      final completedStatusValues = <String>{'done', 'completed', 'complete', 'finished'};
+      if (!completedStatusValues.contains(status)) continue;
+
+      final completedDate = _parseTaskDate(task);
+      if (completedDate == null) continue;
+
+      // Debug: show which tasks matched and the parsed date
+      try {
+        debugPrint('HEATMAP: matched task status=$status, parsedDate=${completedDate.toIso8601String()}');
+      } catch (_) {}
+
+      final localCompletedDate = completedDate.toLocal();
+
+      for (int i = 0; i < 7; i++) {
+        final bucketStart = weekStart.add(Duration(days: i));
+        final bucketEnd = bucketStart.add(const Duration(days: 1));
+        if (!localCompletedDate.isBefore(bucketStart) &&
+            localCompletedDate.isBefore(bucketEnd)) {
+          counts[i] += 1;
+          break;
+        }
+      }
+    }
+
+    final totalDone = counts.reduce((a, b) => a + b);
+    final activeDaysCount = counts.where((count) => count > 0).length;
+    final average = totalDone > 0 ? (totalDone / 7.0) : 0.0;
+
+    // Calculate streak backward from today
+    int streak = 0;
+    final todayIndex = today.weekday - 1;
+    for (int i = todayIndex; i >= 0; i--) {
+      if (counts[i] > 0) {
+        streak += 1;
+      } else {
+        break;
+      }
+    }
+
+    return _WeeklyActivityData(
+      dayLabels: dayLabels,
+      counts: counts,
+      totalDone: totalDone,
+      activeDaysCount: activeDaysCount,
+      average: average,
+      streak: streak,
+      todayIndex: todayIndex,
+    );
+  }
+
+  DateTime? _parseTaskDate(Map<String, dynamic> task) {
+    final fields = <String>[
+      'completedAt',
+      'completed_at',
+      'updatedAt',
+      'updated_at',
+      'createdAt',
+      'created_at',
+      'deadline',
+    ];
+
+    for (final field in fields) {
+      final rawValue = task[field];
+      if (rawValue == null) continue;
+
+      if (rawValue is DateTime) {
+        return rawValue;
+      }
+
+      final parsed = DateTime.tryParse(rawValue.toString());
+      if (parsed != null) {
+        return parsed;
+      }
+    }
+
+    return null;
+  }
+
+  Color _getDotColor(int count, int index, int todayIndex) {
+    if (count == 0 && index == todayIndex) {
+      return const Color(0xFFF0EBE3); // Empty with ring handled separately
+    }
+    if (count == 0) {
+      return const Color(0xFFF0EBE3);
+    }
+    if (count >= 3) {
+      return const Color(0xFFC9924A);
+    }
+    return const Color(0xFFE8C98A);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final data = _computeWeeklyData();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: <Widget>[
+              Text(
+                'WEEKLY ACTIVITY',
+                style: AppTextStyles.labelCaps.copyWith(
+                  color: tokens.textSecondary,
+                  fontSize: 10,
+                  letterSpacing: 0.55,
+                ),
+              ),
+              if (data.streak > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFAEEDA),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '${data.streak} day streak',
+                    style: AppTextStyles.bodySmall.copyWith(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF854F0B),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: <Widget>[
+              for (int i = 0; i < 7; i++)
+                _DayDot(
+                  label: data.dayLabels[i],
+                  count: data.counts[i],
+                  color: _getDotColor(data.counts[i], i, data.todayIndex),
+                  isToday: i == data.todayIndex,
+                  textColor: data.counts[i] >= 3
+                      ? Colors.white
+                      : tokens.textPrimary,
+                  tokens: tokens,
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            '${data.totalDone} done this week · ${data.activeDaysCount} active days',
+            style: AppTextStyles.bodySmall.copyWith(
+              fontSize: 13,
+              color: tokens.textMuted,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DayDot extends StatelessWidget {
+  const _DayDot({
+    required this.label,
+    required this.count,
+    required this.color,
+    required this.isToday,
+    required this.textColor,
+    required this.tokens,
+  });
+
+  final String label;
+  final int count;
+  final Color color;
+  final bool isToday;
+  final Color textColor;
+  final AppColorTokens tokens;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: <Widget>[
+        Container(
+          width: 18,
+          height: 18,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: color,
+            border: isToday && count == 0
+                ? Border.all(color: const Color(0xFFC9924A), width: 1.5)
+                : null,
+          ),
+          child: count > 0
+              ? Center(
+                  child: Text(
+                    count.toString(),
+                    style: AppTextStyles.bodySmall.copyWith(
+                      fontSize: 8,
+                      fontWeight: FontWeight.w700,
+                      color: textColor,
+                    ),
+                  ),
+                )
+              : null,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: AppTextStyles.bodySmall.copyWith(
+            fontSize: 8,
+            color: tokens.textMuted,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _WeeklyActivityData {
+  _WeeklyActivityData({
+    required this.dayLabels,
+    required this.counts,
+    required this.totalDone,
+    required this.activeDaysCount,
+    required this.average,
+    required this.streak,
+    required this.todayIndex,
+  });
+
+  final List<String> dayLabels;
+  final List<int> counts;
+  final int totalDone;
+  final int activeDaysCount;
+  final double average;
+  final int streak;
+  final int todayIndex;
 }
